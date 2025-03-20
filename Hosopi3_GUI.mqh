@@ -7,7 +7,7 @@
 #include "Hosopi3_Trading.mqh"
 
 //+------------------------------------------------------------------+
-//| GUIを作成する                                                     |
+//| GUIを作成する - 修正版                                           |
 //+------------------------------------------------------------------+
 void CreateGUI()
 {
@@ -40,7 +40,9 @@ void CreateGUI()
    int row3Y = row2Y + BUTTON_HEIGHT + PANEL_MARGIN;
    
    // Ghostモードボタン（横いっぱい）
-   CreateButton("btnGhostToggle", "GHOST ON", PanelX + PANEL_MARGIN, row3Y, fullWidth, BUTTON_HEIGHT, COLOR_BUTTON_ACTIVE, COLOR_TEXT_LIGHT);
+   CreateButton("btnGhostToggle", "GHOST " + (g_GhostMode ? "ON" : "OFF"), 
+               PanelX + PANEL_MARGIN, row3Y, fullWidth, BUTTON_HEIGHT, 
+               g_GhostMode ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE, COLOR_TEXT_LIGHT);
    
    // ========== 行4: ゴーストリセットボタン ==========
    int row4Y = row3Y + BUTTON_HEIGHT + PANEL_MARGIN;
@@ -52,11 +54,40 @@ void CreateGUI()
    int row5Y = row4Y + BUTTON_HEIGHT + PANEL_MARGIN;
    
    // 平均取得単価表示切替ボタン（横いっぱい）
-   CreateButton("btnToggleAvgPrice", "AVG PRICE ON", PanelX + PANEL_MARGIN, row5Y, fullWidth, BUTTON_HEIGHT, COLOR_BUTTON_ACTIVE, COLOR_TEXT_LIGHT);
+   CreateButton("btnToggleAvgPrice", "AVG PRICE " + (g_AvgPriceVisible ? "ON" : "OFF"), 
+               PanelX + PANEL_MARGIN, row5Y, fullWidth, BUTTON_HEIGHT, 
+               g_AvgPriceVisible ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE, COLOR_TEXT_LIGHT);
+   
+   // ========== 行6: 自動売買切替ボタン（新規追加） ==========
+   int row6Y = row5Y + BUTTON_HEIGHT + PANEL_MARGIN;
+   
+   // 自動売買切替ボタン（横いっぱい）
+   CreateButton("btnAutoTrading", "AUTO TRADING " + (g_AutoTrading ? "ON" : "OFF"), 
+               PanelX + PANEL_MARGIN, row6Y, fullWidth, BUTTON_HEIGHT, 
+               g_AutoTrading ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE, COLOR_TEXT_LIGHT);
+   
+   // ========== 行7: ナンピン切替ボタン（新規追加） ==========
+   int row7Y = row6Y + BUTTON_HEIGHT + PANEL_MARGIN;
+   
+   // ナンピン切替ボタン（横いっぱい）
+   CreateButton("btnNanpin", "NANPIN " + (g_EnableNanpin ? "ON" : "OFF"), 
+               PanelX + PANEL_MARGIN, row7Y, fullWidth, BUTTON_HEIGHT, 
+               g_EnableNanpin ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE, COLOR_TEXT_LIGHT);
+   
+   // ========== 行8: テクニカル指標利用（新規追加） ==========
+   int row8Y = row7Y + BUTTON_HEIGHT + PANEL_MARGIN;
+   
+   // テクニカル指標による入出切替ボタン（横いっぱい）
+   CreateButton("btnIndicatorsEntry", "INDICATORS " + (g_EnableIndicatorsEntry ? "ON" : "OFF"), 
+               PanelX + PANEL_MARGIN, row8Y, fullWidth, BUTTON_HEIGHT, 
+               g_EnableIndicatorsEntry ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE, COLOR_TEXT_LIGHT);
+   
+   // パネルの高さを調整
+   int panelHeight = row8Y + BUTTON_HEIGHT + PANEL_MARGIN - PanelY;
+   ObjectSet(g_ObjectPrefix + "MainPanel" + "BG", OBJPROP_YSIZE, panelHeight);
    
    ChartRedraw(); // チャートを再描画
 }
-
 //+------------------------------------------------------------------+
 //| パネル作成                                                        |
 //+------------------------------------------------------------------+
@@ -197,13 +228,16 @@ void DeleteGUI()
 }
 
 //+------------------------------------------------------------------+
-//| GUIを更新する                                                     |
+//| GUIを更新する - 修正版                                           |
 //+------------------------------------------------------------------+
 void UpdateGUI()
 {
    // オブジェクト名にプレフィックスを追加（複数チャート対策）
    string ghostBtnPrefix = g_ObjectPrefix + "btnGhostToggle";
    string avgPriceBtnPrefix = g_ObjectPrefix + "btnToggleAvgPrice";
+   string autoTradingBtnPrefix = g_ObjectPrefix + "btnAutoTrading";
+   string nanpinBtnPrefix = g_ObjectPrefix + "btnNanpin";
+   string indicatorsBtnPrefix = g_ObjectPrefix + "btnIndicatorsEntry";
    
    // Ghost ON/OFFボタン状態更新
    color ghostButtonColor = g_GhostMode ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE;
@@ -221,10 +255,34 @@ void UpdateGUI()
    ObjectSet(avgPriceBtnPrefix, OBJPROP_BORDER_COLOR, ColorDarken(avgPriceButtonColor, 20));
    ObjectSetText(avgPriceBtnPrefix, g_AvgPriceVisible ? "AVG PRICE ON" : "AVG PRICE OFF", 9, "Arial", COLOR_TEXT_LIGHT);
    
+   // 自動売買ボタン状態更新
+   color autoTradingButtonColor = g_AutoTrading ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE;
+   ObjectSet(autoTradingBtnPrefix + "BG", OBJPROP_BGCOLOR, autoTradingButtonColor);
+   ObjectSet(autoTradingBtnPrefix + "BG", OBJPROP_COLOR, ColorDarken(autoTradingButtonColor, 20));
+   ObjectSet(autoTradingBtnPrefix, OBJPROP_BGCOLOR, autoTradingButtonColor);
+   ObjectSet(autoTradingBtnPrefix, OBJPROP_BORDER_COLOR, ColorDarken(autoTradingButtonColor, 20));
+   ObjectSetText(autoTradingBtnPrefix, g_AutoTrading ? "AUTO TRADING ON" : "AUTO TRADING OFF", 9, "Arial", COLOR_TEXT_LIGHT);
+   
+   // ナンピンボタン状態更新
+   color nanpinButtonColor = g_EnableNanpin ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE;
+   ObjectSet(nanpinBtnPrefix + "BG", OBJPROP_BGCOLOR, nanpinButtonColor);
+   ObjectSet(nanpinBtnPrefix + "BG", OBJPROP_COLOR, ColorDarken(nanpinButtonColor, 20));
+   ObjectSet(nanpinBtnPrefix, OBJPROP_BGCOLOR, nanpinButtonColor);
+   ObjectSet(nanpinBtnPrefix, OBJPROP_BORDER_COLOR, ColorDarken(nanpinButtonColor, 20));
+   ObjectSetText(nanpinBtnPrefix, g_EnableNanpin ? "NANPIN ON" : "NANPIN OFF", 9, "Arial", COLOR_TEXT_LIGHT);
+   
+   // テクニカル指標ボタン状態更新
+   color indicatorsButtonColor = g_EnableIndicatorsEntry ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE;
+   ObjectSet(indicatorsBtnPrefix + "BG", OBJPROP_BGCOLOR, indicatorsButtonColor);
+   ObjectSet(indicatorsBtnPrefix + "BG", OBJPROP_COLOR, ColorDarken(indicatorsButtonColor, 20));
+   ObjectSet(indicatorsBtnPrefix, OBJPROP_BGCOLOR, indicatorsButtonColor);
+   ObjectSet(indicatorsBtnPrefix, OBJPROP_BORDER_COLOR, ColorDarken(indicatorsButtonColor, 20));
+   ObjectSetText(indicatorsBtnPrefix, g_EnableIndicatorsEntry ? "INDICATORS ON" : "INDICATORS OFF", 9, "Arial", COLOR_TEXT_LIGHT);
+   
    ChartRedraw(); // チャートを再描画
 }
 //+------------------------------------------------------------------+
-//| ボタンクリックを処理する                                          |
+//| ボタンクリックを処理する - 修正版                                |
 //+------------------------------------------------------------------+
 void ProcessButtonClick(string buttonName)
 {
@@ -346,6 +404,22 @@ void ProcessButtonClick(string buttonName)
       g_AutoTrading = !g_AutoTrading;
       UpdateGUI();
       Print("自動売買を", g_AutoTrading ? "ON" : "OFF", "に切り替えました");
+   }
+   
+   // ナンピン切り替えボタン
+   else if(buttonName == "btnNanpin")
+   {
+      g_EnableNanpin = !g_EnableNanpin;
+      UpdateGUI();
+      Print("ナンピン機能を", g_EnableNanpin ? "ON" : "OFF", "に切り替えました");
+   }
+   
+   // テクニカル指標切り替えボタン
+   else if(buttonName == "btnIndicatorsEntry")
+   {
+      g_EnableIndicatorsEntry = !g_EnableIndicatorsEntry;
+      UpdateGUI();
+      Print("テクニカル指標によるエントリーを", g_EnableIndicatorsEntry ? "ON" : "OFF", "に切り替えました");
    }
 }
 

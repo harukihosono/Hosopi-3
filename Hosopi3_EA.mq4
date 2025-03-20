@@ -15,7 +15,6 @@
 #include "Hosopi3_Table.mqh"
 #include "Hosopi3_Ghost.mqh"
 #include "Hosopi3_Manager.mqh"
-
 //+------------------------------------------------------------------+
 //|                          入力パラメータ                          |
 //+------------------------------------------------------------------+
@@ -147,6 +146,32 @@ input int UpdateInterval = 1;           // テーブル更新間隔（秒）
 input color GhostBuyColor = clrDeepSkyBlue;   // ゴーストBuyエントリー色
 input color GhostSellColor = clrCrimson;      // ゴーストSellエントリー色
 input int GhostArrowSize = 3;                 // ゴースト矢印サイズ
+
+// ======== 機能制御設定 ========
+sinput string Comment_Features = ""; //+--- 機能制御設定 ---+
+input bool EnableNanpin = true;               // ナンピン機能を有効化
+input bool EnableGhostEntry = true;           // ゴーストエントリー機能を有効化
+input bool EnableTakeProfit = true;           // 利確機能を有効化
+input bool EnableTrailingStop = false;        // トレーリングストップを有効化
+input bool EnableAutomaticTrading = true;     // 自動売買を有効化
+input bool EnablePositionTable = true;        // ポジションテーブル表示を有効化
+input bool EnablePriceLabels = true;          // 価格ラベル表示を有効化
+
+// ======== エントリー条件設定 ========
+sinput string Comment_Entry_Conditions = ""; //+--- エントリー条件設定 ---+
+input bool EnableTimeEntry = true;            // 時間条件でのエントリーを有効化
+input bool EnableIndicatorsEntry = false;     // インジケーター条件でのエントリーを有効化
+input int EntryConfirmation = 1;              // エントリー確認方法 (0:1つでも、1:すべて)
+
+// ======== 利確条件設定 ========
+sinput string Comment_TP_Conditions = ""; //+--- 利確条件設定 ---+
+input bool EnableFixedTP = true;              // 固定利確を有効化
+input bool EnableIndicatorsTP = false;        // インジケーター条件での利確を有効化
+input int TPConfirmation = 1;                 // 利確確認方法 (0:1つでも、1:すべて)
+
+
+
+#include "Hosopi3_Strategy.mqh"
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |

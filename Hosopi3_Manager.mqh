@@ -92,7 +92,15 @@ int InitializeEA()
          }
       }
    }
-
+// OnInit関数内で追加
+g_EnableNanpin = EnableNanpin;
+g_EnableGhostEntry = EnableGhostEntry;
+g_EnableIndicatorsEntry = EnableIndicatorsEntry;
+g_EnableTimeEntry = EnableTimeEntry;
+g_EnableFixedTP = EnableFixedTP;
+g_EnableIndicatorsTP = EnableIndicatorsTP;
+g_EnableTrailingStop = EnableTrailingStop;
+g_AutoTrading = EnableAutomaticTrading;
    // GUIを作成
    CreateGUI();
    
@@ -610,19 +618,10 @@ void ProcessRealEntries(int side)
    if(!modeAllowed)
       return;
 
-   // エントリー可能時間かチェック
-   if(!IsTimeAllowed(operationType))
-      return;
-
-   // エントリー方向チェック
-   if(!IsEntryAllowed(side))
-      return;
-
    // リアルポジションがない場合は新規エントリー
    if(position_count(operationType) == 0)
    {
       string direction = (side == 0) ? "Buy" : "Sell";
-      Print("新規リアル", direction, "エントリー条件が揃いました");
       
       // スプレッドチェック
       if((GetAskPrice() - GetBidPrice()) / Point <= MaxSpreadPoints || MaxSpreadPoints <= 0)
@@ -654,9 +653,8 @@ void ProcessRealEntries(int side)
       }
    }
 }
-
 //+------------------------------------------------------------------+
-//| OnTick関数に定期フラグチェック機能を追加                       |
+//| OnTick関数に定期フラグチェック機能を追加 - 戦略統合版            |
 //+------------------------------------------------------------------+
 void OnTickManager()
 {
@@ -700,44 +698,8 @@ void OnTickManager()
       OnTimerHandler();
    }
 
-   // 以下は元のコードと同じ
-   // リアルポジション有無に基づいた処理の分岐
-   bool hasRealBuy = position_count(OP_BUY) > 0;
-   bool hasRealSell = position_count(OP_SELL) > 0;
-
-   // ゴーストモードの設定（NanpinSkipLevel に基づく）
-   if(NanpinSkipLevel == SKIP_NONE) {
-      g_GhostMode = false; // ゴーストモードは常に無効
-   }
-
-   // リアルポジションがある場合
-   if(hasRealBuy || hasRealSell)
-   {
-      // リアルポジションのナンピン条件をチェック
-      CheckNanpinConditions(0); // Buy側のナンピン条件チェック
-      CheckNanpinConditions(1); // Sell側のナンピン条件チェック
-   }
-   else
-   {
-      // リアルポジションがない場合
-      
-      // ゴーストモードがONの場合
-      if(g_GhostMode)
-      {
-         ProcessGhostEntries(0);
-         ProcessGhostEntries(1);
-      }
-      else
-      {
-         // ゴーストモードがOFFの場合は直接リアルエントリーを処理
-         ProcessRealEntries(0);
-         ProcessRealEntries(1);
-      }
-   }
-
-   // 利確条件のチェック（ゴーストとリアル両方）
-   CheckTakeProfitConditions(0); // Buy側の利確条件チェック
-   CheckTakeProfitConditions(1); // Sell側の利確条件チェック
+   // 戦略ロジックを処理
+   ProcessStrategyLogic();
 
    // GUIを更新
    UpdateGUI();

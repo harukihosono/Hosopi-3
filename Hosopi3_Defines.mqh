@@ -150,11 +150,7 @@ enum NANPIN_SKIP {
  #define COLOR_STATUS_BG        C'24,24,36'    // ステータスバー背景色
  
  //--- グローバル変数宣言
- // フラグ・制御用変数
- bool g_AutoTrading = true;    // 自動売買フラグ
- bool g_GhostMode = true;      // ゴーストモードフラグ
- bool g_ArrowsVisible = true;  // 矢印表示制御用フラグ
- bool g_AvgPriceVisible = true; // 平均取得単価表示制御用フラグ
+
  
  // 最後のナンピン時間を記録
  datetime g_LastBuyNanpinTime = 0;     // 最後のBuyナンピン時間
@@ -173,6 +169,21 @@ enum NANPIN_SKIP {
  // ゴーストポジションが閉じられたかを示すフラグ
 bool g_BuyGhostClosed = false;
 bool g_SellGhostClosed = false;
+
+// フラグ・制御用変数
+bool g_AutoTrading = true;    // 自動売買フラグ
+bool g_GhostMode = true;      // ゴーストモードフラグ
+bool g_ArrowsVisible = true;  // 矢印表示制御用フラグ
+bool g_AvgPriceVisible = true; // 平均取得単価表示制御用フラグ
+
+// 機能制御設定用の追加グローバル変数
+bool g_EnableNanpin = true;         // ナンピン機能有効フラグ
+bool g_EnableGhostEntry = true;     // ゴーストエントリー機能有効フラグ
+bool g_EnableIndicatorsEntry = false; // テクニカル指標エントリー有効フラグ
+bool g_EnableTimeEntry = true;      // 時間ベースエントリー有効フラグ
+bool g_EnableFixedTP = true;        // 固定利確有効フラグ
+bool g_EnableIndicatorsTP = false;  // テクニカル指標利確有効フラグ
+bool g_EnableTrailingStop = false;  // トレーリングストップ有効フラグ
  
  // オブジェクト関連
  string g_LineNames[10];    // ライン関連のオブジェクト名を保存する配列

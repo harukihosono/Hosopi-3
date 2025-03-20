@@ -360,27 +360,7 @@ void ProcessGhostEntries(int side)
 
    if(!modeAllowed)
       return;
-
-   // エントリー可能時間かチェック
-   if(!IsTimeAllowed(operationType))
-      return;
-
-   // 現在の時間を取得
-   datetime currentTime = TimeCurrent();
-
-   // デバッグ情報（毎分1回のみ出力するためにチェック）
-   static datetime lastDebugTime = 0;
-   if(currentTime - lastDebugTime > 60) // 1分ごとに出力
-   {
-      lastDebugTime = currentTime;
-      string direction = (side == 0) ? "Buy" : "Sell";
-      Print("時間チェック: ", direction, "許可=", IsTimeAllowed(operationType) ? "はい" : "いいえ");
-   }
-
-   // エントリー方向チェック
-   if(!IsEntryAllowed(side))
-      return;
-
+   
    // ゴーストポジションの最大数はナンピンスキップレベルの値までに制限
    int maxGhostPositions = (int)NanpinSkipLevel;
 
@@ -400,7 +380,6 @@ void ProcessGhostEntries(int side)
       CheckGhostNanpinCondition(operationType);
    }
 }
-
 //+------------------------------------------------------------------+
 //| OnTimer関数を追加 - 定期的なフラグチェックとクリア               |
 //+------------------------------------------------------------------+
