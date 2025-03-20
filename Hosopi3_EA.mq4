@@ -31,12 +31,6 @@ sinput string Comment_Spread = ""; //+--- スプレッド設定 ---+
 input int MaxSpreadPoints = 2000;    // 最大スプレッド（Point）
 input int Slippage = 100;           // スリッページ（Point）
 
-// ======== エントリー方向設定 ========
-sinput string Comment_Entry = ""; //+--- エントリー方向設定 ---+
-input ENTRY_DIRECTION buy_EntryDirection = EVEN_HOURS;  // Buy エントリー方向
-input ENTRY_DIRECTION sell_EntryDirection = ODD_HOURS;  // Sell エントリー方向
-input ENTRY_MODE EntryMode = MODE_BOTH;   // エントリー方向
-
 // ======== 時間設定 ========
 sinput string Comment_Time = ""; //+--- 時間設定 ---+
 input USE_TIMES set_time = GMT9;     // 時間取得方法
@@ -169,7 +163,12 @@ input bool EnableFixedTP = true;              // 固定利確を有効化
 input bool EnableIndicatorsTP = false;        // インジケーター条件での利確を有効化
 input int TPConfirmation = 1;                 // 利確確認方法 (0:1つでも、1:すべて)
 
-
+// ======== 時刻エントリー設定 ========
+sinput string Comment_Jiikoku_Entry = ""; //+--- 時刻エントリー設定 ---+
+input bool UseEvenOddHoursEntry = false;     // 偶数/奇数時間エントリーを使用する
+input ENTRY_DIRECTION buy_EntryDirection = EVEN_HOURS;  // Buy エントリー方向
+input ENTRY_DIRECTION sell_EntryDirection = ODD_HOURS;  // Sell エントリー方向
+input ENTRY_MODE EntryMode = MODE_BOTH;   // エントリー方向
 
 #include "Hosopi3_Strategy.mqh"
 

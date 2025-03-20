@@ -101,7 +101,7 @@ g_EnableFixedTP = EnableFixedTP;
 g_EnableIndicatorsTP = EnableIndicatorsTP;
 g_EnableTrailingStop = EnableTrailingStop;
 g_AutoTrading = EnableAutomaticTrading;
-   // GUIを作成
+g_UseEvenOddHoursEntry = UseEvenOddHoursEntry;
    CreateGUI();
    
    // ポジションテーブルを作成

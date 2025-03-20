@@ -116,6 +116,10 @@ bool is_summer()
 //+------------------------------------------------------------------+
 bool IsEntryAllowed(int side)
 {
+   // 偶数/奇数時間エントリーが無効な場合は常に許可
+   if(!g_UseEvenOddHoursEntry)
+      return true;
+      
    // side: 0 = Buy, 1 = Sell
    int entryDirection = (side == 0) ? buy_EntryDirection : sell_EntryDirection;
    int hour;
@@ -143,7 +147,6 @@ bool IsEntryAllowed(int side)
    
    return false; // デフォルト戻り値
 }
-
 //+------------------------------------------------------------------+
 //| オブジェクト名を保存                                               |
 //+------------------------------------------------------------------+
