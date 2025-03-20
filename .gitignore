@@ -1,0 +1,5 @@
+# MetaTrader 4 compiled files
+*.ex4
+
+# MetaTrader 5 compiled files
+*.ex5
