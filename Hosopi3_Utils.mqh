@@ -263,6 +263,7 @@ void InitializeLotTable()
    // 個別指定が有効な場合
    if(IndividualLotEnabled == ON_MODE)
    {
+      Print("個別指定ロットモードが有効です - 設定された個別ロット値を使用します");
       g_LotTable[0] = Lot_1;
       g_LotTable[1] = Lot_2;
       g_LotTable[2] = Lot_3;
@@ -286,6 +287,7 @@ void InitializeLotTable()
    }
    else
    {
+      Print("マーチンゲール方式でロット計算します - 初期ロット: ", InitialLot, ", 倍率: ", LotMultiplier);
       // マーチンゲール方式でロット計算
       g_LotTable[0] = InitialLot;
       for(int i = 1; i < 20; i++)
@@ -296,7 +298,16 @@ void InitializeLotTable()
          g_LotTable[i] = nextLot;
       }
    }
+   
+   // ロットテーブルの内容をログ出力
+   string lotTableStr = "LOTテーブル: ";
+   for(int i = 0; i < MathMin(10, ArraySize(g_LotTable)); i++)
+   {
+      lotTableStr += DoubleToString(g_LotTable[i], 2) + ", ";
+   }
+   Print(lotTableStr);
 }
+
 
 //+------------------------------------------------------------------+
 //| ナンピン幅テーブルの初期化                                         |

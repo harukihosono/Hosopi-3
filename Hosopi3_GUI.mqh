@@ -14,80 +14,142 @@ void CreateGUI()
    DeleteGUI(); // 既存のGUIを削除
    g_PanelObjectCount = 0; // オブジェクトカウントリセット
    
+   // パネル位置を100上げる
+   int adjustedPanelY = PanelY;
+   
    // メインパネル背景
-   CreatePanel("MainPanel", PanelX, PanelY, PANEL_WIDTH, PANEL_HEIGHT, COLOR_PANEL_BG, COLOR_PANEL_BORDER);
+   CreatePanel("MainPanel", PanelX, adjustedPanelY, PANEL_WIDTH, PANEL_HEIGHT + 250, COLOR_PANEL_BG, COLOR_PANEL_BORDER); // 高さを拡大
    
    // パネルタイトル
-   CreateTitleBar("TitleBar", PanelX, PanelY, PANEL_WIDTH, TITLE_HEIGHT, COLOR_TITLE_BG, PanelTitle);
+   CreateTitleBar("TitleBar", PanelX, adjustedPanelY, PANEL_WIDTH, TITLE_HEIGHT, COLOR_TITLE_BG, PanelTitle);
+   
+   int buttonWidth = (PANEL_WIDTH - (PANEL_MARGIN * 3)) / 2; // 2列のボタン用
+   int fullWidth = PANEL_WIDTH - (PANEL_MARGIN * 2); // 横いっぱいのボタン用
    
    // ========== 行1: 決済ボタン ==========
-   int row1Y = PanelY + TITLE_HEIGHT + PANEL_MARGIN;
+   int row1Y = adjustedPanelY + TITLE_HEIGHT + PANEL_MARGIN;
    
    // Sell決済ボタン (左)
-   CreateButton("btnCloseSell", "Close Sell", PanelX + PANEL_MARGIN, row1Y, BUTTON_WIDTH, BUTTON_HEIGHT, COLOR_BUTTON_SELL, COLOR_TEXT_LIGHT);
+   CreateButton("btnCloseSell", "Close Sell", PanelX + PANEL_MARGIN, row1Y, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_SELL, COLOR_TEXT_LIGHT);
    
    // Buy決済ボタン (右)
-   CreateButton("btnCloseBuy", "Close Buy", PanelX + PANEL_WIDTH - PANEL_MARGIN - BUTTON_WIDTH, row1Y, BUTTON_WIDTH, BUTTON_HEIGHT, COLOR_BUTTON_BUY, COLOR_TEXT_LIGHT);
+   CreateButton("btnCloseBuy", "Close Buy", PanelX + PANEL_MARGIN * 2 + buttonWidth, row1Y, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_BUY, COLOR_TEXT_LIGHT);
    
    // ========== 行2: 全決済ボタン ==========
    int row2Y = row1Y + BUTTON_HEIGHT + PANEL_MARGIN;
    
    // 全決済ボタン（横いっぱい）
-   int fullWidth = PANEL_WIDTH - (PANEL_MARGIN * 2);
    CreateButton("btnCloseAll", "Close All", PanelX + PANEL_MARGIN, row2Y, fullWidth, BUTTON_HEIGHT, COLOR_BUTTON_CLOSE_ALL, COLOR_TEXT_DARK);
    
-   // ========== 行3: モード切替ボタン ==========
-   int row3Y = row2Y + BUTTON_HEIGHT + PANEL_MARGIN;
+   // ========== 行3: 直接エントリーボタン (新規追加) ==========
+   int row3Y = row2Y + BUTTON_HEIGHT + PANEL_MARGIN * 2; // 間隔を広く
+   
+   // セクションラベル
+   CreateLabel("lblDirectEntry", "【直接エントリー】", PanelX + PANEL_MARGIN, row3Y - 5, COLOR_TEXT_LIGHT);
+   
+   // Sellエントリーボタン (左)
+   CreateButton("btnDirectSell", "SELL NOW", PanelX + PANEL_MARGIN, row3Y + 15, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_SELL, COLOR_TEXT_LIGHT);
+   
+   // Buyエントリーボタン (右)
+   CreateButton("btnDirectBuy", "BUY NOW", PanelX + PANEL_MARGIN * 2 + buttonWidth, row3Y + 15, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_BUY, COLOR_TEXT_LIGHT);
+   
+   // ========== 行4: 途中からエントリーボタン (新規追加) ==========
+   int row4Y = row3Y + BUTTON_HEIGHT + PANEL_MARGIN * 2 + 15; // 間隔を広く
+   
+   // セクションラベル
+   CreateLabel("lblLevelEntry", "【レベル指定エントリー】", PanelX + PANEL_MARGIN, row4Y - 5, COLOR_TEXT_LIGHT);
+   
+   // Sellエントリーボタン (左)
+   CreateButton("btnLevelSell", "SELL Level 3", PanelX + PANEL_MARGIN, row4Y + 15, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_SELL, COLOR_TEXT_LIGHT);
+   
+   // Buyエントリーボタン (右)
+   CreateButton("btnLevelBuy", "BUY Level 3", PanelX + PANEL_MARGIN * 2 + buttonWidth, row4Y + 15, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_BUY, COLOR_TEXT_LIGHT);
+   
+   // ========== 行5: 設定セクション ==========
+   int row5Y = row4Y + BUTTON_HEIGHT + PANEL_MARGIN * 2 + 15; // 間隔を広く
+   
+   // セクションラベル
+   CreateLabel("lblSettings", "【設定】", PanelX + PANEL_MARGIN, row5Y - 5, COLOR_TEXT_LIGHT);
    
    // Ghostモードボタン（横いっぱい）
    CreateButton("btnGhostToggle", "GHOST " + (g_GhostMode ? "ON" : "OFF"), 
-               PanelX + PANEL_MARGIN, row3Y, fullWidth, BUTTON_HEIGHT, 
+               PanelX + PANEL_MARGIN, row5Y + 15, fullWidth, BUTTON_HEIGHT, 
                g_GhostMode ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE, COLOR_TEXT_LIGHT);
    
-   // ========== 行4: ゴーストリセットボタン ==========
-   int row4Y = row3Y + BUTTON_HEIGHT + PANEL_MARGIN;
+   // ========== 行6: ゴーストリセットボタン ==========
+   int row6Y = row5Y + BUTTON_HEIGHT + PANEL_MARGIN + 15;
    
    // ゴーストリセットボタン（横いっぱい）
-   CreateButton("btnResetGhost", "GHOST RESET", PanelX + PANEL_MARGIN, row4Y, fullWidth, BUTTON_HEIGHT, COLOR_BUTTON_INACTIVE, COLOR_TEXT_LIGHT);
+   CreateButton("btnResetGhost", "GHOST RESET", PanelX + PANEL_MARGIN, row6Y, fullWidth, BUTTON_HEIGHT, COLOR_BUTTON_INACTIVE, COLOR_TEXT_LIGHT);
    
-   // ========== 行5: 平均取得単価表示切替ボタン ==========
-   int row5Y = row4Y + BUTTON_HEIGHT + PANEL_MARGIN;
+   // ========== 行7: 平均取得単価表示切替ボタン ==========
+   int row7Y = row6Y + BUTTON_HEIGHT + PANEL_MARGIN;
    
    // 平均取得単価表示切替ボタン（横いっぱい）
    CreateButton("btnToggleAvgPrice", "AVG PRICE " + (g_AvgPriceVisible ? "ON" : "OFF"), 
-               PanelX + PANEL_MARGIN, row5Y, fullWidth, BUTTON_HEIGHT, 
+               PanelX + PANEL_MARGIN, row7Y, fullWidth, BUTTON_HEIGHT, 
                g_AvgPriceVisible ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE, COLOR_TEXT_LIGHT);
    
-   // ========== 行6: 自動売買切替ボタン（新規追加） ==========
-   int row6Y = row5Y + BUTTON_HEIGHT + PANEL_MARGIN;
+   // ========== 行8: 自動売買切替ボタン ==========
+   int row8Y = row7Y + BUTTON_HEIGHT + PANEL_MARGIN;
    
    // 自動売買切替ボタン（横いっぱい）
    CreateButton("btnAutoTrading", "AUTO TRADING " + (g_AutoTrading ? "ON" : "OFF"), 
-               PanelX + PANEL_MARGIN, row6Y, fullWidth, BUTTON_HEIGHT, 
+               PanelX + PANEL_MARGIN, row8Y, fullWidth, BUTTON_HEIGHT, 
                g_AutoTrading ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE, COLOR_TEXT_LIGHT);
    
-   // ========== 行7: ナンピン切替ボタン（新規追加） ==========
-   int row7Y = row6Y + BUTTON_HEIGHT + PANEL_MARGIN;
+   // ========== 行9: ナンピン切替ボタン ==========
+   int row9Y = row8Y + BUTTON_HEIGHT + PANEL_MARGIN;
    
    // ナンピン切替ボタン（横いっぱい）
    CreateButton("btnNanpin", "NANPIN " + (g_EnableNanpin ? "ON" : "OFF"), 
-               PanelX + PANEL_MARGIN, row7Y, fullWidth, BUTTON_HEIGHT, 
+               PanelX + PANEL_MARGIN, row9Y, fullWidth, BUTTON_HEIGHT, 
                g_EnableNanpin ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE, COLOR_TEXT_LIGHT);
    
-   // ========== 行8: テクニカル指標利用（新規追加） ==========
-   int row8Y = row7Y + BUTTON_HEIGHT + PANEL_MARGIN;
+   // ========== 行10: テクニカル指標利用 ==========
+   int row10Y = row9Y + BUTTON_HEIGHT + PANEL_MARGIN;
    
    // テクニカル指標による入出切替ボタン（横いっぱい）
    CreateButton("btnIndicatorsEntry", "INDICATORS " + (g_EnableIndicatorsEntry ? "ON" : "OFF"), 
-               PanelX + PANEL_MARGIN, row8Y, fullWidth, BUTTON_HEIGHT, 
+               PanelX + PANEL_MARGIN, row10Y, fullWidth, BUTTON_HEIGHT, 
                g_EnableIndicatorsEntry ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE, COLOR_TEXT_LIGHT);
    
+   // ========== 行11: 情報表示ボタン ==========
+   int row11Y = row10Y + BUTTON_HEIGHT + PANEL_MARGIN;
+   
+   // ロット情報表示ボタン (左)
+   CreateButton("btnShowLotTable", "Lot Table", PanelX + PANEL_MARGIN, row11Y, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_NEUTRAL, COLOR_TEXT_LIGHT);
+   
+   // 設定情報表示ボタン (右)
+   CreateButton("btnShowSettings", "Settings", PanelX + PANEL_MARGIN * 2 + buttonWidth, row11Y, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_NEUTRAL, COLOR_TEXT_LIGHT);
+   
    // パネルの高さを調整
-   int panelHeight = row8Y + BUTTON_HEIGHT + PANEL_MARGIN - PanelY;
+   int panelHeight = row11Y + BUTTON_HEIGHT + PANEL_MARGIN - adjustedPanelY;
    ObjectSet(g_ObjectPrefix + "MainPanel" + "BG", OBJPROP_YSIZE, panelHeight);
    
    ChartRedraw(); // チャートを再描画
 }
+
+//+------------------------------------------------------------------+
+//| ラベル作成 - フォントをMS Gothicに変更                           |
+//+------------------------------------------------------------------+
+void CreateLabel(string name, string text, int x, int y, color textColor)
+{
+   // オブジェクト名にプレフィックスを追加（複数チャート対策）
+   string objectName = g_ObjectPrefix + name;
+   
+   ObjectCreate(objectName, OBJ_LABEL, 0, 0, 0);
+   ObjectSet(objectName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSet(objectName, OBJPROP_XDISTANCE, x);
+   ObjectSet(objectName, OBJPROP_YDISTANCE, y);
+   // MS ゴシックフォントを使用
+   ObjectSetText(objectName, text, 9, "MS Gothic", textColor);
+   ObjectSet(objectName, OBJPROP_SELECTABLE, false);
+   
+   // オブジェクト名を保存
+   SaveObjectName(objectName, g_PanelNames, g_PanelObjectCount);
+}
+
 //+------------------------------------------------------------------+
 //| パネル作成                                                        |
 //+------------------------------------------------------------------+
@@ -152,7 +214,7 @@ void CreateTitleBar(string name, int x, int y, int width, int height, color bgCo
 }
 
 //+------------------------------------------------------------------+
-//| ボタン作成                                                        |
+//| ボタン作成 - フォントをMS Gothicに変更                           |
 //+------------------------------------------------------------------+
 void CreateButton(string name, string text, int x, int y, int width, int height, color bgColor, color textColor)
 {
@@ -166,7 +228,6 @@ void CreateButton(string name, string text, int x, int y, int width, int height,
    ObjectSet(bgName, OBJPROP_XDISTANCE, x);
    ObjectSet(bgName, OBJPROP_YDISTANCE, y);
    ObjectSet(bgName, OBJPROP_XSIZE, width);
-   
    ObjectSet(bgName, OBJPROP_YSIZE, height);
    ObjectSet(bgName, OBJPROP_BGCOLOR, bgColor);
    ObjectSet(bgName, OBJPROP_BORDER_TYPE, BORDER_FLAT);
@@ -182,7 +243,8 @@ void CreateButton(string name, string text, int x, int y, int width, int height,
    ObjectSet(objectName, OBJPROP_YDISTANCE, y);
    ObjectSet(objectName, OBJPROP_XSIZE, width);
    ObjectSet(objectName, OBJPROP_YSIZE, height);
-   ObjectSetText(objectName, text, 9, "Arial", textColor);
+   // MS ゴシックフォントを使用
+   ObjectSetText(objectName, text, 9, "MS Gothic", textColor);
    ObjectSet(objectName, OBJPROP_BGCOLOR, bgColor);
    ObjectSet(objectName, OBJPROP_BORDER_COLOR, ColorDarken(bgColor, 20));
    ObjectSet(objectName, OBJPROP_COLOR, textColor);
@@ -194,22 +256,86 @@ void CreateButton(string name, string text, int x, int y, int width, int height,
 }
 
 //+------------------------------------------------------------------+
-//| ラベル作成                                                        |
+//| ロットテーブル表示を作成するための補助関数                         |
 //+------------------------------------------------------------------+
-void CreateLabel(string name, string text, int x, int y, color textColor)
+void CreateLotTableDialog()
 {
-   // オブジェクト名にプレフィックスを追加（複数チャート対策）
-   string objectName = g_ObjectPrefix + name;
+   // ダイアログタイトル
+   string title = "Hosopi 3 - ロットテーブル";
    
-   ObjectCreate(objectName, OBJ_LABEL, 0, 0, 0);
-   ObjectSet(objectName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSet(objectName, OBJPROP_XDISTANCE, x);
-   ObjectSet(objectName, OBJPROP_YDISTANCE, y);
-   ObjectSetText(objectName, text, 9, "Arial", textColor);
-   ObjectSet(objectName, OBJPROP_SELECTABLE, false);
+   // ダイアログ内容を構築
+   string message = "現在のロットテーブル:\n\n";
    
-   // オブジェクト名を保存
-   SaveObjectName(objectName, g_PanelNames, g_PanelObjectCount);
+   // 最初の10レベルを表示
+   for(int i = 0; i < 10; i++)
+   {
+      message += "Level " + IntegerToString(i + 1) + ": " + DoubleToString(g_LotTable[i], 2) + "\n";
+   }
+   
+   // 次の10レベルは折りたたんで表示
+   message += "\n続き (11-20):\n";
+   for(int i = 10; i < 20; i++)
+   {
+      message += "Level " + IntegerToString(i + 1) + ": " + DoubleToString(g_LotTable[i], 2) + "\n";
+   }
+   
+   // 設定モードを表示
+   message += "\n設定モード: " + (IndividualLotEnabled == ON_MODE ? "個別指定" : "マーチンゲール方式");
+   if(IndividualLotEnabled == OFF_MODE)
+   {
+      message += "\n初期ロット: " + DoubleToString(InitialLot, 2);
+      message += "\n倍率: " + DoubleToString(LotMultiplier, 2);
+   }
+   
+   // メッセージボックスを表示
+   MessageBox(message, title, MB_ICONINFORMATION);
+}
+
+//+------------------------------------------------------------------+
+//| 表示設定ダイアログを作成するための補助関数                         |
+//+------------------------------------------------------------------+
+void ShowSettingsDialog()
+{
+   // ダイアログタイトル
+   string title = "Hosopi 3 - 設定状態";
+   
+   // ダイアログ内容を構築
+   string message = "現在の設定状態:\n\n";
+   
+   // 各設定の状態
+   message += "自動売買: " + (g_AutoTrading ? "ON" : "OFF") + "\n";
+   message += "ゴーストモード: " + (g_GhostMode ? "ON" : "OFF") + "\n";
+   message += "ナンピン: " + (g_EnableNanpin ? "ON" : "OFF") + "\n";
+   message += "ゴーストエントリー: " + (g_EnableGhostEntry ? "ON" : "OFF") + "\n";
+   message += "テクニカル指標エントリー: " + (g_EnableIndicatorsEntry ? "ON" : "OFF") + "\n";
+   message += "時間エントリー: " + (g_EnableTimeEntry ? "ON" : "OFF") + "\n";
+   message += "固定利確: " + (g_EnableFixedTP ? "ON" : "OFF") + "\n";
+   message += "テクニカル指標利確: " + (g_EnableIndicatorsTP ? "ON" : "OFF") + "\n";
+   message += "トレーリングストップ: " + (g_EnableTrailingStop ? "ON" : "OFF") + "\n";
+   message += "偶数/奇数時間エントリー: " + (g_UseEvenOddHoursEntry ? "ON" : "OFF") + "\n";
+   
+   // 主要パラメータ
+   message += "\n主要パラメータ:\n";
+   message += "ナンピンスキップレベル: " + EnumToString(NanpinSkipLevel) + "\n";
+   message += "最大ポジション数: " + EnumToString(MaxPositions) + "\n";
+   message += "エントリー方向: " + GetEntryModeString(EntryMode) + "\n";
+   
+   // メッセージボックスを表示
+   MessageBox(message, title, MB_ICONINFORMATION);
+}
+
+//+------------------------------------------------------------------+
+//| エントリーモードを文字列に変換する補助関数                         |
+//+------------------------------------------------------------------+
+string GetEntryModeString(int mode)
+{
+   switch(mode)
+   {
+      case MODE_BUY_ONLY: return "Buyのみ";
+      case MODE_SELL_ONLY: return "Sellのみ";
+      case MODE_BOTH: return "Buy & Sell両方";
+      default: return "不明";
+   }
 }
 
 //+------------------------------------------------------------------+
@@ -281,8 +407,10 @@ void UpdateGUI()
    
    ChartRedraw(); // チャートを再描画
 }
+
+
 //+------------------------------------------------------------------+
-//| ボタンクリックを処理する - 修正版                                |
+//| ボタンクリックを処理する - 拡張版                                |
 //+------------------------------------------------------------------+
 void ProcessButtonClick(string buttonName)
 {
@@ -420,6 +548,66 @@ void ProcessButtonClick(string buttonName)
       g_EnableIndicatorsEntry = !g_EnableIndicatorsEntry;
       UpdateGUI();
       Print("テクニカル指標によるエントリーを", g_EnableIndicatorsEntry ? "ON" : "OFF", "に切り替えました");
+   }
+   
+   // ===== 新規追加ボタン - 直接エントリー機能 =====
+   
+   // 直接Buy
+   else if(buttonName == "btnDirectBuy")
+   {
+      Print("直接Buyボタンがクリックされました");
+      ExecuteDiscretionaryEntry(OP_BUY);
+      UpdatePositionTable();
+   }
+   
+   // 直接Sell
+   else if(buttonName == "btnDirectSell")
+   {
+      Print("直接Sellボタンがクリックされました");
+      ExecuteDiscretionaryEntry(OP_SELL);
+      UpdatePositionTable();
+   }
+   
+   // ===== 新規追加ボタン - レベル指定エントリー機能 =====
+   
+   // レベル指定Buy
+   else if(buttonName == "btnLevelBuy")
+   {
+      Print("レベル指定Buyボタンがクリックされました");
+      // デフォルトでレベル3を指定（GUI上のボタンテキストと合わせる）
+      int entryLevel = 3;
+      ExecuteEntryFromLevel(OP_BUY, entryLevel);
+      UpdatePositionTable();
+   }
+   
+   // レベル指定Sell
+   else if(buttonName == "btnLevelSell")
+   {
+      Print("レベル指定Sellボタンがクリックされました");
+      // デフォルトでレベル3を指定（GUI上のボタンテキストと合わせる）
+      int entryLevel = 3;
+      ExecuteEntryFromLevel(OP_SELL, entryLevel);
+      UpdatePositionTable();
+   }
+   
+   // ロットテーブル表示ボタン
+   else if(buttonName == "btnShowLotTable")
+   {
+      Print("ロットテーブル表示ボタンがクリックされました");
+      CreateLotTableDialog();
+   }
+   
+   // 設定情報表示ボタン
+   else if(buttonName == "btnShowSettings")
+   {
+      Print("設定情報表示ボタンがクリックされました");
+      ShowSettingsDialog();
+   }
+   
+   // 未知のボタンの場合
+   else
+   {
+      Print("未知のボタンがクリックされました: ", buttonName);
    }
 }
 

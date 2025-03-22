@@ -24,7 +24,7 @@ sinput string Comment_Basic = ""; //+--- 基本設定 ---+
 input int MagicNumber = 99899;      // マジックナンバー
 input string PanelTitle = "Hosopi 3 EA"; // パネルタイトル
 input int PanelX = 20;     // パネルX座標
-input int PanelY = 100;    // パネルY座標
+input int PanelY = 50;    // パネルY座標
 
 // ======== スプレッド設定 ========
 sinput string Comment_Spread = ""; //+--- スプレッド設定 ---+
@@ -150,12 +150,6 @@ input bool EnableTrailingStop = false;        // トレーリングストップ�
 input bool EnableAutomaticTrading = true;     // 自動売買を有効化
 input bool EnablePositionTable = true;        // ポジションテーブル表示を有効化
 input bool EnablePriceLabels = true;          // 価格ラベル表示を有効化
-
-// ======== エントリー条件設定 ========
-sinput string Comment_Entry_Conditions = ""; //+--- エントリー条件設定 ---+
-input bool EnableTimeEntry = true;            // 時間条件でのエントリーを有効化
-input bool EnableIndicatorsEntry = false;     // インジケーター条件でのエントリーを有効化
-input int EntryConfirmation = 1;              // エントリー確認方法 (0:1つでも、1:すべて)
 
 // ======== 利確条件設定 ========
 sinput string Comment_TP_Conditions = ""; //+--- 利確条件設定 ---+

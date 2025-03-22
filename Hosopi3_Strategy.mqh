@@ -227,71 +227,6 @@ input int RCI_LongTerm_Period = 52;            // RCI長期期間
 input int RCI_Threshold = 80;                  // RCIしきい値(±値)
 input int RCI_Signal_Shift = 1;                // シグナル確認シフト
 
-//+------------------------------------------------------------------+
-//| 戦略評価 - 入口関数                                               |
-//+------------------------------------------------------------------+
-bool EvaluateStrategyForEntry(int side)
-{
-    // side: 0 = Buy, 1 = Sell
-    bool entrySignal = false;
-    
-    // 時間戦略（基本戦略）は常に評価
-    bool timeEntryAllowed = IsTimeEntryAllowed(side);
-    
-    // すべての有効戦略のシグナルを評価
-    bool strategySignals = false;
-    int enabledStrategies = 0;
-    
-    // MA クロス
-    if(MA_Cross_Strategy != STRATEGY_DISABLED) {
-        enabledStrategies++;
-        if(CheckMASignal(side)) strategySignals = true;
-    }
-    
-    // RSI
-    if(RSI_Strategy != STRATEGY_DISABLED) {
-        enabledStrategies++;
-        if(CheckRSISignal(side)) strategySignals = true;
-    }
-    
-    // ボリンジャーバンド
-    if(BB_Strategy != STRATEGY_DISABLED) {
-        enabledStrategies++;
-        if(CheckBollingerSignal(side)) strategySignals = true;
-    }
-    
-    // RCI
-    if(RCI_Strategy != STRATEGY_DISABLED) {
-        enabledStrategies++;
-        if(CheckRCISignal(side)) strategySignals = true;
-    }
-    
-    // ストキャスティクス
-    if(Stochastic_Strategy != STRATEGY_DISABLED) {
-        enabledStrategies++;
-        if(CheckStochasticSignal(side)) strategySignals = true;
-    }
-    
-    // CCI
-    if(CCI_Strategy != STRATEGY_DISABLED) {
-        enabledStrategies++;
-        if(CheckCCISignal(side)) strategySignals = true;
-    }
-    
-    // ADX/DMI
-    if(ADX_Strategy != STRATEGY_DISABLED) {
-        enabledStrategies++;
-        if(CheckADXSignal(side)) strategySignals = true;
-    }
-    
-    // 最終判断
-    // 時間条件が許可され、かつ有効化された戦略のうち少なくとも1つがシグナルを出した場合
-    if(timeEntryAllowed && (enabledStrategies == 0 || strategySignals)) {
-        entrySignal = true;
-    }
-    
-    return entrySignal;
-}
 
 //+------------------------------------------------------------------+
 //| 時間戦略のシグナル判断                                           |
@@ -836,149 +771,294 @@ bool CheckBollingerSignal(int side)
         return EvaluateStrategyForEntry(side);
     }
     
-    //+------------------------------------------------------------------+
-    //| インジケーターによるエントリー条件の評価                          |
-    //+------------------------------------------------------------------+
-    bool EvaluateIndicatorsForEntry(int side)
-    {
-        // 有効な戦略のシグナルを評価
-        bool strategySignals = false;
-        int enabledStrategies = 0;
-        
-        // MA クロス
-        if(MA_Cross_Strategy != STRATEGY_DISABLED) {
-            enabledStrategies++;
-            if(CheckMASignal(side)) strategySignals = true;
+
+//+------------------------------------------------------------------+
+//| EvaluateIndicatorsForEntry関数 - 修正版                           |
+//+------------------------------------------------------------------+
+bool EvaluateIndicatorsForEntry(int side)
+{
+    Print("EvaluateIndicatorsForEntry 開始 - side=", side);
+    
+    // 有効な戦略のシグナルを評価
+    bool strategySignals = false;
+    int enabledStrategies = 0;
+    
+    // MA クロス
+    if(MA_Cross_Strategy != STRATEGY_DISABLED) {
+        enabledStrategies++;
+        if(CheckMASignal(side)) {
+            strategySignals = true;
+            Print("MAクロス: シグナル成立");
+        } else {
+            Print("MAクロス: シグナル不成立");
         }
-        
-        // RSI
-        if(RSI_Strategy != STRATEGY_DISABLED) {
-            enabledStrategies++;
-            if(CheckRSISignal(side)) strategySignals = true;
-        }
-        
-        // ボリンジャーバンド
-        if(BB_Strategy != STRATEGY_DISABLED) {
-            enabledStrategies++;
-            if(CheckBollingerSignal(side)) strategySignals = true;
-        }
-        
-        // RCI
-        if(RCI_Strategy != STRATEGY_DISABLED) {
-            enabledStrategies++;
-            if(CheckRCISignal(side)) strategySignals = true;
-        }
-        
-        // ストキャスティクス
-        if(Stochastic_Strategy != STRATEGY_DISABLED) {
-            enabledStrategies++;
-            if(CheckStochasticSignal(side)) strategySignals = true;
-        }
-        
-        // CCI
-        if(CCI_Strategy != STRATEGY_DISABLED) {
-            enabledStrategies++;
-            if(CheckCCISignal(side)) strategySignals = true;
-        }
-        
-        // ADX/DMI
-        if(ADX_Strategy != STRATEGY_DISABLED) {
-            enabledStrategies++;
-            if(CheckADXSignal(side)) strategySignals = true;
-        }
-        
-        // 最終判断
-        // 有効な戦略が1つもない場合はtrueを返す（デフォルト動作を維持）
-        // それ以外は、少なくとも1つの戦略が条件を満たしている必要がある
-        return (enabledStrategies == 0 || strategySignals);
     }
     
-    //+------------------------------------------------------------------+
-    //| エントリー条件判断                                               |
-    //+------------------------------------------------------------------+
-    bool ShouldEnterPosition(int side)
-    {
-        bool timeSignal = false;
-        bool indicatorSignal = false;
-        
-        // 時間条件の評価
-        if(g_EnableTimeEntry) {
-            timeSignal = IsTimeEntryAllowed(side);
+    // RSI
+    if(RSI_Strategy != STRATEGY_DISABLED) {
+        enabledStrategies++;
+        if(CheckRSISignal(side)) {
+            strategySignals = true;
+            Print("RSI: シグナル成立");
         } else {
-            // 時間条件チェックがOFFの場合は常にtrue
-            timeSignal = true;
+            Print("RSI: シグナル不成立");
         }
-        
-        // インジケーター条件の評価
-        if(g_EnableIndicatorsEntry) {
-            indicatorSignal = EvaluateIndicatorsForEntry(side);
+    }
+    
+    // ボリンジャーバンド
+    if(BB_Strategy != STRATEGY_DISABLED) {
+        enabledStrategies++;
+        if(CheckBollingerSignal(side)) {
+            strategySignals = true;
+            Print("ボリンジャーバンド: シグナル成立");
         } else {
-            // インジケーター条件チェックがOFFの場合は常にtrue
+            Print("ボリンジャーバンド: シグナル不成立");
+        }
+    }
+    
+    // RCI
+    if(RCI_Strategy != STRATEGY_DISABLED) {
+        enabledStrategies++;
+        if(CheckRCISignal(side)) {
+            strategySignals = true;
+            Print("RCI: シグナル成立");
+        } else {
+            Print("RCI: シグナル不成立");
+        }
+    }
+    
+    // ストキャスティクス
+    if(Stochastic_Strategy != STRATEGY_DISABLED) {
+        enabledStrategies++;
+        if(CheckStochasticSignal(side)) {
+            strategySignals = true;
+            Print("ストキャスティクス: シグナル成立");
+        } else {
+            Print("ストキャスティクス: シグナル不成立");
+        }
+    }
+    
+    // CCI
+    if(CCI_Strategy != STRATEGY_DISABLED) {
+        enabledStrategies++;
+        if(CheckCCISignal(side)) {
+            strategySignals = true;
+            Print("CCI: シグナル成立");
+        } else {
+            Print("CCI: シグナル不成立");
+        }
+    }
+    
+    // ADX/DMI
+    if(ADX_Strategy != STRATEGY_DISABLED) {
+        enabledStrategies++;
+        if(CheckADXSignal(side)) {
+            strategySignals = true;
+            Print("ADX/DMI: シグナル成立");
+        } else {
+            Print("ADX/DMI: シグナル不成立");
+        }
+    }
+    
+    // 最終判断: 重要な修正
+    Print("有効なインジケーター数: ", enabledStrategies, ", シグナル成立状況: ", strategySignals ? "あり" : "なし");
+    
+    // 修正: 有効な戦略が1つもない場合はfalseを返す
+    if(enabledStrategies == 0) {
+        Print("EvaluateIndicatorsForEntry: 有効なインジケーターが0のため false を返します");
+        return false;
+    }
+    
+    // 修正: 有効な戦略があり、少なくとも1つがシグナルを出した場合にのみtrueを返す
+    Print("EvaluateIndicatorsForEntry 最終結果: ", strategySignals ? "成立" : "不成立");
+    return strategySignals;
+}
+
+//+------------------------------------------------------------------+
+//| Hosopi3_Strategy.mqh の ShouldEnterPosition関数                   |
+//+------------------------------------------------------------------+
+bool ShouldEnterPosition(int side)
+{
+    bool timeSignal = false;
+    bool indicatorSignal = false;
+    
+    string direction = (side == 0) ? "Buy" : "Sell";
+    Print("ShouldEnterPosition 開始 - direction=", direction);
+    
+    // 時間条件の評価
+    if(g_EnableTimeEntry) {
+        timeSignal = IsTimeEntryAllowed(side);
+        Print("時間条件: ", timeSignal ? "成立" : "不成立");
+    } else {
+        // 時間条件チェックがOFFの場合
+        timeSignal = false;
+        Print("時間条件チェックはOFF");
+        // 両方の条件が無効の場合の警告を追加
+        if(!g_EnableIndicatorsEntry) {
+            Print("警告: 時間とインジケーターの両方の条件が無効です");
+        }
+    }
+    
+    // インジケーター条件の評価
+    if(g_EnableIndicatorsEntry) {
+        // インジケーターが1つも有効でない場合のチェックを追加
+        int enabledCount = 0;
+        if(MA_Cross_Strategy != STRATEGY_DISABLED) enabledCount++;
+        if(RSI_Strategy != STRATEGY_DISABLED) enabledCount++;
+        if(BB_Strategy != STRATEGY_DISABLED) enabledCount++;
+        if(RCI_Strategy != STRATEGY_DISABLED) enabledCount++;
+        if(Stochastic_Strategy != STRATEGY_DISABLED) enabledCount++;
+        if(CCI_Strategy != STRATEGY_DISABLED) enabledCount++;
+        if(ADX_Strategy != STRATEGY_DISABLED) enabledCount++;
+        
+        Print("有効なインジケーター数: ", enabledCount);
+        
+        if(enabledCount == 0) {
+            // 有効なインジケーターがない場合は明示的に false を返す
+            indicatorSignal = false;
+            Print("インジケーターが1つも有効になっていないため、条件は不成立");
+        } else {
+            // 個別にインジケーターを確認して詳細ログを出力
+            bool ma_signal = (MA_Cross_Strategy != STRATEGY_DISABLED) ? CheckMASignal(side) : false;
+            bool rsi_signal = (RSI_Strategy != STRATEGY_DISABLED) ? CheckRSISignal(side) : false;
+            bool bb_signal = (BB_Strategy != STRATEGY_DISABLED) ? CheckBollingerSignal(side) : false;
+            bool rci_signal = (RCI_Strategy != STRATEGY_DISABLED) ? CheckRCISignal(side) : false;
+            bool stoch_signal = (Stochastic_Strategy != STRATEGY_DISABLED) ? CheckStochasticSignal(side) : false;
+            bool cci_signal = (CCI_Strategy != STRATEGY_DISABLED) ? CheckCCISignal(side) : false;
+            bool adx_signal = (ADX_Strategy != STRATEGY_DISABLED) ? CheckADXSignal(side) : false;
+            
+            Print("MA信号=", ma_signal, ", RSI信号=", rsi_signal, ", BB信号=", bb_signal,
+                  ", RCI信号=", rci_signal, ", Stochastic信号=", stoch_signal,
+                  ", CCI信号=", cci_signal, ", ADX信号=", adx_signal);
+                  
+            // インジケーターのチェック結果
+            indicatorSignal = false; // デフォルトでfalse
+            
+            // 各インジケーターのシグナルを個別にチェック
+            if(MA_Cross_Strategy != STRATEGY_DISABLED && ma_signal) indicatorSignal = true;
+            if(RSI_Strategy != STRATEGY_DISABLED && rsi_signal) indicatorSignal = true;
+            if(BB_Strategy != STRATEGY_DISABLED && bb_signal) indicatorSignal = true;
+            if(RCI_Strategy != STRATEGY_DISABLED && rci_signal) indicatorSignal = true;
+            if(Stochastic_Strategy != STRATEGY_DISABLED && stoch_signal) indicatorSignal = true;
+            if(CCI_Strategy != STRATEGY_DISABLED && cci_signal) indicatorSignal = true;
+            if(ADX_Strategy != STRATEGY_DISABLED && adx_signal) indicatorSignal = true;
+            
+            Print("インジケーター条件の最終結果: ", indicatorSignal ? "成立" : "不成立");
+        }
+    } else {
+        // インジケーター条件チェックがOFFの場合
+        if(!g_EnableTimeEntry) {
+            // 両方無効の場合
+            indicatorSignal = false;
+            Print("インジケーター条件チェックはOFF（両方の条件が無効のため、エントリーしません）");
+        } else {
             indicatorSignal = true;
-        }
-        
-        // 確認方法に応じた判断
-        if(EntryConfirmation == 0) {
-            // どちらか1つでも条件を満たせばOK
-            return (timeSignal || indicatorSignal);
-        } else {
-            // すべての条件を満たす必要あり
-            return (timeSignal && indicatorSignal);
+            Print("インジケーター条件チェックはOFF");
         }
     }
     
-    //+------------------------------------------------------------------+
-    //| OnTick関数内で呼び出す戦略評価マスター関数                       |
-    //+------------------------------------------------------------------+
-    void ProcessStrategyLogic()
-    {
-       // 自動売買が無効の場合は何もしない
-       if(!g_AutoTrading)
-       {
-          return;
-       }
-       
-       // リアルポジション有無を判定
-       bool hasRealBuy = position_count(OP_BUY) > 0;
-       bool hasRealSell = position_count(OP_SELL) > 0;
-       
-       // ゴーストモードの設定（NanpinSkipLevel に基づく）
-       if(NanpinSkipLevel == SKIP_NONE) {
-          g_GhostMode = false; // ゴーストモードは常に無効
-       }
-       
-       // ゴーストエントリー機能がOFFの場合はゴーストモードを無効化
-       if(!g_EnableGhostEntry) {
-          g_GhostMode = false;
-       }
-       
-       // リアルポジションがある場合
-       if(hasRealBuy || hasRealSell)
-       {
-          // ナンピン機能が有効な場合のみナンピン条件をチェック
-          if(g_EnableNanpin)
-          {
-             // リアルポジションのナンピン条件をチェック
-             CheckNanpinConditions(0); // Buy側のナンピン条件チェック
-             CheckNanpinConditions(1); // Sell側のナンピン条件チェック
-          }
-       }
-       else
-       {
-          // リアルポジションがない場合
-          
-          // ゴーストモードがONの場合
-          if(g_GhostMode && g_EnableGhostEntry)
-          {
-             // 時間とインジケーターの条件を確認してエントリー
-             if(ShouldEnterPosition(0)) ProcessGhostEntries(0);
-             if(ShouldEnterPosition(1)) ProcessGhostEntries(1);
-          }
-          else
-          {
-             // ゴーストモードがOFFの場合は直接リアルエントリーを処理
-             if(ShouldEnterPosition(0)) ProcessRealEntries(0);
-             if(ShouldEnterPosition(1)) ProcessRealEntries(1);
-          }
-       }
+    // 確認方法に応じた判断
+    bool result;
+    
+    // 特殊ケース：両方の条件が無効の場合
+    if(!g_EnableTimeEntry && !g_EnableIndicatorsEntry) {
+        Print("警告: 時間条件とインジケーター条件が両方とも無効です");
+        result = false; // デフォルトでfalseを返す
+    } else if(1) {
+        // どちらか1つでも条件を満たせばOK
+        result = (timeSignal || indicatorSignal);
+        Print("エントリー確認方法: いずれかの条件OK, 結果: ", result ? "成立" : "不成立");
+    } else {
+        // すべての条件を満たす必要あり
+        result = (timeSignal && indicatorSignal);
+        Print("エントリー確認方法: すべての条件必要, 結果: ", result ? "成立" : "不成立");
     }
+    
+    Print("ShouldEnterPosition 最終結果: ", result ? "エントリー条件成立" : "エントリー条件不成立");
+    return result;
+}
+//+------------------------------------------------------------------+
+//| Hosopi3_Strategy.mqh の ProcessStrategyLogic関数                  |
+//+------------------------------------------------------------------+
+void ProcessStrategyLogic()
+{
+   // 自動売買が無効の場合は何もしない
+   if(!g_AutoTrading)
+   {
+      return;
+   }
+   
+   // 時間条件とインジケーター条件が両方とも無効の場合はエントリーしない
+   if(!g_EnableTimeEntry && !g_EnableIndicatorsEntry) {
+      Print("警告: 時間条件とインジケーター条件が両方とも無効のため、エントリー処理をスキップします");
+      return;
+   }
+   
+   // リアルポジション有無を判定
+   bool hasRealBuy = position_count(OP_BUY) > 0;
+   bool hasRealSell = position_count(OP_SELL) > 0;
+   
+   // ゴーストモードの設定（NanpinSkipLevel に基づく）
+   if(NanpinSkipLevel == SKIP_NONE) {
+      g_GhostMode = false; // ゴーストモードは常に無効
+   }
+   
+   // ゴーストエントリー機能がOFFの場合はゴーストモードを無効化
+   if(!g_EnableGhostEntry) {
+      g_GhostMode = false;
+   }
+   
+   // リアルポジションがある場合
+   if(hasRealBuy || hasRealSell)
+   {
+// ナンピン機能が有効な場合のみナンピン条件をチェック
+if(g_EnableNanpin)
+{
+   // リアルポジションのナンピン条件をチェック
+   CheckNanpinConditions(0); // Buy側のナンピン条件チェック
+   CheckNanpinConditions(1); // Sell側のナンピン条件チェック
+}
+}
+else
+{
+// リアルポジションがない場合
+
+// 時間条件とインジケーター条件が両方とも無効の場合はエントリーしない
+// 警告メッセージを削除（Printを削除）
+if(!g_EnableTimeEntry && !g_EnableIndicatorsEntry) {
+   return;
+}
+
+// ゴーストモードがONの場合
+if(g_GhostMode && g_EnableGhostEntry)
+{
+   // 各方向のエントリー条件を確認
+   bool buyCondition = ShouldEnterPosition(0);
+   bool sellCondition = ShouldEnterPosition(1);
+   
+   // 条件を確認してエントリー
+   if(buyCondition) {
+      ProcessGhostEntries(0);
+   }
+   
+   if(sellCondition) {
+      ProcessGhostEntries(1);
+   }
+}
+else
+{
+   // 各方向のエントリー条件を確認
+   bool buyCondition = ShouldEnterPosition(0);
+   bool sellCondition = ShouldEnterPosition(1);
+   
+   // ゴーストモードがOFFの場合は直接リアルエントリーを処理
+   if(buyCondition) {
+      ProcessRealEntries(0);
+   }
+   
+   if(sellCondition) {
+      ProcessRealEntries(1);
+   }
+}
+}
+}

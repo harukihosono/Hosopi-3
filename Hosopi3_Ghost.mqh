@@ -311,22 +311,27 @@ void ResetGhost(int type)
 }
 
 
+
 //+------------------------------------------------------------------+
-//| ProcessGhostEntries関数の修正 - 決済済みフラグチェック改善      |
+//| Hosopi3_Ghost.mqh の ProcessGhostEntries関数                      |
 //+------------------------------------------------------------------+
 void ProcessGhostEntries(int side)
 {
    // リアルポジションがある場合はリターン（複数チャート対策）
    if(position_count(OP_BUY) > 0 || position_count(OP_SELL) > 0) {
+      Print("ProcessGhostEntries: リアルポジションが存在するためスキップします");
       return;
    }
 
-   if(!g_GhostMode)
+   if(!g_GhostMode) {
+      Print("ProcessGhostEntries: ゴーストモード無効のためスキップします");
       return;
+   }
 
    // ナンピンスキップレベルがSKIP_NONEの場合はゴーストモードを使用しない
    if(NanpinSkipLevel == SKIP_NONE)
    {
+      Print("ProcessGhostEntries: ナンピンスキップレベルがSKIP_NONEのため、直接リアルエントリーを処理します");
       // 通常のエントリー処理を行う（ゴーストなし）
       ProcessRealEntries(side);
       return;
@@ -334,6 +339,7 @@ void ProcessGhostEntries(int side)
 
    // 処理対象のオペレーションタイプを決定
    int operationType = (side == 0) ? OP_BUY : OP_SELL;
+   string direction = (side == 0) ? "Buy" : "Sell";
    
    // 方向によって変数をセット
    bool closedFlag = (operationType == OP_BUY) ? g_BuyGhostClosed : g_SellGhostClosed;
@@ -344,8 +350,7 @@ void ProcessGhostEntries(int side)
       static datetime lastClosedFlagTime = 0;
       if(TimeCurrent() - lastClosedFlagTime > 60) // 1分ごとに出力
       {
-         string direction = (side == 0) ? "Buy" : "Sell";
-         Print("ゴースト", direction, "は決済済み状態のため、新規エントリーをスキップします");
+         Print("ProcessGhostEntries: ゴースト", direction, "は決済済み状態のため、新規エントリーをスキップします");
          lastClosedFlagTime = TimeCurrent();
       }
       return;
@@ -358,8 +363,10 @@ void ProcessGhostEntries(int side)
    else // Sell
       modeAllowed = (EntryMode == MODE_SELL_ONLY || EntryMode == MODE_BOTH);
 
-   if(!modeAllowed)
+   if(!modeAllowed) {
+      Print("ProcessGhostEntries: エントリーモードにより", direction, "側はスキップします");
       return;
+   }
    
    // ゴーストポジションの最大数はナンピンスキップレベルの値までに制限
    int maxGhostPositions = (int)NanpinSkipLevel;
@@ -370,18 +377,421 @@ void ProcessGhostEntries(int side)
    // ゴーストポジションがない場合は新規エントリー
    if(ghostCount == 0 && position_count(operationType) == 0)
    {
-      string direction = (side == 0) ? "Buy" : "Sell";
-      Print("新規ゴースト", direction, "エントリー条件が揃いました");
-      InitializeGhostPosition(operationType);
+      // デバッグログを強化
+      Print("ProcessGhostEntries: 新規ゴースト", direction, "エントリー条件チェック開始");
+      Print("EnableTimeEntry=", g_EnableTimeEntry, ", EnableIndicatorsEntry=", g_EnableIndicatorsEntry);
+      
+      bool timeSignal = false;
+      bool indicatorSignal = false;
+      string entryReason = "";
+      
+      // 時間条件のチェック
+      if(g_EnableTimeEntry) {
+         timeSignal = IsTimeEntryAllowed(side);
+         Print("ProcessGhostEntries: 時間条件=", timeSignal ? "成立" : "不成立");
+         if(timeSignal) {
+            entryReason += "時間条件OK ";
+         } else {
+            entryReason += "時間条件NG ";
+         }
+      } else {
+         // 時間条件が無効の場合
+         if(!g_EnableIndicatorsEntry) {
+            // 両方無効の場合は特別処理
+            timeSignal = false;
+            Print("ProcessGhostEntries: 時間条件とインジケーターの両方が無効のため、エントリーしません");
+            entryReason += "両方の条件が無効 ";
+         } else {
+            // インジケーター条件が有効なら時間条件はスキップ
+            timeSignal = true;
+            Print("ProcessGhostEntries: 時間条件チェック無効");
+            entryReason += "時間条件チェック無効 ";
+         }
+      }
+      
+      // インジケーター条件のチェック
+      if(g_EnableIndicatorsEntry) {
+         // インジケーターが有効な場合、詳細なログを出力
+         Print("MA_Cross_Strategy=", MA_Cross_Strategy,
+               ", RSI_Strategy=", RSI_Strategy,
+               ", BB_Strategy=", BB_Strategy,
+               ", RCI_Strategy=", RCI_Strategy,
+               ", Stochastic_Strategy=", Stochastic_Strategy,
+               ", CCI_Strategy=", CCI_Strategy,
+               ", ADX_Strategy=", ADX_Strategy);
+         
+         // 個別にインジケーターを確認して詳細ログを出力
+         bool ma_signal = (MA_Cross_Strategy != STRATEGY_DISABLED) ? CheckMASignal(side) : false;
+         bool rsi_signal = (RSI_Strategy != STRATEGY_DISABLED) ? CheckRSISignal(side) : false;
+         bool bb_signal = (BB_Strategy != STRATEGY_DISABLED) ? CheckBollingerSignal(side) : false;
+         bool rci_signal = (RCI_Strategy != STRATEGY_DISABLED) ? CheckRCISignal(side) : false;
+         bool stoch_signal = (Stochastic_Strategy != STRATEGY_DISABLED) ? CheckStochasticSignal(side) : false;
+         bool cci_signal = (CCI_Strategy != STRATEGY_DISABLED) ? CheckCCISignal(side) : false;
+         bool adx_signal = (ADX_Strategy != STRATEGY_DISABLED) ? CheckADXSignal(side) : false;
+         
+         Print("MA信号=", ma_signal, ", RSI信号=", rsi_signal, ", BB信号=", bb_signal,
+               ", RCI信号=", rci_signal, ", Stochastic信号=", stoch_signal,
+               ", CCI信号=", cci_signal, ", ADX信号=", adx_signal);
+         
+         // インジケーター数をカウント
+         int enabledCount = 0;
+         if(MA_Cross_Strategy != STRATEGY_DISABLED) enabledCount++;
+         if(RSI_Strategy != STRATEGY_DISABLED) enabledCount++;
+         if(BB_Strategy != STRATEGY_DISABLED) enabledCount++;
+         if(RCI_Strategy != STRATEGY_DISABLED) enabledCount++;
+         if(Stochastic_Strategy != STRATEGY_DISABLED) enabledCount++;
+         if(CCI_Strategy != STRATEGY_DISABLED) enabledCount++;
+         if(ADX_Strategy != STRATEGY_DISABLED) enabledCount++;
+         
+         Print("有効なインジケーター数: ", enabledCount);
+         
+         // 重要な修正：インジケーターが1つも有効でない場合、インジケーター条件は不成立とする
+         if(enabledCount == 0) {
+            indicatorSignal = false;
+            Print("インジケーターが1つも有効になっていないため、インジケーター条件は不成立とします");
+            entryReason += "インジケーター無効 ";
+         } else {
+            // インジケーターのチェック結果
+            indicatorSignal = false; // デフォルトでfalse
+            string activeSignals = "";
+            
+            // 各インジケーターのシグナルを個別にチェック
+            if(MA_Cross_Strategy != STRATEGY_DISABLED && ma_signal) {
+               indicatorSignal = true;
+               activeSignals += (activeSignals != "" ? ", " : "") + "MAクロス";
+            }
+            if(RSI_Strategy != STRATEGY_DISABLED && rsi_signal) {
+               indicatorSignal = true;
+               activeSignals += (activeSignals != "" ? ", " : "") + "RSI";
+            }
+            if(BB_Strategy != STRATEGY_DISABLED && bb_signal) {
+               indicatorSignal = true;
+               activeSignals += (activeSignals != "" ? ", " : "") + "ボリンジャー";
+            }
+            if(RCI_Strategy != STRATEGY_DISABLED && rci_signal) {
+               indicatorSignal = true;
+               activeSignals += (activeSignals != "" ? ", " : "") + "RCI";
+            }
+            if(Stochastic_Strategy != STRATEGY_DISABLED && stoch_signal) {
+               indicatorSignal = true;
+               activeSignals += (activeSignals != "" ? ", " : "") + "ストキャスティクス";
+            }
+            if(CCI_Strategy != STRATEGY_DISABLED && cci_signal) {
+               indicatorSignal = true;
+               activeSignals += (activeSignals != "" ? ", " : "") + "CCI";
+            }
+            if(ADX_Strategy != STRATEGY_DISABLED && adx_signal) {
+               indicatorSignal = true;
+               activeSignals += (activeSignals != "" ? ", " : "") + "ADX/DMI";
+            }
+            
+            if(indicatorSignal) {
+               entryReason += "インジケーター条件OK(" + activeSignals + ") ";
+            } else {
+               entryReason += "インジケーター条件NG ";
+            }
+         }
+         
+         Print("ProcessGhostEntries: インジケーター条件の最終結果=", indicatorSignal ? "成立" : "不成立");
+      } else {
+         // インジケーター条件が無効の場合
+         if(!g_EnableTimeEntry) {
+            // 両方無効の場合は特別処理
+            indicatorSignal = false;
+            Print("ProcessGhostEntries: 時間条件とインジケーターの両方が無効のため、エントリーしません");
+            entryReason += "両方の条件が無効 ";
+         } else {
+            // 時間条件が有効ならインジケーター条件はスキップ
+            indicatorSignal = true;
+            Print("ProcessGhostEntries: インジケーター条件チェック無効");
+            entryReason += "インジケーター条件チェック無効 ";
+         }
+      }
+      
+      // 重要な修正：どちらかの条件が無効なら、もう一方が有効かつ成立していることを確認
+      bool shouldEnter = false;
+      
+      if(1) {
+         // いずれかの条件を満たせばOK
+         if(!g_EnableTimeEntry && !g_EnableIndicatorsEntry) {
+            // 両方無効の場合は特別処理
+            Print("警告: 時間とインジケーターの両方の条件が無効です");
+            shouldEnter = false; // デフォルトでエントリーしない
+            entryReason += "（両方の条件が無効のためエントリーしません）";
+         } else {
+            shouldEnter = (timeSignal || indicatorSignal);
+            if(shouldEnter) entryReason += "（いずれかの条件OK）";
+            else entryReason += "（すべての条件がNG）";
+         }
+      } else {
+         // すべての条件を満たす必要あり
+         if(!g_EnableTimeEntry && !g_EnableIndicatorsEntry) {
+            // 両方無効の場合は特別処理
+            Print("警告: 時間とインジケーターの両方の条件が無効です");
+            shouldEnter = false; // デフォルトでエントリーしない
+            entryReason += "（両方の条件が無効のためエントリーしません）";
+         } else {
+            shouldEnter = (timeSignal && indicatorSignal);
+            if(shouldEnter) entryReason += "（すべての条件OK）";
+            else entryReason += "（いずれかの条件がNG）";
+         }
+      }
+      
+      Print("最終エントリー判断: ", shouldEnter ? "エントリー実行" : "エントリーなし");
+      
+      if(shouldEnter) {
+         Print("ProcessGhostEntries: 新規ゴースト", direction, "エントリー条件が揃いました - 理由: ", entryReason);
+         InitializeGhostPosition(operationType, entryReason);
+      } else {
+         Print("ProcessGhostEntries: ゴースト", direction, "エントリー条件不成立のためスキップします: ", entryReason);
+         // ここで return することで後続の処理をスキップ
+         return;
+      }
    }
    // ナンピン条件チェック（ゴーストポジション数が最大数未満の場合のみ）
    else if(ghostCount > 0 && ghostCount < maxGhostPositions)
    {
       CheckGhostNanpinCondition(operationType);
    }
+   else {
+      Print("ProcessGhostEntries: ゴースト", direction, "カウント=", ghostCount, ", 最大値=", maxGhostPositions, "のためスキップします");
+   }
+}
+
+//| どのインジケーターがシグナルを出したかを取得                       |
+//+------------------------------------------------------------------+
+string GetActiveIndicatorSignals(int side)
+{
+   string activeSignals = "";
+   
+   // MA クロス
+   if(MA_Cross_Strategy != STRATEGY_DISABLED) {
+      if(CheckMASignal(side)) {
+         if(activeSignals != "") activeSignals += ", ";
+         activeSignals += "MAクロス";
+      }
+   }
+   
+   // RSI
+   if(RSI_Strategy != STRATEGY_DISABLED) {
+      if(CheckRSISignal(side)) {
+         if(activeSignals != "") activeSignals += ", ";
+         activeSignals += "RSI";
+      }
+   }
+   
+   // ボリンジャーバンド
+   if(BB_Strategy != STRATEGY_DISABLED) {
+      if(CheckBollingerSignal(side)) {
+         if(activeSignals != "") activeSignals += ", ";
+         activeSignals += "ボリンジャー";
+      }
+   }
+   
+   // RCI
+   if(RCI_Strategy != STRATEGY_DISABLED) {
+      if(CheckRCISignal(side)) {
+         if(activeSignals != "") activeSignals += ", ";
+         activeSignals += "RCI";
+      }
+   }
+   
+   // ストキャスティクス
+   if(Stochastic_Strategy != STRATEGY_DISABLED) {
+      if(CheckStochasticSignal(side)) {
+         if(activeSignals != "") activeSignals += ", ";
+         activeSignals += "ストキャスティクス";
+      }
+   }
+   
+   // CCI
+   if(CCI_Strategy != STRATEGY_DISABLED) {
+      if(CheckCCISignal(side)) {
+         if(activeSignals != "") activeSignals += ", ";
+         activeSignals += "CCI";
+      }
+   }
+   
+   // ADX/DMI
+   if(ADX_Strategy != STRATEGY_DISABLED) {
+      if(CheckADXSignal(side)) {
+         if(activeSignals != "") activeSignals += ", ";
+         activeSignals += "ADX/DMI";
+      }
+   }
+   
+   return (activeSignals == "") ? "なし" : activeSignals;
+}
+
+//+------------------------------------------------------------------+
+//| ゴーストポジションの初期化（エントリー理由を保存する版）          |
+//+------------------------------------------------------------------+
+void InitializeGhostPosition(int type, string entryReason = "")
+{
+   // リアルポジションがある場合は処理をスキップ（複数チャート対策）
+   if(position_count(OP_BUY) > 0 || position_count(OP_SELL) > 0) {
+      Print("リアルポジションが存在するため、ゴーストポジション初期化をスキップします");
+      return;
+   }
+
+   // ナンピンスキップレベルがSKIP_NONEの場合は、ゴーストポジションを発動させない
+   if(NanpinSkipLevel == SKIP_NONE)
+   {
+      Print("ナンピンスキップレベルがSKIP_NONEのため、ゴーストポジションは発動しません。直接リアルエントリーします。");
+      // 直接リアルエントリーを実行
+      ExecuteRealEntry(type, entryReason);
+      return;
+   }
+   
+   // ゴーストポジションの最大数はナンピンスキップレベルの値までに制限
+   int maxGhostPositions = (int)NanpinSkipLevel;
+   int currentGhostCount = ghost_position_count(type);
+   
+   // 既にゴーストポジション数が最大数に達している場合
+   if(currentGhostCount >= maxGhostPositions)
+   {
+      Print("ゴーストポジション数が最大数(", maxGhostPositions, ")に達しているため、新規ゴーストエントリーをスキップします");
+      return;
+   }
+   
+   // スプレッドチェック
+   double spreadPoints = (GetAskPrice() - GetBidPrice()) / Point;
+   if(spreadPoints > MaxSpreadPoints && MaxSpreadPoints > 0)
+   {
+      Print("スプレッドが大きすぎるため、ゴーストエントリーをスキップします: ", spreadPoints, " > ", MaxSpreadPoints);
+      return;
+   }
+      
+   // ポジション情報の作成 - 重要：level は 0 から開始（配列インデックス）
+   PositionInfo newPosition;
+   newPosition.type = type;
+   newPosition.lots = g_LotTable[0];  // 最初のポジションは g_LotTable[0]
+   newPosition.symbol = Symbol();
+   newPosition.price = (type == OP_BUY) ? GetAskPrice() : GetBidPrice();
+   newPosition.profit = 0;
+   newPosition.ticket = 0; // ゴーストはチケット番号なし
+   newPosition.openTime = TimeCurrent();
+   newPosition.isGhost = true;
+   newPosition.level = 0;  // 最初のポジションはレベル0（修正済み）
+   
+   if(type == OP_BUY)
+   {
+      // Buyゴーストポジションの追加
+      g_GhostBuyPositions[g_GhostBuyCount] = newPosition;
+      g_GhostBuyCount++;
+      
+      // ナンピン時間を初期化
+      g_LastBuyNanpinTime = TimeCurrent();
+      
+      // エントリーポイントを表示 (エントリー理由を表示)
+      CreateGhostEntryPoint(type, newPosition.price, newPosition.lots, newPosition.level, entryReason);
+      
+      // 決済済みフラグをリセット
+      g_BuyGhostClosed = false;
+      
+      // ナンピンスキップレベルに達したらリアルエントリー
+      if(g_GhostBuyCount >= (int)NanpinSkipLevel)
+      {
+         Print("初回エントリーでナンピンスキップレベル条件達成: Level=", NanpinSkipLevel, ", ゴーストカウント=", g_GhostBuyCount);
+         ExecuteRealEntry(OP_BUY, entryReason); // リアルエントリー実行
+      }
+      else
+      {
+         Print("初回エントリー: ゴーストBuyカウント=", g_GhostBuyCount, ", スキップレベル=", (int)NanpinSkipLevel, "のためまだリアルエントリーしません");
+      }
+   }
+   else
+   {
+      // Sellゴーストポジションの追加
+      g_GhostSellPositions[g_GhostSellCount] = newPosition;
+      g_GhostSellCount++;
+      
+      // ナンピン時間を初期化
+      g_LastSellNanpinTime = TimeCurrent();
+      
+      // エントリーポイントを表示 (エントリー理由を表示)
+      CreateGhostEntryPoint(type, newPosition.price, newPosition.lots, newPosition.level, entryReason);
+      
+      // 決済済みフラグをリセット
+      g_SellGhostClosed = false;
+      
+      // ナンピンスキップレベルに達したらリアルエントリー
+      if(g_GhostSellCount >= (int)NanpinSkipLevel)
+      {
+         Print("初回エントリーでナンピンスキップレベル条件達成: Level=", NanpinSkipLevel, ", ゴーストカウント=", g_GhostSellCount);
+         ExecuteRealEntry(OP_SELL, entryReason);
+      }
+      else
+      {
+         Print("初回エントリー: ゴーストSellカウント=", g_GhostSellCount, ", スキップレベル=", (int)NanpinSkipLevel, "のためまだリアルエントリーしません");
+      }
+   }
+   
+   // ユーザー表示用にはレベル+1を表示（1-indexed）
+   Print("ゴーストポジション作成: ", type == OP_BUY ? "Buy" : "Sell", ", レベル: 1, 価格: ", DoubleToString(newPosition.price, 5), ", 理由: ", entryReason);
+   
+   // グローバル変数へ保存
+   SaveGhostPositionsToGlobal();
+   
+   // 有効なゴーストのみ点線を表示するように再設定
+   RecreateValidGhostLines();
 }
 //+------------------------------------------------------------------+
-//| OnTimer関数を追加 - 定期的なフラグチェックとクリア               |
+//| ゴーストエントリーポイントを作成（エントリー理由付き）             |
+//+------------------------------------------------------------------+
+void CreateGhostEntryPoint(int type, double price, double lots, int level, string reason = "")
+{
+   if(!PositionSignDisplay)
+      return;
+      
+   datetime time = TimeCurrent();
+   
+   // 一意のオブジェクト名を生成
+   string arrowName = GenerateGhostObjectName("GhostEntry", type, level, time);
+   string infoName = GenerateGhostObjectName("GhostInfo", type, level, time);
+   string lineName = GenerateGhostObjectName("GhostLine", type, level, time);
+   
+   // 矢印の作成
+   ObjectCreate(arrowName, OBJ_ARROW, 0, time, price);
+   ObjectSet(arrowName, OBJPROP_ARROWCODE, type == OP_BUY ? 233 : 234); // Buy: 上向き矢印, Sell: 下向き矢印
+   ObjectSet(arrowName, OBJPROP_COLOR, type == OP_BUY ? GhostBuyColor : GhostSellColor);
+   ObjectSet(arrowName, OBJPROP_WIDTH, GhostArrowSize);
+   ObjectSet(arrowName, OBJPROP_SELECTABLE, false);
+   
+   // 情報テキストの作成
+   string infoText = "Ghost " + (type == OP_BUY ? "Buy" : "Sell") + " " + DoubleToString(lots, 2);
+   ObjectCreate(infoName, OBJ_TEXT, 0, time, price + (type == OP_BUY ? 20*Point : -20*Point));
+   ObjectSetText(infoName, infoText, 8, "Arial", type == OP_BUY ? GhostBuyColor : GhostSellColor);
+   ObjectSet(infoName, OBJPROP_SELECTABLE, false);
+   
+   // 水平線の作成 (点線からチャート全体に広がる水平線に変更)
+   ObjectCreate(lineName, OBJ_HLINE, 0, 0, price);
+   ObjectSet(lineName, OBJPROP_COLOR, type == OP_BUY ? GhostBuyColor : GhostSellColor);
+   ObjectSet(lineName, OBJPROP_STYLE, STYLE_DOT);
+   ObjectSet(lineName, OBJPROP_WIDTH, 1);
+   ObjectSet(lineName, OBJPROP_BACK, true);
+   ObjectSet(lineName, OBJPROP_SELECTABLE, false);
+   
+   // エントリー理由の表示 (新規追加、理由が空でない場合のみ)
+   if(reason != "")
+   {
+      string reasonName = GenerateGhostObjectName("GhostReason", type, level, time);
+      ObjectCreate(reasonName, OBJ_TEXT, 0, time + 1800, price + (type == OP_BUY ? 40*Point : -40*Point)); // 時間を少しずらして配置
+      ObjectSetText(reasonName, "理由: " + reason, 8, "Arial", type == OP_BUY ? GhostBuyColor : GhostSellColor);
+      ObjectSet(reasonName, OBJPROP_SELECTABLE, false);
+      
+      // オブジェクト名を保存
+      SaveObjectName(reasonName, g_EntryNames, g_EntryObjectCount);
+   }
+   
+   // オブジェクト名を保存
+   SaveObjectName(arrowName, g_EntryNames, g_EntryObjectCount);
+   SaveObjectName(infoName, g_EntryNames, g_EntryObjectCount);
+   SaveObjectName(lineName, g_EntryNames, g_EntryObjectCount);
+}
+
+//+------------------------------------------------------------------+
+//| OnTimerHandler関数 - 最適化版                                     |
 //+------------------------------------------------------------------+
 void OnTimerHandler()
 {
@@ -422,7 +832,6 @@ void OnTimerHandler()
    }
 }
 
-
 //+------------------------------------------------------------------+
 //| オブジェクト名生成のためのヘルパー関数                           |
 //+------------------------------------------------------------------+
@@ -437,10 +846,20 @@ string GenerateGhostObjectName(string baseType, int operationType, int level, da
 }
 
 //+------------------------------------------------------------------+
-//| 特定タイプの点線オブジェクトのみを削除する関数                   |
+//| 特定タイプの点線オブジェクトのみを削除する関数 - 最適化版         |
 //+------------------------------------------------------------------+
 void DeleteGhostLinesByType(int operationType, int lineType)
 {
+   // 削除する前に最後の削除時間をチェック
+   static datetime lastDeleteTime[2][3] = {{0,0,0}, {0,0,0}}; // [type][lineType]
+   int typeIndex = (operationType == OP_BUY) ? 0 : 1;
+   
+   // 短時間での頻繁な削除を避ける（5秒以内の再削除を防止）
+   if(TimeCurrent() - lastDeleteTime[typeIndex][lineType] < 5)
+      return;
+   
+   lastDeleteTime[typeIndex][lineType] = TimeCurrent();
+   
    string typeStr = (operationType == OP_BUY) ? "Buy" : "Sell";
    string lineTypeStr = "";
    
@@ -457,8 +876,6 @@ void DeleteGhostLinesByType(int operationType, int lineType)
       default:
          lineTypeStr = "*";
    }
-   
-   Print("DeleteGhostLinesByType: ", typeStr, " 関連の ", lineTypeStr, " を削除します");
    
    // 削除したオブジェクトの数をカウント
    int deletedCount = 0;
@@ -522,8 +939,13 @@ void DeleteGhostLinesByType(int operationType, int lineType)
       }
    }
    
-   Print("DeleteGhostLinesByType: ", typeStr, "タイプの", deletedCount, "個の", lineTypeStr, "オブジェクトを削除しました");
+   // 削除したオブジェクトがある場合のみログ出力
+   if(deletedCount > 0)
+   {
+      Print("DeleteGhostLinesByType: ", typeStr, "タイプの", deletedCount, "個の", lineTypeStr, "オブジェクトを削除しました");
+   }
 }
+
 
 //+------------------------------------------------------------------+
 //| 決済時に点線と関連ラインを完全に削除する関数                      |
@@ -567,7 +989,7 @@ void DeleteGhostLinesAndPreventRecreation(int type)
 
 
 //+------------------------------------------------------------------+
-//| 平均取得価格ラインを更新 - 修正版                                |
+//| 平均取得価格ラインを更新 - 最適化版                               |
 //+------------------------------------------------------------------+
 void UpdateAveragePriceLines(int side)
 {
@@ -601,6 +1023,24 @@ void UpdateAveragePriceLines(int side)
    string labelName = "AvgPriceLabel" + ((side == 0) ? "Buy" : "Sell");
    string tpLabelName = "TpLabel" + ((side == 0) ? "Buy" : "Sell");
 
+   // 既存のラインの価格を取得し、変更があった場合のみ更新
+   bool needsUpdate = true;
+   double currentLinePrice = 0;
+   
+   if(ObjectFind(g_ObjectPrefix + lineName) >= 0)
+   {
+      currentLinePrice = ObjectGet(g_ObjectPrefix + lineName, OBJPROP_PRICE1);
+      // 価格の変更が小さい場合は更新しない（頻繁な更新を避ける）
+      if(MathAbs(currentLinePrice - avgPrice) < 0.1)
+      {
+         needsUpdate = false;
+      }
+   }
+   
+   // 更新が必要ない場合は処理終了
+   if(!needsUpdate)
+      return;
+   
    // 既存のラインを削除して再作成する
    DeleteGhostLinesByType(operationType, LINE_TYPE_AVG_PRICE); // 平均価格ライン削除
    DeleteGhostLinesByType(operationType, LINE_TYPE_TP);        // TP価格ライン削除
@@ -611,17 +1051,17 @@ void UpdateAveragePriceLines(int side)
    if(ObjectFind(g_ObjectPrefix + tpLabelName) >= 0)
       ObjectDelete(g_ObjectPrefix + tpLabelName);
 
+   // TP価格の計算
+   double tpPrice = (side == 0) ? 
+                  avgPrice + TakeProfitPoints * Point : 
+                  avgPrice - TakeProfitPoints * Point;
+
    // ライン色の決定
    color lineColor;
    if(side == 0) // Buy
       lineColor = combinedProfit >= 0 ? clrDeepSkyBlue : clrCrimson;
    else // Sell
       lineColor = combinedProfit >= 0 ? clrLime : clrRed;
-
-   // TP価格の計算
-   double tpPrice = (side == 0) ? 
-                  avgPrice + TakeProfitPoints * Point : 
-                  avgPrice - TakeProfitPoints * Point;
 
    // 平均取得価格ライン（カスタムデザイン）
    CreateHorizontalLine(g_ObjectPrefix + lineName, avgPrice, lineColor, STYLE_SOLID, 2);
@@ -637,6 +1077,15 @@ void UpdateAveragePriceLines(int side)
    // 利確価格のラベル表示
    string tpLabelText = "TP: " + DoubleToString(tpPrice, Digits);
    CreatePriceLabel(g_ObjectPrefix + tpLabelName, tpLabelText, tpPrice, TakeProfitLineColor, side == 0);
+
+   // 静的変数で最後の更新時間を記録
+   static datetime lastUpdateLogTime = 0;
+   if(TimeCurrent() - lastUpdateLogTime > 30) // 30秒に1回だけログ出力
+   {
+      Print("平均取得価格ライン更新: ", direction, ", 平均価格=", DoubleToString(avgPrice, Digits), 
+            ", TP=", DoubleToString(tpPrice, Digits));
+      lastUpdateLogTime = TimeCurrent();
+   }
 }
 
 
@@ -872,49 +1321,6 @@ void DeleteAllGhostObjectsByType(int type)
 }
 
 
-
-//+------------------------------------------------------------------+
-//| ゴーストエントリーポイントを作成                                  |
-//+------------------------------------------------------------------+
-void CreateGhostEntryPoint(int type, double price, double lots, int level)
-{
-   if(!PositionSignDisplay)
-      return;
-      
-   datetime time = TimeCurrent();
-   
-   // 一意のオブジェクト名を生成
-   string arrowName = GenerateGhostObjectName("GhostEntry", type, level, time);
-   string infoName = GenerateGhostObjectName("GhostInfo", type, level, time);
-   string lineName = GenerateGhostObjectName("GhostLine", type, level, time);
-   
-   // 矢印の作成
-   ObjectCreate(arrowName, OBJ_ARROW, 0, time, price);
-   ObjectSet(arrowName, OBJPROP_ARROWCODE, type == OP_BUY ? 233 : 234); // Buy: 上向き矢印, Sell: 下向き矢印
-   ObjectSet(arrowName, OBJPROP_COLOR, type == OP_BUY ? GhostBuyColor : GhostSellColor);
-   ObjectSet(arrowName, OBJPROP_WIDTH, GhostArrowSize);
-   ObjectSet(arrowName, OBJPROP_SELECTABLE, false);
-   
-   // 情報テキストの作成
-   string infoText = "Ghost " + (type == OP_BUY ? "Buy" : "Sell") + " " + DoubleToString(lots, 2);
-   ObjectCreate(infoName, OBJ_TEXT, 0, time, price + (type == OP_BUY ? 20*Point : -20*Point));
-   ObjectSetText(infoName, infoText, 8, "Arial", type == OP_BUY ? GhostBuyColor : GhostSellColor);
-   ObjectSet(infoName, OBJPROP_SELECTABLE, false);
-   
-   // 水平線の作成 (点線からチャート全体に広がる水平線に変更)
-   ObjectCreate(lineName, OBJ_HLINE, 0, 0, price);
-   ObjectSet(lineName, OBJPROP_COLOR, type == OP_BUY ? GhostBuyColor : GhostSellColor);
-   ObjectSet(lineName, OBJPROP_STYLE, STYLE_DOT);
-   ObjectSet(lineName, OBJPROP_WIDTH, 1);
-   ObjectSet(lineName, OBJPROP_BACK, true);
-   ObjectSet(lineName, OBJPROP_SELECTABLE, false);
-   
-   // オブジェクト名を保存
-   SaveObjectName(arrowName, g_EntryNames, g_EntryObjectCount);
-   SaveObjectName(infoName, g_EntryNames, g_EntryObjectCount);
-   SaveObjectName(lineName, g_EntryNames, g_EntryObjectCount);
-}
-
 //+------------------------------------------------------------------+
 //| すべてのエントリーポイントを削除                                  |
 //+------------------------------------------------------------------+
@@ -1014,7 +1420,7 @@ void RecreateGhostEntryPoints()
    {
       if(g_GhostBuyPositions[i].isGhost) // 有効なゴーストのみ
       {
-         CreateGhostEntryPoint(OP_BUY, g_GhostBuyPositions[i].price, g_GhostBuyPositions[i].lots, g_GhostBuyPositions[i].level);
+         CreateGhostEntryPoint(OP_BUY, g_GhostBuyPositions[i].price, g_GhostBuyPositions[i].lots, g_GhostBuyPositions[i].level,"");
       }
    }
    
@@ -1023,7 +1429,7 @@ void RecreateGhostEntryPoints()
    {
       if(g_GhostSellPositions[i].isGhost) // 有効なゴーストのみ
       {
-         CreateGhostEntryPoint(OP_SELL, g_GhostSellPositions[i].price, g_GhostSellPositions[i].lots, g_GhostSellPositions[i].level);
+         CreateGhostEntryPoint(OP_SELL, g_GhostSellPositions[i].price, g_GhostSellPositions[i].lots, g_GhostSellPositions[i].level,"");
       }
    }
    
@@ -1355,10 +1761,19 @@ double CalculateCombinedProfit(int type)
 }
 
 //+------------------------------------------------------------------+
-//| ゴーストナンピン条件のチェック（修正版）                           |
+//| ゴーストナンピン条件のチェック - 最適化版                          |
 //+------------------------------------------------------------------+
 void CheckGhostNanpinCondition(int type)
 {
+   // 前回のチェックからの経過時間を確認
+   static datetime lastCheckTime[2] = {0, 0}; // [0] = Buy, [1] = Sell
+   int typeIndex = (type == OP_BUY) ? 0 : 1;
+   
+   if(TimeCurrent() - lastCheckTime[typeIndex] < 10) // 10秒間隔でチェック
+      return;
+   
+   lastCheckTime[typeIndex] = TimeCurrent();
+   
    // リアルポジションがある場合は処理をスキップ（複数チャート対策）
    if(position_count(OP_BUY) > 0 || position_count(OP_SELL) > 0) {
       return;
@@ -1394,27 +1809,31 @@ void CheckGhostNanpinCondition(int type)
    if(TimeCurrent() - lastNanpinTime < NanpinInterval * 60)
    {
       // デバッグログの追加（1分に1回のみ出力）
-      static datetime lastIntervalDebugTime = 0;
-      if(TimeCurrent() - lastIntervalDebugTime > 60)
+      static datetime lastIntervalDebugTime[2] = {0, 0};
+      if(TimeCurrent() - lastIntervalDebugTime[typeIndex] > 60)
       {
          Print("ナンピンインターバルが経過していません: ", 
               (TimeCurrent() - lastNanpinTime) / 60, "分 / ", 
               NanpinInterval, "分");
-         lastIntervalDebugTime = TimeCurrent();
+         lastIntervalDebugTime[typeIndex] = TimeCurrent();
       }
       return;
    }
    
-   // 計算に使用するナンピン幅を取得 (修正：正しいインデックスを使用)
-   // currentLevelはポジション数（1から始まる）なので、配列インデックス（0から始まる）に変換
+   // 計算に使用するナンピン幅を取得
    int nanpinSpread = g_NanpinSpreadTable[currentLevel - 1];
    
-   // デバッグログの追加
-   string direction = (type == OP_BUY) ? "Buy" : "Sell";
-   Print(direction, " ゴーストナンピン条件チェック: 現在価格=", currentPrice, 
-         ", 前回価格=", lastPrice, 
-         ", ナンピン幅=", nanpinSpread, 
-         " ポイント, 差=", (type == OP_BUY ? (lastPrice - currentPrice) : (currentPrice - lastPrice)) / Point);
+   // デバッグログの追加（1分に1回のみ出力）
+   static datetime lastDebugLogTime[2] = {0, 0};
+   if(TimeCurrent() - lastDebugLogTime[typeIndex] > 60)
+   {
+      string direction = (type == OP_BUY) ? "Buy" : "Sell";
+      Print(direction, " ゴーストナンピン条件チェック: 現在価格=", currentPrice, 
+            ", 前回価格=", lastPrice, 
+            ", ナンピン幅=", nanpinSpread, 
+            " ポイント, 差=", (type == OP_BUY ? (lastPrice - currentPrice) : (currentPrice - lastPrice)) / Point);
+      lastDebugLogTime[typeIndex] = TimeCurrent();
+   }
    
    // ナンピン条件判定
    bool nanpinCondition = false;
@@ -1441,10 +1860,9 @@ void CheckGhostNanpinCondition(int type)
       else
          g_LastSellNanpinTime = TimeCurrent();
          
-      Print(direction, " ゴーストナンピン条件成立、ゴーストナンピン追加");
+      Print((type == OP_BUY ? "Buy" : "Sell"), " ゴーストナンピン条件成立、ゴーストナンピン追加");
    }
 }
-
 //+------------------------------------------------------------------+
 //| ゴーストナンピンの追加（修正版）                                   |
 //+------------------------------------------------------------------+
@@ -1490,12 +1908,12 @@ void AddGhostNanpin(int type)
    {
       g_GhostBuyPositions[g_GhostBuyCount] = newPosition;
       g_GhostBuyCount++;
-      CreateGhostEntryPoint(type, newPosition.price, newPosition.lots, newPosition.level);
+      CreateGhostEntryPoint(type, newPosition.price, newPosition.lots, newPosition.level,"");
       
       if(g_GhostBuyCount >= (int)NanpinSkipLevel)
       {
          Print("ナンピンスキップレベル条件達成: Level=", NanpinSkipLevel, ", 現在のゴーストカウント=", g_GhostBuyCount);
-         ExecuteRealEntry(OP_BUY); // リアルエントリー実行
+         ExecuteRealEntry(OP_BUY,"スキップからのリアル"); // リアルエントリー実行
          g_LastBuyNanpinTime = TimeCurrent();
       }
       else
@@ -1508,12 +1926,12 @@ void AddGhostNanpin(int type)
    {
       g_GhostSellPositions[g_GhostSellCount] = newPosition;
       g_GhostSellCount++;
-      CreateGhostEntryPoint(type, newPosition.price, newPosition.lots, newPosition.level);
+      CreateGhostEntryPoint(type, newPosition.price, newPosition.lots, newPosition.level,"");
       
       if(g_GhostSellCount >= (int)NanpinSkipLevel)
       {
          Print("ナンピンスキップレベル条件達成: Level=", NanpinSkipLevel, ", 現在のゴーストカウント=", g_GhostSellCount);
-         ExecuteRealEntry(OP_SELL); // リアルエントリー実行
+         ExecuteRealEntry(OP_SELL,"スキップからのリアル"); // リアルエントリー実行
          g_LastSellNanpinTime = TimeCurrent();
       }
       else
