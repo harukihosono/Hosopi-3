@@ -353,13 +353,16 @@ void ExecuteRealEntry(int type, string entryReason)
    // ===== ロットサイズの選択ロジックを修正 =====
    double lots;
    
-   // 個別指定モードが有効な場合
-   if(IndividualLotEnabled == ON_MODE) {
-      // ナンピンスキップレベルがSKIP_NONEの場合は初期ロット
-      if(NanpinSkipLevel == SKIP_NONE) {
-         lots = g_LotTable[0];
-         Print("個別指定ロットモード + スキップなし: 初期ロット", DoubleToString(lots, 2), "を使用");
-      } else {
+   // 常に初期ロットを使用するように修正
+   // ナンピンスキップレベルがSKIP_NONEの場合は常に初期ロットを使用
+   if(NanpinSkipLevel == SKIP_NONE) {
+      lots = g_LotTable[0]; // 常に最初のロットを使用
+      Print("ナンピンスキップなし: 初期ロット", DoubleToString(lots, 2), "を使用");
+   } 
+   else {
+      // スキップレベルに基づいてロットサイズを選択
+      // 個別指定モードが有効な場合
+      if(IndividualLotEnabled == ON_MODE) {
          // スキップレベルに対応するロットを使用
          // NanpinSkipLevelは1から始まるため、配列インデックスに変換
          int levelIndex = (int)NanpinSkipLevel - 1;
@@ -373,14 +376,8 @@ void ExecuteRealEntry(int type, string entryReason)
             lots = g_LotTable[0];
             Print("警告: スキップレベルが範囲外のため初期ロット", DoubleToString(lots, 2), "を使用");
          }
-      }
-   } else {
-      // マーチンゲールモードの場合
-      if(NanpinSkipLevel == SKIP_NONE) {
-         // スキップなしの場合は初期ロット
-         lots = g_LotTable[0];
-         Print("マーチンゲールモード + スキップなし: 初期ロット", DoubleToString(lots, 2), "を使用");
       } else {
+         // マーチンゲールモードの場合
          // スキップレベルに対応するロットを使用
          int levelIndex = (int)NanpinSkipLevel - 1;
          
@@ -403,7 +400,7 @@ void ExecuteRealEntry(int type, string entryReason)
    LogEntryReason(type, "自動エントリー", entryReason);
    
    // MQL4/MQL5互換のposition_entry関数を使用
-  bool result = position_entry(type, lots, Slippage, MagicNumber, "Hosopi 3 EA");
+   bool result = position_entry(type, lots, Slippage, MagicNumber, "Hosopi 3 EA");
    if(result)
    {
       Print("リアル", type == OP_BUY ? "Buy" : "Sell", "エントリー成功: ロット=", 
@@ -422,8 +419,10 @@ void ExecuteRealEntry(int type, string entryReason)
 
 
 
+
+
 //+------------------------------------------------------------------+
-//| リアルナンピンの実行 - 0.01ロット修正版                         |
+//| リアルナンピンの実行 - 修正版（0.01ロットの条件を更新）           |
 //+------------------------------------------------------------------+
 void ExecuteRealNanpin(int typeOrder)
 {
@@ -490,11 +489,11 @@ void ExecuteRealNanpin(int typeOrder)
    // 次のナンピンロットを計算
    double lotsToUse;
    
-   // 0.01ロットの場合のみ特別処理
-   if(MathAbs(lastLotSize - 0.01) < 0.001)
+   // 0.01ロットの場合のみ、かつマーチン倍率が1.3より大きい場合のみ特別処理
+   if(MathAbs(lastLotSize - 0.01) < 0.001 && LotMultiplier > 1.3)
    {
       lotsToUse = 0.02;
-      Print("0.01ロット検出: 次のロットを0.02に固定します");
+      Print("0.01ロット検出 + マーチン倍率>1.3: 次のロットを0.02に固定します");
    }
    else
    {
@@ -531,8 +530,6 @@ void ExecuteRealNanpin(int typeOrder)
       Print("リアル", typeOrder == OP_BUY ? "Buy" : "Sell", "ナンピンエラー: ", GetLastError());
    }
 }
-
-
 
 
 

@@ -507,15 +507,17 @@ void ProcessRealEntries(int side)
    string direction = (side == 0) ? "Buy" : "Sell";
    Print("ProcessRealEntries: ", direction, " 処理開始");
    
-   // リアルポジションがある場合はスキップ
-   if(position_count(OP_BUY) > 0 || position_count(OP_SELL) > 0) {
-      Print("ProcessRealEntries: リアルポジションが存在するためスキップします");
+   // リアルポジションがある場合はスキップ - 変数名を修正（type -> operationType）
+   int operationType = (side == 0) ? OP_BUY : OP_SELL;
+   int existingCount = position_count(operationType);
+   
+   if(existingCount > 0)
+   {
+      Print("既に", direction, "リアルポジションが存在するため、リアルエントリーはスキップされました: ", existingCount, "ポジション");
       return;
    }
 
-   // 処理対象のオペレーションタイプを決定
-   int operationType = (side == 0) ? OP_BUY : OP_SELL;
-
+   // 以下は既存のコードを変更せずに継続
    // エントリーモードに基づくチェック
    bool modeAllowed = false;
    if(side == 0) // Buy
@@ -659,10 +661,6 @@ void ProcessRealEntries(int side)
       Print("ProcessRealEntries: リアル", direction, "エントリー条件不成立のためスキップします: ", entryReason);
    }
 }
-
-
-
-
 
 
 
@@ -1990,9 +1988,12 @@ void ProcessGhostEntries(int side)
    string direction = (side == 0) ? "Buy" : "Sell";
    Print("ProcessGhostEntries: ", direction, " 処理開始");
    
-   // リアルポジションがある場合はスキップ
-   if(position_count(OP_BUY) > 0 || position_count(OP_SELL) > 0) {
-      Print("ProcessGhostEntries: リアルポジションが存在するためスキップします");
+   // リアルポジションがある場合はスキップ - 同一タイプのみチェックに変更
+   int operationType = (side == 0) ? OP_BUY : OP_SELL;
+   int existingCount = position_count(operationType);
+   
+   if(existingCount > 0) {
+      Print("ProcessGhostEntries: 既に", direction, "リアルポジションが存在するためスキップします");
       return;
    }
 
@@ -2009,8 +2010,6 @@ void ProcessGhostEntries(int side)
       return;
    }
 
-   int operationType = (side == 0) ? OP_BUY : OP_SELL;
-   
    // 決済済みフラグのチェック
    bool closedFlag = (operationType == OP_BUY) ? g_BuyGhostClosed : g_SellGhostClosed;
    if(closedFlag) {
