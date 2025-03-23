@@ -790,6 +790,8 @@ else
       CheckTrailingStopConditions(0); // Buy側
       CheckTrailingStopConditions(1); // Sell側
    }
+
+   CheckPositionChanges();// リアルポジション数の変化をチェック
       
 }
 //+------------------------------------------------------------------+
@@ -1123,4 +1125,45 @@ double GetLastPositionLot(int type)
    }
    
    return lastLotSize;
+}
+//+------------------------------------------------------------------+
+//| リアルポジション数変化を監視する関数                              |
+//+------------------------------------------------------------------+
+void CheckPositionChanges()
+{
+   // 前回カウントを保存する静的変数
+   static int prevBuyCount = 0;
+   static int prevSellCount = 0;
+   
+   // 現在のポジション数を取得
+   int currentBuyCount = position_count(OP_BUY);
+   int currentSellCount = position_count(OP_SELL);
+   
+   // Buy側でポジション数減少を検出
+   if(currentBuyCount < prevBuyCount)
+   {
+      Print("Buy側ポジション減少検出: ", prevBuyCount, " -> ", currentBuyCount);
+      
+      // 同方向のゴーストをリセット
+      ResetSpecificGhost(OP_BUY);
+      
+      // 関連するラインを削除
+      CleanupLinesOnClose(0);
+   }
+   
+   // Sell側でポジション数減少を検出
+   if(currentSellCount < prevSellCount)
+   {
+      Print("Sell側ポジション減少検出: ", prevSellCount, " -> ", currentSellCount);
+      
+      // 同方向のゴーストをリセット
+      ResetSpecificGhost(OP_SELL);
+      
+      // 関連するラインを削除
+      CleanupLinesOnClose(1);
+   }
+   
+   // 現在のカウントを保存
+   prevBuyCount = currentBuyCount;
+   prevSellCount = currentSellCount;
 }
