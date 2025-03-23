@@ -258,3 +258,114 @@ void CheckTrailingStopConditions(int side)
       }
    }
 }
+
+
+//+------------------------------------------------------------------+
+//| ポジションにリミット決済を設定する                                 |
+//+------------------------------------------------------------------+
+void SetupLimitTakeProfit(int side)
+{
+   // リミット決済が無効な場合はスキップ
+   if(!EnableLimitTP)
+      return;
+
+   // 処理対象のオペレーションタイプを決定
+   int operationType = (side == 0) ? OP_BUY : OP_SELL;
+   
+   // ポジションの確認
+   int positionCount = position_count(operationType);
+   if(positionCount <= 0)
+      return;
+   
+   // 平均価格の計算
+   double avgPrice = CalculateCombinedAveragePrice(operationType);
+   if(avgPrice <= 0)
+      return;
+   
+   // TP価格の計算
+   double tpPrice = (side == 0) ? 
+                  avgPrice + LimitTPPoints * Point : 
+                  avgPrice - LimitTPPoints * Point;
+   
+   // シンボルの最小ストップレベルを取得
+   int minStopLevel = (int)MarketInfo(Symbol(), MODE_STOPLEVEL);
+   
+   // 現在価格を取得
+   double currentPrice = (side == 0) ? GetBidPrice() : GetAskPrice();
+   
+   // 最小ストップレベルを考慮してTP価格を調整
+   double minAllowedTPDistance = minStopLevel * Point;
+   
+   // Buy注文の場合、TPは現在Bid価格より十分高くなければならない
+   if(side == 0 && tpPrice - currentPrice < minAllowedTPDistance)
+   {
+      tpPrice = currentPrice + minAllowedTPDistance;
+      Print("警告: リミットTP価格が最小ストップレベルに近すぎるため調整しました: ", 
+            DoubleToString(tpPrice, Digits));
+   }
+   // Sell注文の場合、TPは現在Ask価格より十分低くなければならない
+   else if(side == 1 && currentPrice - tpPrice < minAllowedTPDistance)
+   {
+      tpPrice = currentPrice - minAllowedTPDistance;
+      Print("警告: リミットTP価格が最小ストップレベルに近すぎるため調整しました: ",
+            DoubleToString(tpPrice, Digits));
+   }
+   
+   // 各ポジションにリミット注文を設定
+   for(int i = OrdersTotal() - 1; i >= 0; i--)
+   {
+      if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+      {
+         if(OrderType() == operationType && OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
+         {
+            // 現在のストップロス価格を取得
+            double currentSL = OrderStopLoss();
+            
+            // 現在のテイクプロフィット価格を取得
+            double currentTP = OrderTakeProfit();
+            
+            // 新しいTPとの差が小さい場合はスキップ
+            if(MathAbs(currentTP - tpPrice) < Point * 2)
+               continue;
+            
+            // リミット価格を更新（ストップロスはそのまま）
+            bool result = OrderModify(
+               OrderTicket(),        // チケット番号
+               OrderOpenPrice(),     // オープン価格
+               currentSL,            // 現在のストップロス
+               tpPrice,              // 新しいテイクプロフィット
+               0,                    // 有効期限
+               (side == 0) ? clrBlue : clrRed
+            );
+            
+            if(result)
+            {
+               Print("リミット決済を設定しました: ", OrderTicket(), 
+                     ", 方向=", (side == 0) ? "Buy" : "Sell", 
+                     ", TP=", DoubleToString(tpPrice, Digits));
+            }
+            else
+            {
+               Print("リミット決済の設定に失敗: ", OrderTicket(), 
+                     ", エラー=", GetLastError(), 
+                     ", 最小ストップレベル=", minStopLevel);
+            }
+         }
+      }
+   }
+   
+   // リミットラインはデフォルトのテイクプロフィットラインカラーを使用
+   string lineName = "LimitTP" + ((side == 0) ? "Buy" : "Sell");
+   if(ObjectFind(g_ObjectPrefix + lineName) >= 0)
+      ObjectDelete(g_ObjectPrefix + lineName);
+      
+   CreateHorizontalLine(g_ObjectPrefix + lineName, tpPrice, TakeProfitLineColor, STYLE_DASH, 1);
+   
+   // ラベルも表示
+   string labelName = "LimitTPLabel" + ((side == 0) ? "Buy" : "Sell");
+   if(ObjectFind(g_ObjectPrefix + labelName) >= 0)
+      ObjectDelete(g_ObjectPrefix + labelName);
+      
+   string labelText = "Limit TP: " + DoubleToString(tpPrice, Digits) + " (+" + IntegerToString(LimitTPPoints) + "pt)";
+   CreatePriceLabel(g_ObjectPrefix + labelName, labelText, tpPrice, TakeProfitLineColor, side == 0);
+}

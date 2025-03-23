@@ -770,10 +770,34 @@ else
 
       CheckTrailingStopConditions(0); // Buy側のトレールストップ条件チェック
       CheckTrailingStopConditions(1); // Sell側のトレールストップ条件チェック
-   
+      
+      CheckLimitTakeProfit();
 }
 
-
+//+------------------------------------------------------------------+
+//| リミット決済設定をチェックして更新                                |
+//+------------------------------------------------------------------+
+void CheckLimitTakeProfit()
+{
+   // リミット決済が無効なら何もしない
+   if(!EnableLimitTP)
+      return;
+   
+   // バックテスト中は実行頻度を抑える
+   static datetime lastCheck = 0;
+   if(TimeCurrent() - lastCheck < 5) // 5秒ごとにチェック
+      return;
+   
+   lastCheck = TimeCurrent();
+   
+   // Buyポジションのリミット設定
+   if(position_count(OP_BUY) > 0)
+      SetupLimitTakeProfit(0);
+   
+   // Sellポジションのリミット設定
+   if(position_count(OP_SELL) > 0)
+      SetupLimitTakeProfit(1);
+}
 //+------------------------------------------------------------------+
 //| ナンピン条件のチェック - 最適化版                                  |
 //+------------------------------------------------------------------+

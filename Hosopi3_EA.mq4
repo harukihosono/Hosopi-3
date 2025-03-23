@@ -167,7 +167,10 @@ input int TakeProfitPoints = 2000;            // 利確幅（Point）
 input bool EnableTrailingStop = false;        // トレールストップを有効化
 input int TrailingTrigger = 1000;             // トレールトリガー（Point）
 input int TrailingOffset = 500;               // トレールオフセット（Point）
-
+// ======== リミット決済設定 ========
+sinput string Comment_Limit_TP = ""; //+--- リミット決済設定 ---+
+input bool EnableLimitTP = false;           // リミット決済を有効にする
+input int LimitTPPoints = 2000;             // リミット決済幅（Point）
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
