@@ -511,7 +511,6 @@ void ProcessGhostEntries(int side)
       // 重要な修正：どちらかの条件が無効なら、もう一方が有効かつ成立していることを確認
       bool shouldEnter = false;
       
-      if(1) {
          // いずれかの条件を満たせばOK
          if(!g_EnableTimeEntry && !g_EnableIndicatorsEntry) {
             // 両方無効の場合は特別処理
@@ -523,19 +522,7 @@ void ProcessGhostEntries(int side)
             if(shouldEnter) entryReason += "（いずれかの条件OK）";
             else entryReason += "（すべての条件がNG）";
          }
-      } else {
-         // すべての条件を満たす必要あり
-         if(!g_EnableTimeEntry && !g_EnableIndicatorsEntry) {
-            // 両方無効の場合は特別処理
-            Print("警告: 時間とインジケーターの両方の条件が無効です");
-            shouldEnter = false; // デフォルトでエントリーしない
-            entryReason += "（両方の条件が無効のためエントリーしません）";
-         } else {
-            shouldEnter = (timeSignal && indicatorSignal);
-            if(shouldEnter) entryReason += "（すべての条件OK）";
-            else entryReason += "（いずれかの条件がNG）";
-         }
-      }
+
       
       Print("最終エントリー判断: ", shouldEnter ? "エントリー実行" : "エントリーなし");
       
@@ -761,7 +748,7 @@ void CreateGhostEntryPoint(int type, double price, double lots, int level, strin
    // 情報テキストの作成
    string infoText = "Ghost " + (type == OP_BUY ? "Buy" : "Sell") + " " + DoubleToString(lots, 2);
    ObjectCreate(infoName, OBJ_TEXT, 0, time, price + (type == OP_BUY ? 20*Point : -20*Point));
-   ObjectSetText(infoName, infoText, 8, "Arial", type == OP_BUY ? GhostBuyColor : GhostSellColor);
+   ObjectSetText(infoName, infoText, 8, "ＭＳ ゴシック", type == OP_BUY ? GhostBuyColor : GhostSellColor);
    ObjectSet(infoName, OBJPROP_SELECTABLE, false);
    
    // 水平線の作成 (点線からチャート全体に広がる水平線に変更)
@@ -777,7 +764,7 @@ void CreateGhostEntryPoint(int type, double price, double lots, int level, strin
    {
       string reasonName = GenerateGhostObjectName("GhostReason", type, level, time);
       ObjectCreate(reasonName, OBJ_TEXT, 0, time + 1800, price + (type == OP_BUY ? 40*Point : -40*Point)); // 時間を少しずらして配置
-      ObjectSetText(reasonName, "理由: " + reason, 8, "Arial", type == OP_BUY ? GhostBuyColor : GhostSellColor);
+      ObjectSetText(reasonName, "理由: " + reason, 8, "ＭＳ ゴシック", type == OP_BUY ? GhostBuyColor : GhostSellColor);
       ObjectSet(reasonName, OBJPROP_SELECTABLE, false);
       
       // オブジェクト名を保存
