@@ -762,42 +762,23 @@ else
    DeleteAllLines();
 }
    
-
-      CheckTakeProfitConditions(0); // Buy側の利確条件チェック
-      CheckTakeProfitConditions(1); // Sell側の利確条件チェック
+   // 利確条件の処理（統合関数を使用）
+   if(TakeProfitMode != TP_OFF) // TPが有効なときだけ処理
+   {
+      ManageTakeProfit(0); // Buy側
+      ManageTakeProfit(1); // Sell側
+   }
    
-   
-
-      CheckTrailingStopConditions(0); // Buy側のトレールストップ条件チェック
-      CheckTrailingStopConditions(1); // Sell側のトレールストップ条件チェック
+   // トレールストップ条件のチェック（独立して動作）
+   if(EnableTrailingStop)
+   {
+      CheckTrailingStopConditions(0); // Buy側
+      CheckTrailingStopConditions(1); // Sell側
+   }
       
-      CheckLimitTakeProfit();
 }
 
-//+------------------------------------------------------------------+
-//| リミット決済設定をチェックして更新                                |
-//+------------------------------------------------------------------+
-void CheckLimitTakeProfit()
-{
-   // リミット決済が無効なら何もしない
-if(TakeProfitMode != TP_OFF)
-      return;
-   
-   // バックテスト中は実行頻度を抑える
-   static datetime lastCheck = 0;
-   if(TimeCurrent() - lastCheck < 5) // 5秒ごとにチェック
-      return;
-   
-   lastCheck = TimeCurrent();
-   
-   // Buyポジションのリミット設定
-   if(position_count(OP_BUY) > 0)
-      SetupLimitTakeProfit(0);
-   
-   // Sellポジションのリミット設定
-   if(position_count(OP_SELL) > 0)
-      SetupLimitTakeProfit(1);
-}
+
 //+------------------------------------------------------------------+
 //| ナンピン条件のチェック - 最適化版                                  |
 //+------------------------------------------------------------------+
