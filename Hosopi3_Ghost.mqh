@@ -968,7 +968,7 @@ void UpdateAveragePriceLines(int side)
    CreatePriceLabel(g_ObjectPrefix + labelName, labelText, avgPrice, lineColor, side == 0);
 
    // TPが有効な場合のみ、利確ラインと利確ラベルを表示
-   if(EnableTakeProfitPoints)
+if(TakeProfitMode != TP_OFF)
    {
       // TP価格の計算
       double tpPrice = (side == 0) ? 
@@ -988,7 +988,7 @@ void UpdateAveragePriceLines(int side)
    if(TimeCurrent() - lastUpdateLogTime > 30) // 30秒に1回だけログ出力
    {
       Print("平均取得価格ライン更新: ", direction, ", 平均価格=", DoubleToString(avgPrice, Digits));
-      if(EnableTakeProfitPoints)
+if(TakeProfitMode != TP_OFF)
       {
          double tpPrice = (side == 0) ? avgPrice + TakeProfitPoints * Point : avgPrice - TakeProfitPoints * Point;
          Print("TP=", DoubleToString(tpPrice, Digits));

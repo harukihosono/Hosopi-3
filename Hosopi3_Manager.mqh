@@ -780,7 +780,7 @@ else
 void CheckLimitTakeProfit()
 {
    // リミット決済が無効なら何もしない
-   if(!EnableLimitTP)
+if(TakeProfitMode != TP_OFF)
       return;
    
    // バックテスト中は実行頻度を抑える

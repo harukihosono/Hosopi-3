@@ -13,7 +13,7 @@
 void CheckTakeProfitConditions(int side)
 {
    // EnableFixedTPとEnableTakeProfitPointsがどちらもオフの場合はスキップ
-   if(!EnableTakeProfitPoints)
+if(TakeProfitMode != TP_OFF)
    {
       return;
    }
@@ -266,7 +266,7 @@ void CheckTrailingStopConditions(int side)
 void SetupLimitTakeProfit(int side)
 {
    // リミット決済が無効な場合はスキップ
-   if(!EnableLimitTP)
+if(TakeProfitMode != TP_OFF)
       return;
 
    // 処理対象のオペレーションタイプを決定
@@ -284,8 +284,8 @@ void SetupLimitTakeProfit(int side)
    
    // TP価格の計算
    double tpPrice = (side == 0) ? 
-                  avgPrice + LimitTPPoints * Point : 
-                  avgPrice - LimitTPPoints * Point;
+                  avgPrice + TakeProfitPoints * Point : 
+                  avgPrice - TakeProfitPoints * Point;
    
    // シンボルの最小ストップレベルを取得
    int minStopLevel = (int)MarketInfo(Symbol(), MODE_STOPLEVEL);
@@ -366,6 +366,6 @@ void SetupLimitTakeProfit(int side)
    if(ObjectFind(g_ObjectPrefix + labelName) >= 0)
       ObjectDelete(g_ObjectPrefix + labelName);
       
-   string labelText = "Limit TP: " + DoubleToString(tpPrice, Digits) + " (+" + IntegerToString(LimitTPPoints) + "pt)";
+   string labelText = "Limit TP: " + DoubleToString(tpPrice, Digits) + " (+" + IntegerToString(TakeProfitPoints) + "pt)";
    CreatePriceLabel(g_ObjectPrefix + labelName, labelText, tpPrice, TakeProfitLineColor, side == 0);
 }

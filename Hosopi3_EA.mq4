@@ -160,17 +160,20 @@ input ENTRY_MODE EntryMode = MODE_BOTH;   // エントリー方向
 
 #include "Hosopi3_Strategy.mqh"
 
+// リミット決済方式の列挙型を定義
+enum TP_MODE {
+   TP_OFF = 0,           // OFF
+   TP_LIMIT = 1,         // 指値
+   TP_MARKET = 2         // 成り行き
+};
+
 // ======== 決済利確条件設定 ========
 sinput string Comment_RIGUITP_Conditions = ""; //+--- 利確条件設定 ---+
-input bool EnableTakeProfitPoints = false;     // 利確幅を有効にする
+input TP_MODE TakeProfitMode = TP_OFF;       // 利確方式
 input int TakeProfitPoints = 2000;            // 利確幅（Point）
 input bool EnableTrailingStop = false;        // トレールストップを有効化
 input int TrailingTrigger = 1000;             // トレールトリガー（Point）
 input int TrailingOffset = 500;               // トレールオフセット（Point）
-// ======== リミット決済設定 ========
-sinput string Comment_Limit_TP = ""; //+--- リミット決済設定 ---+
-input bool EnableLimitTP = false;           // リミット決済を有効にする
-input int LimitTPPoints = 2000;             // リミット決済幅（Point）
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
