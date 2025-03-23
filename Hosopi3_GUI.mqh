@@ -299,8 +299,6 @@ void ShowSettingsDialog()
    
    message += "テクニカル指標エントリー: " + (hasActiveIndicators ? "ON" : "OFF") + "\n";
    message += "時間エントリー: " + (UseEvenOddHoursEntry ? "ON" : "OFF") + "\n";
-   message += "固定利確: " + (EnableFixedTP ? "ON" : "OFF") + "\n";
-   message += "テクニカル指標利確: " + (EnableIndicatorsTP ? "ON" : "OFF") + "\n";
    message += "トレーリングストップ: " + (EnableTrailingStop ? "ON" : "OFF") + "\n";
    message += "偶数/奇数時間エントリー: " + (UseEvenOddHoursEntry ? "ON" : "OFF") + "\n";
    

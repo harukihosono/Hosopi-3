@@ -696,7 +696,7 @@ void ExecuteEntryFromLevel(int type, int level)
 
 
 //+------------------------------------------------------------------+
-//| OnTickManager関数 - 最適化版                                     |
+//| OnTickManager関数の修正部分 - CheckTakeProfitConditionsの呼び出しを追加
 //+------------------------------------------------------------------+
 void OnTickManager()
 {
@@ -746,21 +746,39 @@ void OnTickManager()
    // GUIを更新
    UpdateGUI();
 
-   // 平均取得価格ラインの表示更新 - 更新間隔を設定
-   if(AveragePriceLine == ON_MODE && g_AvgPriceVisible)
+// 平均取得価格ラインの表示更新 - 更新間隔を設定
+if(AveragePriceLine == ON_MODE && g_AvgPriceVisible)
+{
+   static datetime lastLineUpdateTime = 0;
+   if(TimeCurrent() - lastLineUpdateTime > 5) // 5秒間隔で更新
    {
-      static datetime lastLineUpdateTime = 0;
-      if(TimeCurrent() - lastLineUpdateTime > 5) // 5秒間隔で更新
-      {
-         UpdateAveragePriceLines(0); // Buy側
-         UpdateAveragePriceLines(1); // Sell側
-         lastLineUpdateTime = TimeCurrent();
-      }
+      // リアルポジションのチェック
+      bool hasBuyPosition = position_count(OP_BUY) > 0;
+      bool hasSellPosition = position_count(OP_SELL) > 0;
+      
+      // Buy側の更新（リアルポジションがある場合のみ）
+      UpdateAveragePriceLines(0);
+      
+      // Sell側の更新（リアルポジションがある場合のみ）
+      UpdateAveragePriceLines(1);
+      
+      lastLineUpdateTime = TimeCurrent();
    }
-   else
-   {
-      DeleteAllLines();
-   }
+}
+else
+{
+   DeleteAllLines();
+}
+   
+
+      CheckTakeProfitConditions(0); // Buy側の利確条件チェック
+      CheckTakeProfitConditions(1); // Sell側の利確条件チェック
+   
+   
+
+      CheckTrailingStopConditions(0); // Buy側のトレールストップ条件チェック
+      CheckTrailingStopConditions(1); // Sell側のトレールストップ条件チェック
+   
 }
 
 
@@ -944,8 +962,6 @@ int InitializeEA()
    // グローバル変数とinputの設定を同期
    g_EnableNanpin = EnableNanpin;
    g_EnableGhostEntry = EnableGhostEntry;
-   g_EnableFixedTP = EnableFixedTP;
-   g_EnableIndicatorsTP = EnableIndicatorsTP;
    g_EnableTrailingStop = EnableTrailingStop;
    g_AutoTrading = EnableAutomaticTrading;
    g_UseEvenOddHoursEntry = UseEvenOddHoursEntry;

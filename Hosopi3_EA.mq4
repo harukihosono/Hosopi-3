@@ -14,6 +14,7 @@
 #include "Hosopi3_GUI.mqh"
 #include "Hosopi3_Table.mqh"
 #include "Hosopi3_Ghost.mqh"
+#include "Hosopi3_TakeProfit.mqh"  
 #include "Hosopi3_Manager.mqh"
 //+------------------------------------------------------------------+
 //|                          入力パラメータ                          |
@@ -63,7 +64,6 @@ input ON_OFF Saturday_Enable = ON_MODE;    // 土曜日を有効にする
 sinput string Comment_Martingale = ""; //+--- ナンピンマーチン基本設定 ---+
 input NANPIN_SKIP NanpinSkipLevel = SKIP_5;  // ナンピンスキップレベル
 input int NanpinSpread = 2000;               // ナンピン幅（Point）
-input int TakeProfitPoints = 2000;            // 利確幅（Point）
 
 input double InitialLot = 0.01;             // 初期LOT
 input MAX_POSITIONS MaxPositions = POS_15;   // 最大ポジション数量
@@ -145,17 +145,11 @@ input int GhostArrowSize = 3;                 // ゴースト矢印サイズ
 sinput string Comment_Features = ""; //+--- 機能制御設定 ---+
 input bool EnableNanpin = true;               // ナンピン機能を有効化
 input bool EnableGhostEntry = true;           // ゴーストエントリー機能を有効化
-input bool EnableTakeProfit = true;           // 利確機能を有効化
-input bool EnableTrailingStop = false;        // トレーリングストップを有効化
 input bool EnableAutomaticTrading = true;     // 自動売買を有効化
 input bool EnablePositionTable = true;        // ポジションテーブル表示を有効化
 input bool EnablePriceLabels = true;          // 価格ラベル表示を有効化
 
-// ======== 利確条件設定 ========
-sinput string Comment_TP_Conditions = ""; //+--- 利確条件設定 ---+
-input bool EnableFixedTP = true;              // 固定利確を有効化
-input bool EnableIndicatorsTP = false;        // インジケーター条件での利確を有効化
-input int TPConfirmation = 1;                 // 利確確認方法 (0:1つでも、1:すべて)
+
 
 // ======== 時刻エントリー設定 ========
 sinput string Comment_Jiikoku_Entry = ""; //+--- 時刻エントリー設定 ---+
@@ -165,6 +159,15 @@ input ENTRY_DIRECTION sell_EntryDirection = ODD_HOURS;  // Sell エントリー�
 input ENTRY_MODE EntryMode = MODE_BOTH;   // エントリー方向
 
 #include "Hosopi3_Strategy.mqh"
+
+// ======== 決済利確条件設定 ========
+sinput string Comment_RIGUITP_Conditions = ""; //+--- 利確条件設定 ---+
+input bool EnableTakeProfitPoints = true;     // 利確幅を有効にする
+input int TakeProfitPoints = 2000;            // 利確幅（Point）
+input bool EnableTrailingStop = false;        // トレールストップを有効化
+input int TrailingTrigger = 1000;             // トレールトリガー（Point）
+input int TrailingOffset = 500;               // トレールオフセット（Point）
+
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |

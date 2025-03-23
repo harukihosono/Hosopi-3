@@ -269,121 +269,6 @@ void RecreateGhostEntryPoints()
 }
 
 //+------------------------------------------------------------------+
-//| CheckTakeProfitConditions関数の修正部分                          |
-//+------------------------------------------------------------------+
-void CheckTakeProfitConditions(int side)
-{
-   // 処理対象のオペレーションタイプを決定
-   int operationType = (side == 0) ? OP_BUY : OP_SELL;
-   int oppositeType = (side == 0) ? OP_SELL : OP_BUY;
-
-   // ポジションとゴーストカウントの取得
-   int positionCount = position_count(operationType);
-   int ghostCount = ghost_position_count(operationType);
-
-   // ポジション・ゴーストどちらも無い場合はスキップ
-   if(positionCount <= 0 && ghostCount <= 0)
-      return;
-
-   // 平均価格を計算
-   double avgPrice = CalculateCombinedAveragePrice(operationType);
-   if(avgPrice <= 0)
-      return;
-
-   // 現在価格を取得（BuyならBid、SellならAsk）
-   double currentPrice = (side == 0) ? GetBidPrice() : GetAskPrice();
-
-   // 利確条件の判定
-   bool tpCondition = false;
-
-   if(side == 0) // Buy
-      tpCondition = (currentPrice > avgPrice + TakeProfitPoints * Point);
-   else // Sell
-      tpCondition = (currentPrice < avgPrice - TakeProfitPoints * Point);
-
-   // 利確条件が満たされた場合
-   if(tpCondition)
-   {
-      string direction = (side == 0) ? "Buy" : "Sell";
-      Print(direction, "利確条件成立: 平均価格=", DoubleToString(avgPrice, 5), ", 現在価格=", DoubleToString(currentPrice, 5));
-      
-      // リアルポジションの決済
-      if(positionCount > 0) {
-         position_close(side);
-         Print("リアル", direction, "ポジションを決済しました");
-      }
-      
-      // 反対側のポジションとゴーストをチェック
-      int oppositePositionCount = position_count(oppositeType);
-      int oppositeGhostCount = ghost_position_count(oppositeType);
-      
-      // ゴーストポジションは決済時にのみリセット（反対側に何もなければ両方リセット）
-      if(ghostCount > 0)
-      {
-         // 反対側にリアルポジションやゴーストがある場合は現在の方向のみリセット
-         if(oppositePositionCount > 0 || oppositeGhostCount > 0) {
-            Print("反対側に", oppositePositionCount, "個のリアルポジションと", 
-                  oppositeGhostCount, "個のゴーストがあるため、", direction, "側のみリセットします");
-            
-            // 点線を削除し再生成を防止
-            DeleteGhostLinesAndPreventRecreation(operationType);
-            
-            // ゴーストポジションの状態はリセット - ただし特殊フラグを立てる
-            if(operationType == OP_BUY) {
-               // ゴーストポジションの状態をリセット
-               for(int i = 0; i < g_GhostBuyCount; i++) {
-                  g_GhostBuyPositions[i].isGhost = false;  // ゴーストフラグをオフに
-                  // 他の値は保持（矢印を残すため）
-               }
-               // 決済済みフラグを設定
-               g_BuyGhostClosed = true;
-               g_GhostBuyCount = 0;
-            } else {
-               // ゴーストポジションの状態をリセット
-               for(int i = 0; i < g_GhostSellCount; i++) {
-                  g_GhostSellPositions[i].isGhost = false;  // ゴーストフラグをオフに
-                  // 他の値は保持（矢印を残すため）
-               }
-               // 決済済みフラグを設定
-               g_SellGhostClosed = true;
-               g_GhostSellCount = 0;
-            }
-            
-            // グローバル変数を更新
-            SaveGhostPositionsToGlobal();
-         } else {
-            // 反対側に何もなければ両方のゴーストをリセット
-            Print("反対側に何もないため、すべてのゴーストポジションをリセットします");
-            // 点線を削除し再生成を防止
-            DeleteGhostLinesAndPreventRecreation(OP_BUY);
-            DeleteGhostLinesAndPreventRecreation(OP_SELL);
-            
-            // Buy側ゴーストポジションの状態をリセット
-            for(int i = 0; i < g_GhostBuyCount; i++) {
-               g_GhostBuyPositions[i].isGhost = false;  // ゴーストフラグをオフに
-               // 他の値は保持（矢印を残すため）
-            }
-            g_BuyGhostClosed = false; // 修正: ここをfalseに変更
-            g_GhostBuyCount = 0;
-            
-            // Sell側ゴーストポジションの状態をリセット
-            for(int i = 0; i < g_GhostSellCount; i++) {
-               g_GhostSellPositions[i].isGhost = false;  // ゴーストフラグをオフに
-               // 他の値は保持（矢印を残すため）
-            }
-            g_SellGhostClosed = false; // 修正: ここをfalseに変更
-            g_GhostSellCount = 0;
-            
-            // グローバル変数を更新
-            SaveGhostPositionsToGlobal();
-         }
-         
-         Print(direction, "ポジション利確: ゴーストポジションをリセットしました（矢印とテキストは保持）");
-      }
-   }
-}
-
-//+------------------------------------------------------------------+
 //| 特定方向のゴーストポジションだけをリセットする関数 - 修正版      |
 //+------------------------------------------------------------------+
 void ResetSpecificGhost(int type)
@@ -989,7 +874,7 @@ void DeleteGhostLinesAndPreventRecreation(int type)
 
 
 //+------------------------------------------------------------------+
-//| 平均取得価格ラインを更新 - 最適化版                               |
+//| UpdateAveragePriceLines関数の修正
 //+------------------------------------------------------------------+
 void UpdateAveragePriceLines(int side)
 {
@@ -1003,6 +888,25 @@ void UpdateAveragePriceLines(int side)
    // ポジションとゴーストカウントの取得
    int positionCount = position_count(operationType);
    int ghostCount = ghost_position_count(operationType);
+
+   // リアルポジションがない場合は平均価格ラインを削除
+   if(positionCount <= 0)
+   {
+      // 平均価格ラインと利確ラインを削除
+      DeleteGhostLinesByType(operationType, LINE_TYPE_AVG_PRICE); // 平均価格ライン削除
+      DeleteGhostLinesByType(operationType, LINE_TYPE_TP);        // TP価格ライン削除
+      
+      // ラベルも削除
+      string labelName = "AvgPriceLabel" + ((side == 0) ? "Buy" : "Sell");
+      string tpLabelName = "TpLabel" + ((side == 0) ? "Buy" : "Sell");
+      
+      if(ObjectFind(g_ObjectPrefix + labelName) >= 0)
+         ObjectDelete(g_ObjectPrefix + labelName);
+      if(ObjectFind(g_ObjectPrefix + tpLabelName) >= 0)
+         ObjectDelete(g_ObjectPrefix + tpLabelName);
+      
+      return;
+   }
 
    // ポジション・ゴーストどちらも無い場合はスキップ
    if(positionCount <= 0 && ghostCount <= 0)
@@ -1031,7 +935,7 @@ void UpdateAveragePriceLines(int side)
    {
       currentLinePrice = ObjectGet(g_ObjectPrefix + lineName, OBJPROP_PRICE1);
       // 価格の変更が小さい場合は更新しない（頻繁な更新を避ける）
-      if(MathAbs(currentLinePrice - avgPrice) < 0.1)
+      if(MathAbs(currentLinePrice - avgPrice) < Point)
       {
          needsUpdate = false;
       }
@@ -1075,7 +979,7 @@ void UpdateAveragePriceLines(int side)
    CreatePriceLabel(g_ObjectPrefix + labelName, labelText, avgPrice, lineColor, side == 0);
 
    // 利確価格のラベル表示
-   string tpLabelText = "TP: " + DoubleToString(tpPrice, Digits);
+   string tpLabelText = "TP: " + DoubleToString(tpPrice, Digits) + " (+" + IntegerToString(TakeProfitPoints) + "pt)";
    CreatePriceLabel(g_ObjectPrefix + tpLabelName, tpLabelText, tpPrice, TakeProfitLineColor, side == 0);
 
    // 静的変数で最後の更新時間を記録
