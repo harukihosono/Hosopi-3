@@ -303,6 +303,8 @@ if(timeEntryAllowed && (enabledStrategies == 0 || strategySignals)) {
 return entrySignal;
 }
 
+
+
 //+------------------------------------------------------------------+
 //| 実際のエントリー処理 - リアルエントリー時のロット選択ロジックと     |
 //| エントリーログを修正                                              |
@@ -409,26 +411,16 @@ void ExecuteRealEntry(int type, string entryReason)
             DoubleToString(lots, 2), ", 価格=", 
             DoubleToString(type == OP_BUY ? GetAskPrice() : GetBidPrice(), 5));
       
-      // 重要な変更: 反対側のゴーストが存在する場合、それは保持する
-      int oppositeType = (type == OP_BUY) ? OP_SELL : OP_BUY;
-      int oppositeGhostCount = ghost_position_count(oppositeType);
-      
-      if(oppositeGhostCount > 0) {
-         Print("反対側(", oppositeType == OP_BUY ? "Buy" : "Sell", ")にゴーストポジションが", 
-               oppositeGhostCount, "個あるため、そちらは保持します");
-               
-         // 現在のタイプのゴーストのみリセット
-         ResetSpecificGhost(type);
-      } else {
-         // 反対側にゴーストがない場合は通常通りリセット
-         ResetGhost(type);
-      }
+      // ゴーストポジションはリセットしない
+      Print("リアルエントリー後もゴーストポジションは維持します");
    }
    else
    {
       Print("リアル", type == OP_BUY ? "Buy" : "Sell", "エントリーエラー: ", GetLastError());
    }
 }
+
+
 
 //+------------------------------------------------------------------+
 //| リアルナンピンの実行 - 最適化とログ出力を追加                     |

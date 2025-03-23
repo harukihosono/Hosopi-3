@@ -877,28 +877,6 @@ void DeleteGhostLinesByType(int operationType, int lineType)
 }
 
 
-
-
-//+------------------------------------------------------------------+
-//| 決済時に点線と関連ラインを完全に削除する関数                      |
-//+------------------------------------------------------------------+
-void DeleteGhostLinesAndPreventRecreation(int type)
-{
-   string typeStr = (type == OP_BUY) ? "Buy" : "Sell";
-   Print("DeleteGhostLinesAndPreventRecreation: ", typeStr, " 関連のゴースト水平線を削除します");
-   
-   // 水平線のみを削除
-   DeleteGhostLinesByType(type, LINE_TYPE_GHOST);    // ゴースト水平線
-   
-   // チャートを再描画
-   ChartRedraw();
-}
-
-
-
-//+------------------------------------------------------------------+
-//| UpdateAveragePriceLines関数の修正 - ゴーストのみでも表示
-//+------------------------------------------------------------------+
 void UpdateAveragePriceLines(int side)
 {
    // 処理対象のオペレーションタイプを決定
@@ -974,11 +952,6 @@ void UpdateAveragePriceLines(int side)
    if(ObjectFind(g_ObjectPrefix + tpLabelName) >= 0)
       ObjectDelete(g_ObjectPrefix + tpLabelName);
 
-   // TP価格の計算
-   double tpPrice = (side == 0) ? 
-                  avgPrice + TakeProfitPoints * Point : 
-                  avgPrice - TakeProfitPoints * Point;
-
    // ライン色の決定
    color lineColor;
    if(side == 0) // Buy
@@ -989,26 +962,54 @@ void UpdateAveragePriceLines(int side)
    // 平均取得価格ライン（カスタムデザイン）
    CreateHorizontalLine(g_ObjectPrefix + lineName, avgPrice, lineColor, STYLE_SOLID, 2);
 
-   // 利確ライン（カスタムデザイン）
-   CreateHorizontalLine(g_ObjectPrefix + tpLineName, tpPrice, TakeProfitLineColor, STYLE_DASH, 1);
-
    // 平均価格のラベル表示（見やすく）
    string labelText = direction + " AVG: " + DoubleToString(avgPrice, Digits) + 
                   " P/L: " + DoubleToStr(combinedProfit, 2) + "$";
    CreatePriceLabel(g_ObjectPrefix + labelName, labelText, avgPrice, lineColor, side == 0);
 
-   // 利確価格のラベル表示
-   string tpLabelText = "TP: " + DoubleToString(tpPrice, Digits) + " (+" + IntegerToString(TakeProfitPoints) + "pt)";
-   CreatePriceLabel(g_ObjectPrefix + tpLabelName, tpLabelText, tpPrice, TakeProfitLineColor, side == 0);
+   // TPが有効な場合のみ、利確ラインと利確ラベルを表示
+   if(EnableTakeProfitPoints)
+   {
+      // TP価格の計算
+      double tpPrice = (side == 0) ? 
+                     avgPrice + TakeProfitPoints * Point : 
+                     avgPrice - TakeProfitPoints * Point;
+
+      // 利確ライン（カスタムデザイン）
+      CreateHorizontalLine(g_ObjectPrefix + tpLineName, tpPrice, TakeProfitLineColor, STYLE_DASH, 1);
+
+      // 利確価格のラベル表示
+      string tpLabelText = "TP: " + DoubleToString(tpPrice, Digits) + " (+" + IntegerToString(TakeProfitPoints) + "pt)";
+      CreatePriceLabel(g_ObjectPrefix + tpLabelName, tpLabelText, tpPrice, TakeProfitLineColor, side == 0);
+   }
 
    // 静的変数で最後の更新時間を記録
    static datetime lastUpdateLogTime = 0;
    if(TimeCurrent() - lastUpdateLogTime > 30) // 30秒に1回だけログ出力
    {
-      Print("平均取得価格ライン更新: ", direction, ", 平均価格=", DoubleToString(avgPrice, Digits), 
-            ", TP=", DoubleToString(tpPrice, Digits));
+      Print("平均取得価格ライン更新: ", direction, ", 平均価格=", DoubleToString(avgPrice, Digits));
+      if(EnableTakeProfitPoints)
+      {
+         double tpPrice = (side == 0) ? avgPrice + TakeProfitPoints * Point : avgPrice - TakeProfitPoints * Point;
+         Print("TP=", DoubleToString(tpPrice, Digits));
+      }
       lastUpdateLogTime = TimeCurrent();
    }
+}
+
+//+------------------------------------------------------------------+
+//| 決済時に点線と関連ラインを完全に削除する関数                      |
+//+------------------------------------------------------------------+
+void DeleteGhostLinesAndPreventRecreation(int type)
+{
+   string typeStr = (type == OP_BUY) ? "Buy" : "Sell";
+   Print("DeleteGhostLinesAndPreventRecreation: ", typeStr, " 関連のゴースト水平線を削除します");
+   
+   // 水平線のみを削除
+   DeleteGhostLinesByType(type, LINE_TYPE_GHOST);    // ゴースト水平線
+   
+   // チャートを再描画
+   ChartRedraw();
 }
 
 

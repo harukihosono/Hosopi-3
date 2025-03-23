@@ -414,14 +414,32 @@ void ProcessButtonClick(string buttonName)
       UpdateGUI();
    }
    
-   // Close All
-   else if(buttonName == "btnCloseAll")
-   {
-      Print("Close All clicked");
-      position_close(0);
-      position_close(1);
-      UpdateGUI();
-   }
+// Close All
+else if(buttonName == "btnCloseAll")
+{
+   Print("Close All clicked");
+   
+   // リアルポジションを閉じる
+   position_close(0);
+   position_close(1);
+   
+   // ゴーストもリセット
+   ResetGhost(OP_BUY);
+   ResetGhost(OP_SELL);
+   
+   // グローバル変数からもクリア
+   ClearGhostPositionsFromGlobal();
+   
+   // 決済済みフラグもリセット
+   g_BuyGhostClosed = false;
+   g_SellGhostClosed = false;
+   SaveGhostPositionsToGlobal();
+   
+   Print("すべてのポジションとゴーストをリセットしました");
+   
+   UpdateGUI();
+   UpdatePositionTable();
+}
    
    // Ghost Toggle
    else if(buttonName == "btnGhostToggle" || buttonName == "btnGhostMode")
