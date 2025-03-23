@@ -746,21 +746,21 @@ void OnTickManager()
    // GUIを更新
    UpdateGUI();
 
-// 平均取得価格ラインの表示更新 - 更新間隔を設定
+// 平均取得価格ラインの表示更新 - 修正版
 if(AveragePriceLine == ON_MODE && g_AvgPriceVisible)
 {
    static datetime lastLineUpdateTime = 0;
    if(TimeCurrent() - lastLineUpdateTime > 5) // 5秒間隔で更新
    {
-      // リアルポジションのチェック
+      // 各方向のリアルポジション数をチェック
       bool hasBuyPosition = position_count(OP_BUY) > 0;
       bool hasSellPosition = position_count(OP_SELL) > 0;
       
       // Buy側の更新（リアルポジションがある場合のみ）
-      UpdateAveragePriceLines(0);
+      UpdateAveragePriceLines(0); // この関数内部でリアルポジションをチェックしています
       
       // Sell側の更新（リアルポジションがある場合のみ）
-      UpdateAveragePriceLines(1);
+      UpdateAveragePriceLines(1); // この関数内部でリアルポジションをチェックしています
       
       lastLineUpdateTime = TimeCurrent();
    }

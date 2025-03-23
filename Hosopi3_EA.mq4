@@ -162,7 +162,7 @@ input ENTRY_MODE EntryMode = MODE_BOTH;   // エントリー方向
 
 // ======== 決済利確条件設定 ========
 sinput string Comment_RIGUITP_Conditions = ""; //+--- 利確条件設定 ---+
-input bool EnableTakeProfitPoints = true;     // 利確幅を有効にする
+input bool EnableTakeProfitPoints = false;     // 利確幅を有効にする
 input int TakeProfitPoints = 2000;            // 利確幅（Point）
 input bool EnableTrailingStop = false;        // トレールストップを有効化
 input int TrailingTrigger = 1000;             // トレールトリガー（Point）
