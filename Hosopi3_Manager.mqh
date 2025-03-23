@@ -403,8 +403,7 @@ void ExecuteRealEntry(int type, string entryReason)
    LogEntryReason(type, "自動エントリー", entryReason);
    
    // MQL4/MQL5互換のposition_entry関数を使用
-   bool result = position_entry(type, lots, Slippage, MagicNumber, "Hosopi 3 EA");
-   
+  bool result = position_entry(type, lots, Slippage, MagicNumber, "Hosopi 3 EA");
    if(result)
    {
       Print("リアル", type == OP_BUY ? "Buy" : "Sell", "エントリー成功: ロット=", 
@@ -422,8 +421,9 @@ void ExecuteRealEntry(int type, string entryReason)
 
 
 
+
 //+------------------------------------------------------------------+
-//| リアルナンピンの実行 - 最適化とログ出力を追加                     |
+//| リアルナンピンの実行 - 0.01ロット修正版                         |
 //+------------------------------------------------------------------+
 void ExecuteRealNanpin(int typeOrder)
 {
@@ -455,20 +455,6 @@ void ExecuteRealNanpin(int typeOrder)
       return;
    }
    
-   // エントリー方向が許可されているかチェック
-   if(!IsEntryAllowed(typeOrder == OP_BUY ? 0 : 1))
-   {
-      Print("エントリー方向が許可されていないため、リアルナンピンはスキップされました");
-      return;
-   }
-   
-   // エントリー時間が許可されているかチェック
-   if(!IsTimeAllowed(typeOrder))
-   {
-      Print("エントリー時間が許可されていないため、リアルナンピンはスキップされました");
-      return;
-   }
-   
    // 最後のリアルポジションのロットサイズを取得
    double lastLotSize = 0;
    datetime lastOpenTime = 0;
@@ -486,62 +472,50 @@ void ExecuteRealNanpin(int typeOrder)
                lastOpenTime = OrderOpenTime();
                lastLotSize = OrderLots();
                priceLastPos = OrderOpenPrice();
+               Print("最新ポジション見つかりました: チケット=", OrderTicket(), 
+                     ", ロット=", DoubleToString(lastLotSize, 2), 
+                     ", 時間=", TimeToString(lastOpenTime));
             }
          }
       }
    }
    
-   // ロットサイズが取得できなかった場合（通常ありえない）
+   // ロットサイズが取得できなかった場合
    if(lastLotSize <= 0)
    {
       Print("警告: 最後のポジションのロットサイズを取得できませんでした。デフォルトロットを使用します。");
-      lastLotSize = g_LotTable[0];
+      lastLotSize = InitialLot;
    }
    
    // 次のナンピンロットを計算
    double lotsToUse;
    
-   // ゴーストポジション数を取得して考慮する
-   int ghostCount = ghost_position_count(typeOrder);
-   int totalLevel = posCount + ghostCount;
-   
-   // 個別指定モードが有効な場合はテーブルから取得
-   if(IndividualLotEnabled == ON_MODE) {
-      // 現在のポジション数に対応するレベルを使用
-      if(totalLevel < ArraySize(g_LotTable)) {
-         lotsToUse = g_LotTable[totalLevel];
-         Print("個別指定ロットモード: 合計レベル", totalLevel + 1, "のロットサイズ", DoubleToString(lotsToUse, 2), "を使用");
-      } else {
-         // インデックス範囲外の場合は最後のロットを使用
-         lotsToUse = g_LotTable[ArraySize(g_LotTable) - 1];
-         Print("警告: ナンピンレベルがロットテーブルを超えています。最後のロット", DoubleToString(lotsToUse, 2), "を使用");
-      }
-   } else {
-      // マーチンゲールモードでは最後のポジションのロットに倍率を掛ける
+   // 0.01ロットの場合のみ特別処理
+   if(MathAbs(lastLotSize - 0.01) < 0.001)
+   {
+      lotsToUse = 0.02;
+      Print("0.01ロット検出: 次のロットを0.02に固定します");
+   }
+   else
+   {
+      // それ以外は通常のマーチンゲール計算
       lotsToUse = lastLotSize * LotMultiplier;
-      
-      // 小数点以下3桁で切り上げ（ロットテーブルと同様の計算）
       lotsToUse = MathCeil(lotsToUse * 1000) / 1000;
-      
-      Print("マーチンゲールモード: ベースロット=", DoubleToString(lastLotSize, 2),
-         ", 倍率=", DoubleToString(LotMultiplier, 2),
-         ", 次のロット=", DoubleToString(lotsToUse, 2));
+      Print("通常マーチンゲール計算: ベースロット=", DoubleToString(lastLotSize, 3),
+          ", 倍率=", DoubleToString(LotMultiplier, 2),
+          ", 次のロット=", DoubleToString(lotsToUse, 3));
    }
    
    // 現在の価格を取得（BuyならBid、SellならAsk）
    double priceCurrent = (typeOrder == OP_BUY) ? GetBidPrice() : GetAskPrice();
    
-   // 現在のレベルに対応するナンピン幅を取得
-   int spreadForNanpin = g_NanpinSpreadTable[posCount - 1];
+   // 最新のナンピン幅を取得
+   int nanpinIndex = MathMin(posCount - 1, ArraySize(g_NanpinSpreadTable) - 1);
+   int spreadForNanpin = g_NanpinSpreadTable[nanpinIndex];
    
-   // ナンピン理由をログに記録
-   string reasonText = StringFormat("ナンピン条件成立: 前回価格=%s, 現在価格=%s, 差=%d ポイント (ナンピン幅=%d)",
-                              DoubleToString(priceLastPos, Digits),
-                              DoubleToString(priceCurrent, Digits),
-                              (int)MathAbs((priceLastPos - priceCurrent) / Point),
-                              spreadForNanpin);
-   
-   LogEntryReason(typeOrder, "ナンピン", reasonText);
+   // リアルナンピン実行
+   Print("リアルナンピン実行: タイプ=", typeOrder == OP_BUY ? "Buy" : "Sell",
+         ", ロット=", DoubleToString(lotsToUse, 3));
    
    // MQL4/MQL5互換のposition_entry関数を使用
    bool entryResult = position_entry(typeOrder, lotsToUse, Slippage, MagicNumber, "Hosopi 3 EA Nanpin");
@@ -549,7 +523,7 @@ void ExecuteRealNanpin(int typeOrder)
    if(entryResult)
    {
       Print("リアル", typeOrder == OP_BUY ? "Buy" : "Sell", "ナンピン成功: ", 
-            "ロット=", DoubleToString(lotsToUse, 2), ", 価格=", 
+            "ロット=", DoubleToString(lotsToUse, 3), ", 価格=", 
             DoubleToString(typeOrder == OP_BUY ? GetAskPrice() : GetBidPrice(), 5));
    }
    else
@@ -559,8 +533,14 @@ void ExecuteRealNanpin(int typeOrder)
 }
 
 
-//| 裁量エントリー用関数 - ユーザーが手動で行うエントリー             |
-//+------------------------------------------------------------------+
+
+
+
+
+
+
+
+
 void ExecuteDiscretionaryEntry(int typeOrder, double lotSize = 0)
 {
    if(!EnableAutomaticTrading)
@@ -931,8 +911,15 @@ void CheckNanpinConditions(int side)
    }
 }
 
+
+
+
+
+
+
+
 //+------------------------------------------------------------------+
-//| Expert initialization function - バックテスト用修正                |
+//| InitializeEA関数 - 修正版                                        |
 //+------------------------------------------------------------------+
 int InitializeEA()
 {
@@ -969,7 +956,25 @@ int InitializeEA()
       Print("ナンピンスキップレベルがSKIP_NONEのため、ゴーストモードを無効化しました");
    } else {
       g_GhostMode = true; // ゴーストモード有効
+      Print("ナンピンスキップレベルが設定されているため、ゴーストモードを有効化しました");
    }
+   
+   // エントリーモードの確認と表示
+   string entryModeStr = "";
+   switch(EntryMode) {
+      case MODE_BUY_ONLY:
+         entryModeStr = "Buy Only";
+         break;
+      case MODE_SELL_ONLY:
+         entryModeStr = "Sell Only";
+         break;
+      case MODE_BOTH:
+         entryModeStr = "Buy & Sell Both";
+         break;
+      default:
+         entryModeStr = "Unknown";
+   }
+   Print("現在のエントリーモード: ", entryModeStr);
    
    // ロットテーブルの内容をログに出力
    string lotTableStr = "LOTテーブル: ";
@@ -1032,6 +1037,13 @@ int InitializeEA()
    
    return(INIT_SUCCEEDED);
 }
+
+
+
+
+
+
+
 
 //+------------------------------------------------------------------+
 //| Expert deinitialization function - バックテスト用修正             |

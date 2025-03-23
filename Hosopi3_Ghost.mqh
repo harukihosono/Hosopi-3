@@ -497,12 +497,15 @@ void ResetGhost(int type)
    }
 }
 
+
+
 //+------------------------------------------------------------------+
-//| Hosopi3_Manager.mqh の ProcessRealEntries関数                     |
+//| Hosopi3_Manager.mqh の ProcessRealEntries関数 - 修正版            |
 //+------------------------------------------------------------------+
 void ProcessRealEntries(int side)
 {
-   Print("ProcessRealEntries: ", side == 0 ? "Buy" : "Sell", " 処理開始");
+   string direction = (side == 0) ? "Buy" : "Sell";
+   Print("ProcessRealEntries: ", direction, " 処理開始");
    
    // リアルポジションがある場合はスキップ
    if(position_count(OP_BUY) > 0 || position_count(OP_SELL) > 0) {
@@ -512,7 +515,6 @@ void ProcessRealEntries(int side)
 
    // 処理対象のオペレーションタイプを決定
    int operationType = (side == 0) ? OP_BUY : OP_SELL;
-   string direction = (side == 0) ? "Buy" : "Sell";
 
    // エントリーモードに基づくチェック
    bool modeAllowed = false;
@@ -525,6 +527,8 @@ void ProcessRealEntries(int side)
       Print("ProcessRealEntries: エントリーモードにより", direction, "側はスキップします");
       return;
    }
+   
+   Print("ProcessRealEntries: ", direction, " エントリーモードチェック通過");
 
    // 時間条件とインジケーター条件をチェック
    bool timeSignal = false;
@@ -655,8 +659,13 @@ void ProcessRealEntries(int side)
       Print("ProcessRealEntries: リアル", direction, "エントリー条件不成立のためスキップします: ", entryReason);
    }
 }
-//| どのインジケーターがシグナルを出したかを取得                       |
-//+------------------------------------------------------------------+
+
+
+
+
+
+
+
 string GetActiveIndicatorSignals(int side)
 {
    string activeSignals = "";
@@ -1895,73 +1904,8 @@ void CleanupAndRebuildGhostObjects()
 }
 
 
-//+------------------------------------------------------------------+
-//| Hosopi3_Ghost.mqh の ProcessGhostEntries関数 - 超シンプル版       |
-//+------------------------------------------------------------------+
-void ProcessGhostEntries(int side)
-{
-   // リアルポジションがある場合はスキップ
-   if(position_count(OP_BUY) > 0 || position_count(OP_SELL) > 0) {
-      Print("ProcessGhostEntries: リアルポジションが存在するためスキップします");
-      return;
-   }
 
-   // ゴーストモードチェック
-   if(!g_GhostMode) {
-      Print("ProcessGhostEntries: ゴーストモード無効のためスキップします");
-      return;
-   }
 
-   // ナンピンスキップレベルがSKIP_NONEの場合は直接リアルエントリー
-   if(NanpinSkipLevel == SKIP_NONE) {
-      ProcessRealEntries(side);
-      return;
-   }
-
-   int operationType = (side == 0) ? OP_BUY : OP_SELL;
-   string direction = (side == 0) ? "Buy" : "Sell";
-   
-   // 決済済みフラグのチェック
-   bool closedFlag = (operationType == OP_BUY) ? g_BuyGhostClosed : g_SellGhostClosed;
-   if(closedFlag) return;
-
-   // エントリーモードチェック
-   bool modeAllowed = false;
-   if(side == 0) // Buy
-      modeAllowed = (EntryMode == MODE_BUY_ONLY || EntryMode == MODE_BOTH);
-   else // Sell
-      modeAllowed = (EntryMode == MODE_SELL_ONLY || EntryMode == MODE_BOTH);
-   
-   if(!modeAllowed) return;
-   
-   // ゴーストポジションの状態チェック
-   int maxGhostPositions = (int)NanpinSkipLevel;
-   int ghostCount = ghost_position_count(operationType);
-
-   // 新規エントリー条件
-   if(ghostCount == 0 && position_count(operationType) == 0)
-   {
-      // エントリー条件: インジケーターまたは時間
-      bool indicatorSignal = CheckIndicatorSignals(side);
-      bool timeSignal = UseEvenOddHoursEntry ? IsTimeEntryAllowed(side) : false;
-      
-      // いずれかの条件が満たされればエントリー
-      bool shouldEnter = indicatorSignal || timeSignal;
-      
-      string reason = "";
-      if(indicatorSignal) reason += "インジケーター条件OK ";
-      if(timeSignal) reason += "時間条件OK ";
-      
-      if(shouldEnter) {
-         Print("新規ゴースト", direction, "エントリー実行 - 理由: ", reason);
-         InitializeGhostPosition(operationType, reason);
-      }
-   }
-   // ナンピン条件チェック
-   else if(ghostCount > 0 && ghostCount < maxGhostPositions && EnableNanpin) {
-      CheckGhostNanpinCondition(operationType);
-   }
-}
 
 //+------------------------------------------------------------------+
 //| インジケーターのシグナルをまとめてチェックする                     |
@@ -2035,4 +1979,91 @@ void CheckLimitTakeProfitExecutions()
    // 現在のカウントを保存（次回のチェックのため）
    prevBuyCount = currentBuyCount;
    prevSellCount = currentSellCount;
+}
+
+
+//+------------------------------------------------------------------+
+//| Hosopi3_Ghost.mqh の ProcessGhostEntries関数 - 修正版             |
+//+------------------------------------------------------------------+
+void ProcessGhostEntries(int side)
+{
+   string direction = (side == 0) ? "Buy" : "Sell";
+   Print("ProcessGhostEntries: ", direction, " 処理開始");
+   
+   // リアルポジションがある場合はスキップ
+   if(position_count(OP_BUY) > 0 || position_count(OP_SELL) > 0) {
+      Print("ProcessGhostEntries: リアルポジションが存在するためスキップします");
+      return;
+   }
+
+   // ゴーストモードチェック
+   if(!g_GhostMode) {
+      Print("ProcessGhostEntries: ゴーストモード無効のためスキップします");
+      return;
+   }
+
+   // ナンピンスキップレベルがSKIP_NONEの場合は直接リアルエントリー
+   if(NanpinSkipLevel == SKIP_NONE) {
+      Print("ProcessGhostEntries: ナンピンスキップレベルがSKIP_NONE、直接リアルエントリーを実行");
+      ProcessRealEntries(side);
+      return;
+   }
+
+   int operationType = (side == 0) ? OP_BUY : OP_SELL;
+   
+   // 決済済みフラグのチェック
+   bool closedFlag = (operationType == OP_BUY) ? g_BuyGhostClosed : g_SellGhostClosed;
+   if(closedFlag) {
+      Print("ProcessGhostEntries: ", direction, " 決済済みフラグが立っているためスキップします");
+      return;
+   }
+
+   // エントリーモードチェック
+   bool modeAllowed = false;
+   if(side == 0) // Buy
+      modeAllowed = (EntryMode == MODE_BUY_ONLY || EntryMode == MODE_BOTH);
+   else // Sell
+      modeAllowed = (EntryMode == MODE_SELL_ONLY || EntryMode == MODE_BOTH);
+   
+   if(!modeAllowed) {
+      Print("ProcessGhostEntries: エントリーモードにより ", direction, " 側はスキップします");
+      return;
+   }
+   
+   Print("ProcessGhostEntries: ", direction, " エントリーモードチェック通過");
+   
+   // ゴーストポジションの状態チェック
+   int maxGhostPositions = (int)NanpinSkipLevel;
+   int ghostCount = ghost_position_count(operationType);
+   
+   Print("ProcessGhostEntries: 現在の", direction, "ゴーストカウント=", ghostCount, ", 最大数=", maxGhostPositions);
+
+   // 新規エントリー条件
+   if(ghostCount == 0 && position_count(operationType) == 0)
+   {
+      // エントリー条件: インジケーターまたは時間
+      bool indicatorSignal = CheckIndicatorSignals(side);
+      bool timeSignal = UseEvenOddHoursEntry ? IsTimeEntryAllowed(side) : false;
+      
+      Print("ProcessGhostEntries: ", direction, " インジケーターシグナル=", indicatorSignal, ", 時間シグナル=", timeSignal);
+      
+      // いずれかの条件が満たされればエントリー
+      bool shouldEnter = indicatorSignal || timeSignal;
+      
+      string reason = "";
+      if(indicatorSignal) reason += "インジケーター条件OK ";
+      if(timeSignal) reason += "時間条件OK ";
+      
+      if(shouldEnter) {
+         Print("新規ゴースト", direction, "エントリー実行 - 理由: ", reason);
+         InitializeGhostPosition(operationType, reason);
+      } else {
+         Print("ProcessGhostEntries: ", direction, " エントリー条件を満たさないためスキップします");
+      }
+   }
+   // ナンピン条件チェック
+   else if(ghostCount > 0 && ghostCount < maxGhostPositions && EnableNanpin) {
+      Print("ProcessGhostEntries: 既存ゴーストあり、ナンピン条件チェック開始");
+      CheckGhostNanpinCondition(operationType);
+   }
 }

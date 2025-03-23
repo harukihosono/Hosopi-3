@@ -876,14 +876,15 @@ bool EvaluateIndicatorsForEntry(int side)
 
 
 
-
-//| Hosopi3_Manager.mqh の ProcessStrategyLogic関数                  |
+//+------------------------------------------------------------------+
+//| Hosopi3_Manager.mqh の ProcessStrategyLogic関数 - 修正版          |
 //+------------------------------------------------------------------+
 void ProcessStrategyLogic()
 {
    // 自動売買が無効の場合は何もしない
    if(!EnableAutomaticTrading)
    {
+      Print("ProcessStrategyLogic: 自動売買が無効のためスキップします");
       return;
    }
    
@@ -892,22 +893,23 @@ void ProcessStrategyLogic()
    bool hasRealSell = position_count(OP_SELL) > 0;
    
    // ゴーストモードの設定（NanpinSkipLevel に基づく）
-   bool useGhostMode = true;
-   if(NanpinSkipLevel == SKIP_NONE) {
-      useGhostMode = false; // ゴーストモードは常に無効
-   }
+   bool useGhostMode = (NanpinSkipLevel != SKIP_NONE) && g_GhostMode;
    
    // ゴーストエントリー機能がOFFの場合はゴーストモードを無効化
    if(!EnableGhostEntry) {
       useGhostMode = false;
    }
    
+   Print("ProcessStrategyLogic: リアルポジション状況 - Buy=", hasRealBuy, ", Sell=", hasRealSell);
+   Print("ProcessStrategyLogic: ゴーストモード=", useGhostMode ? "有効" : "無効", ", NanpinSkipLevel=", EnumToString(NanpinSkipLevel));
+
    // リアルポジションがある場合
    if(hasRealBuy || hasRealSell)
    {
       // ナンピン機能が有効な場合のみナンピン条件をチェック
       if(EnableNanpin)
       {
+         Print("ProcessStrategyLogic: リアルポジションあり、ナンピン条件チェック開始");
          // リアルポジションのナンピン条件をチェック
          CheckNanpinConditions(0); // Buy側のナンピン条件チェック
          CheckNanpinConditions(1); // Sell側のナンピン条件チェック
@@ -916,25 +918,39 @@ void ProcessStrategyLogic()
    else
    {
       // リアルポジションがない場合
+      Print("ProcessStrategyLogic: リアルポジションなし、エントリー条件チェック開始");
+
+      // エントリーモード表示
+      Print("ProcessStrategyLogic: 現在のエントリーモード=", 
+           (EntryMode == MODE_BUY_ONLY) ? "BUYのみ" : 
+           (EntryMode == MODE_SELL_ONLY) ? "SELLのみ" : "両方");
 
       // ゴーストモードがONの場合
       if(useGhostMode && EnableGhostEntry)
       {
+         Print("ProcessStrategyLogic: ゴーストエントリー処理を実行");
+         // エントリーモードに基づいてゴーストエントリー処理
+         if(EntryMode == MODE_BUY_ONLY || EntryMode == MODE_BOTH) {
+            ProcessGhostEntries(0); // Buy側
+         }
          
-
-            ProcessGhostEntries(0);
-
-            ProcessGhostEntries(1);
-         
+         if(EntryMode == MODE_SELL_ONLY || EntryMode == MODE_BOTH) {
+            ProcessGhostEntries(1); // Sell側
+         }
       }
       else
       {
-
+         Print("ProcessStrategyLogic: リアルエントリー処理を実行");
+         // エントリーモードに基づいてリアルエントリー処理
+         if(EntryMode == MODE_BUY_ONLY || EntryMode == MODE_BOTH) {
+            ProcessRealEntries(0); // Buy側
+         }
          
-            ProcessRealEntries(0);
-
-            ProcessRealEntries(1);
-         
+         if(EntryMode == MODE_SELL_ONLY || EntryMode == MODE_BOTH) {
+            ProcessRealEntries(1); // Sell側
+         }
       }
    }
 }
+
+

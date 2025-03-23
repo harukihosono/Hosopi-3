@@ -299,13 +299,30 @@ void InitializeLotTable()
       }
    }
    
-   // ロットテーブルの内容をログ出力
-   string lotTableStr = "LOTテーブル: ";
-   for(int i = 0; i < MathMin(10, ArraySize(g_LotTable)); i++)
+   // ロットテーブルの内容をログ出力（詳細版）
+   string lotTableStr = "LOTテーブル詳細: \n";
+   for(int i = 0; i < ArraySize(g_LotTable); i++)
    {
-      lotTableStr += DoubleToString(g_LotTable[i], 2) + ", ";
+      lotTableStr += "レベル " + IntegerToString(i+1) + ": " + DoubleToString(g_LotTable[i], 3) + "\n";
    }
    Print(lotTableStr);
+   
+   // マーチンゲールモードが有効な場合、計算値と設定値の確認
+   if(IndividualLotEnabled == OFF_MODE)
+   {
+      Print("マーチンゲール設定確認: ");
+      Print("- 初期ロット: ", DoubleToString(InitialLot, 3));
+      Print("- 倍率: ", DoubleToString(LotMultiplier, 2));
+      
+      // 計算例を表示
+      double lot = InitialLot;
+      string calcExample = "倍率計算例: " + DoubleToString(lot, 3);
+      for(int i = 1; i < 5; i++) {
+         lot = MathCeil(lot * LotMultiplier * 1000) / 1000;
+         calcExample += " → " + DoubleToString(lot, 3);
+      }
+      Print(calcExample);
+   }
 }
 
 
