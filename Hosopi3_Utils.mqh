@@ -117,7 +117,7 @@ bool is_summer()
 bool IsEntryAllowed(int side)
 {
    // 偶数/奇数時間エントリーが無効な場合はfalse
-   if(!g_UseEvenOddHoursEntry)
+   if(!UseEvenOddHoursEntry)
       return false;
       
    // side: 0 = Buy, 1 = Sell

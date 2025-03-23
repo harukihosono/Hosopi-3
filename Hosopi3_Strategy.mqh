@@ -874,123 +874,16 @@ bool EvaluateIndicatorsForEntry(int side)
     return strategySignals;
 }
 
-//+------------------------------------------------------------------+
-//| Hosopi3_Strategy.mqh の ShouldEnterPosition関数                   |
-//+------------------------------------------------------------------+
-bool ShouldEnterPosition(int side)
-{
-    bool timeSignal = false;
-    bool indicatorSignal = false;
-    
-    string direction = (side == 0) ? "Buy" : "Sell";
-    Print("ShouldEnterPosition 開始 - direction=", direction);
-    
-    // 時間条件の評価
-    if(g_EnableTimeEntry) {
-        timeSignal = IsTimeEntryAllowed(side);
-        Print("時間条件: ", timeSignal ? "成立" : "不成立");
-    } else {
-        // 時間条件チェックがOFFの場合
-        timeSignal = false;
-        Print("時間条件チェックはOFF");
-        // 両方の条件が無効の場合の警告を追加
-        if(!g_EnableIndicatorsEntry) {
-            Print("警告: 時間とインジケーターの両方の条件が無効です");
-        }
-    }
-    
-    // インジケーター条件の評価
-    if(g_EnableIndicatorsEntry) {
-        // インジケーターが1つも有効でない場合のチェックを追加
-        int enabledCount = 0;
-        if(MA_Cross_Strategy != STRATEGY_DISABLED) enabledCount++;
-        if(RSI_Strategy != STRATEGY_DISABLED) enabledCount++;
-        if(BB_Strategy != STRATEGY_DISABLED) enabledCount++;
-        if(RCI_Strategy != STRATEGY_DISABLED) enabledCount++;
-        if(Stochastic_Strategy != STRATEGY_DISABLED) enabledCount++;
-        if(CCI_Strategy != STRATEGY_DISABLED) enabledCount++;
-        if(ADX_Strategy != STRATEGY_DISABLED) enabledCount++;
-        
-        Print("有効なインジケーター数: ", enabledCount);
-        
-        if(enabledCount == 0) {
-            // 有効なインジケーターがない場合は明示的に false を返す
-            indicatorSignal = false;
-            Print("インジケーターが1つも有効になっていないため、条件は不成立");
-        } else {
-            // 個別にインジケーターを確認して詳細ログを出力
-            bool ma_signal = (MA_Cross_Strategy != STRATEGY_DISABLED) ? CheckMASignal(side) : false;
-            bool rsi_signal = (RSI_Strategy != STRATEGY_DISABLED) ? CheckRSISignal(side) : false;
-            bool bb_signal = (BB_Strategy != STRATEGY_DISABLED) ? CheckBollingerSignal(side) : false;
-            bool rci_signal = (RCI_Strategy != STRATEGY_DISABLED) ? CheckRCISignal(side) : false;
-            bool stoch_signal = (Stochastic_Strategy != STRATEGY_DISABLED) ? CheckStochasticSignal(side) : false;
-            bool cci_signal = (CCI_Strategy != STRATEGY_DISABLED) ? CheckCCISignal(side) : false;
-            bool adx_signal = (ADX_Strategy != STRATEGY_DISABLED) ? CheckADXSignal(side) : false;
-            
-            Print("MA信号=", ma_signal, ", RSI信号=", rsi_signal, ", BB信号=", bb_signal,
-                  ", RCI信号=", rci_signal, ", Stochastic信号=", stoch_signal,
-                  ", CCI信号=", cci_signal, ", ADX信号=", adx_signal);
-                  
-            // インジケーターのチェック結果
-            indicatorSignal = false; // デフォルトでfalse
-            
-            // 各インジケーターのシグナルを個別にチェック
-            if(MA_Cross_Strategy != STRATEGY_DISABLED && ma_signal) indicatorSignal = true;
-            if(RSI_Strategy != STRATEGY_DISABLED && rsi_signal) indicatorSignal = true;
-            if(BB_Strategy != STRATEGY_DISABLED && bb_signal) indicatorSignal = true;
-            if(RCI_Strategy != STRATEGY_DISABLED && rci_signal) indicatorSignal = true;
-            if(Stochastic_Strategy != STRATEGY_DISABLED && stoch_signal) indicatorSignal = true;
-            if(CCI_Strategy != STRATEGY_DISABLED && cci_signal) indicatorSignal = true;
-            if(ADX_Strategy != STRATEGY_DISABLED && adx_signal) indicatorSignal = true;
-            
-            Print("インジケーター条件の最終結果: ", indicatorSignal ? "成立" : "不成立");
-        }
-    } else {
-        // インジケーター条件チェックがOFFの場合
-        if(!g_EnableTimeEntry) {
-            // 両方無効の場合
-            indicatorSignal = false;
-            Print("インジケーター条件チェックはOFF（両方の条件が無効のため、エントリーしません）");
-        } else {
-            indicatorSignal = true;
-            Print("インジケーター条件チェックはOFF");
-        }
-    }
-    
-    // 確認方法に応じた判断
-    bool result;
-    
-    // 特殊ケース：両方の条件が無効の場合
-    if(!g_EnableTimeEntry && !g_EnableIndicatorsEntry) {
-        Print("警告: 時間条件とインジケーター条件が両方とも無効です");
-        result = false; // デフォルトでfalseを返す
-    } else if(1) {
-        // どちらか1つでも条件を満たせばOK
-        result = (timeSignal || indicatorSignal);
-        Print("エントリー確認方法: いずれかの条件OK, 結果: ", result ? "成立" : "不成立");
-    } else {
-        // すべての条件を満たす必要あり
-        result = (timeSignal && indicatorSignal);
-        Print("エントリー確認方法: すべての条件必要, 結果: ", result ? "成立" : "不成立");
-    }
-    
-    Print("ShouldEnterPosition 最終結果: ", result ? "エントリー条件成立" : "エントリー条件不成立");
-    return result;
-}
-//+------------------------------------------------------------------+
-//| Hosopi3_Strategy.mqh の ProcessStrategyLogic関数                  |
+
+
+
+//| Hosopi3_Manager.mqh の ProcessStrategyLogic関数                  |
 //+------------------------------------------------------------------+
 void ProcessStrategyLogic()
 {
    // 自動売買が無効の場合は何もしない
-   if(!g_AutoTrading)
+   if(!EnableAutomaticTrading)
    {
-      return;
-   }
-   
-   // 時間条件とインジケーター条件が両方とも無効の場合はエントリーしない
-   if(!g_EnableTimeEntry && !g_EnableIndicatorsEntry) {
-      Print("警告: 時間条件とインジケーター条件が両方とも無効のため、エントリー処理をスキップします");
       return;
    }
    
@@ -999,66 +892,49 @@ void ProcessStrategyLogic()
    bool hasRealSell = position_count(OP_SELL) > 0;
    
    // ゴーストモードの設定（NanpinSkipLevel に基づく）
+   bool useGhostMode = true;
    if(NanpinSkipLevel == SKIP_NONE) {
-      g_GhostMode = false; // ゴーストモードは常に無効
+      useGhostMode = false; // ゴーストモードは常に無効
    }
    
    // ゴーストエントリー機能がOFFの場合はゴーストモードを無効化
-   if(!g_EnableGhostEntry) {
-      g_GhostMode = false;
+   if(!EnableGhostEntry) {
+      useGhostMode = false;
    }
    
    // リアルポジションがある場合
    if(hasRealBuy || hasRealSell)
    {
-// ナンピン機能が有効な場合のみナンピン条件をチェック
-if(g_EnableNanpin)
-{
-   // リアルポジションのナンピン条件をチェック
-   CheckNanpinConditions(0); // Buy側のナンピン条件チェック
-   CheckNanpinConditions(1); // Sell側のナンピン条件チェック
-}
-}
-else
-{
-// リアルポジションがない場合
+      // ナンピン機能が有効な場合のみナンピン条件をチェック
+      if(EnableNanpin)
+      {
+         // リアルポジションのナンピン条件をチェック
+         CheckNanpinConditions(0); // Buy側のナンピン条件チェック
+         CheckNanpinConditions(1); // Sell側のナンピン条件チェック
+      }
+   }
+   else
+   {
+      // リアルポジションがない場合
 
-// 時間条件とインジケーター条件が両方とも無効の場合はエントリーしない
-// 警告メッセージを削除（Printを削除）
-if(!g_EnableTimeEntry && !g_EnableIndicatorsEntry) {
-   return;
-}
+      // ゴーストモードがONの場合
+      if(useGhostMode && EnableGhostEntry)
+      {
+         
 
-// ゴーストモードがONの場合
-if(g_GhostMode && g_EnableGhostEntry)
-{
-   // 各方向のエントリー条件を確認
-   bool buyCondition = ShouldEnterPosition(0);
-   bool sellCondition = ShouldEnterPosition(1);
-   
-   // 条件を確認してエントリー
-   if(buyCondition) {
-      ProcessGhostEntries(0);
+            ProcessGhostEntries(0);
+
+            ProcessGhostEntries(1);
+         
+      }
+      else
+      {
+
+         
+            ProcessRealEntries(0);
+
+            ProcessRealEntries(1);
+         
+      }
    }
-   
-   if(sellCondition) {
-      ProcessGhostEntries(1);
-   }
-}
-else
-{
-   // 各方向のエントリー条件を確認
-   bool buyCondition = ShouldEnterPosition(0);
-   bool sellCondition = ShouldEnterPosition(1);
-   
-   // ゴーストモードがOFFの場合は直接リアルエントリーを処理
-   if(buyCondition) {
-      ProcessRealEntries(0);
-   }
-   
-   if(sellCondition) {
-      ProcessRealEntries(1);
-   }
-}
-}
 }

@@ -241,68 +241,67 @@ bool EvaluateStrategyForEntry(int side)
         }
     }
     
-    // ストキャスティクス
-    if(Stochastic_Strategy != STRATEGY_DISABLED) {
-        enabledStrategies++;
-        if(CheckStochasticSignal(side)) {
-            strategySignals = true;
-            if(activeStrategies != "") activeStrategies += ", ";
-            activeStrategies += "ストキャスティクス";
-        }
-    }
-    
-    // CCI
-    if(CCI_Strategy != STRATEGY_DISABLED) {
-        enabledStrategies++;
-        if(CheckCCISignal(side)) {
-            strategySignals = true;
-            if(activeStrategies != "") activeStrategies += ", ";
-            activeStrategies += "CCI";
-        }
-    }
-    
-    // ADX/DMI
-    if(ADX_Strategy != STRATEGY_DISABLED) {
-        enabledStrategies++;
-        if(CheckADXSignal(side)) {
-            strategySignals = true;
-            if(activeStrategies != "") activeStrategies += ", ";
-            activeStrategies += "ADX/DMI";
-        }
-    }
-    
-    // 最終判断
-    // 時間条件が許可され、かつ有効化された戦略のうち少なくとも1つがシグナルを出した場合
-    if(timeEntryAllowed && (enabledStrategies == 0 || strategySignals)) {
-        entrySignal = true;
-        
-        // 戦略シグナルの詳細ログを出力
-        if(enabledStrategies > 0) {
-            string typeStr = (side == 0) ? "Buy" : "Sell";
-            string reason;
-            
-            if(activeStrategies == "") {
-                reason = "時間条件のみ (有効な戦略シグナルなし)";
-            } else {
-                reason = "シグナル: " + activeStrategies;
-            }
-            
-            // 詳細情報を取得
-            string details = GetStrategyDetails(side);
-            
-            // エントリー理由をログに記録
-            LogEntryReason(side == 0 ? OP_BUY : OP_SELL, "戦略シグナル", reason);
-            
-            // 詳細情報もログに出力
-            Print(details);
-        } else {
-            LogEntryReason(side == 0 ? OP_BUY : OP_SELL, "時間エントリー", "時間条件のみ (戦略なし)");
-        }
-    }
-    
-    return entrySignal;
+// ストキャスティクス
+if(Stochastic_Strategy != STRATEGY_DISABLED) {
+   enabledStrategies++;
+   if(CheckStochasticSignal(side)) {
+       strategySignals = true;
+       if(activeStrategies != "") activeStrategies += ", ";
+       activeStrategies += "ストキャスティクス";
+   }
 }
 
+// CCI
+if(CCI_Strategy != STRATEGY_DISABLED) {
+   enabledStrategies++;
+   if(CheckCCISignal(side)) {
+       strategySignals = true;
+       if(activeStrategies != "") activeStrategies += ", ";
+       activeStrategies += "CCI";
+   }
+}
+
+// ADX/DMI
+if(ADX_Strategy != STRATEGY_DISABLED) {
+   enabledStrategies++;
+   if(CheckADXSignal(side)) {
+       strategySignals = true;
+       if(activeStrategies != "") activeStrategies += ", ";
+       activeStrategies += "ADX/DMI";
+   }
+}
+
+// 最終判断
+// 時間条件が許可され、かつ有効化された戦略のうち少なくとも1つがシグナルを出した場合
+if(timeEntryAllowed && (enabledStrategies == 0 || strategySignals)) {
+   entrySignal = true;
+   
+   // 戦略シグナルの詳細ログを出力
+   if(enabledStrategies > 0) {
+       string typeStr = (side == 0) ? "Buy" : "Sell";
+       string reason;
+       
+       if(activeStrategies == "") {
+           reason = "時間条件のみ (有効な戦略シグナルなし)";
+       } else {
+           reason = "シグナル: " + activeStrategies;
+       }
+       
+       // 詳細情報を取得
+       string details = GetStrategyDetails(side);
+       
+       // エントリー理由をログに記録
+       LogEntryReason(side == 0 ? OP_BUY : OP_SELL, "戦略シグナル", reason);
+       
+       // 詳細情報もログに出力
+       Print(details);
+   } else {
+       LogEntryReason(side == 0 ? OP_BUY : OP_SELL, "時間エントリー", "時間条件のみ (戦略なし)");
+   }
+}
+
+return entrySignal;
+}
 
 //+------------------------------------------------------------------+
 //| 実際のエントリー処理 - リアルエントリー時のロット選択ロジックと     |
@@ -310,7 +309,7 @@ bool EvaluateStrategyForEntry(int side)
 //+------------------------------------------------------------------+
 void ExecuteRealEntry(int type, string entryReason)
 {
-   if(!g_AutoTrading)
+   if(!EnableAutomaticTrading)
    {
       Print("自動売買が無効のため、リアルエントリーはスキップされました");
       return;
@@ -431,14 +430,13 @@ void ExecuteRealEntry(int type, string entryReason)
    }
 }
 
-
 //+------------------------------------------------------------------+
 //| リアルナンピンの実行 - 最適化とログ出力を追加                     |
 //+------------------------------------------------------------------+
 void ExecuteRealNanpin(int type)
 {
    // 自動売買が無効の場合は何もしない
-   if(!g_AutoTrading)
+   if(!EnableAutomaticTrading)
    {
       Print("自動売買が無効のため、リアルナンピンはスキップされました");
       return;
@@ -564,8 +562,6 @@ void ExecuteRealNanpin(int type)
       Print("リアル", type == OP_BUY ? "Buy" : "Sell", "ナンピンエラー: ", GetLastError());
    }
 }
-
-
 //+------------------------------------------------------------------+
 //| 裁量エントリー用関数 - ユーザーが手動で行うエントリー             |
 //+------------------------------------------------------------------+
@@ -929,14 +925,16 @@ int InitializeEA()
          }
       }
    }
-// OnInit関数内で追加
-g_EnableNanpin = EnableNanpin;
-g_EnableGhostEntry = EnableGhostEntry;
-g_EnableFixedTP = EnableFixedTP;
-g_EnableIndicatorsTP = EnableIndicatorsTP;
-g_EnableTrailingStop = EnableTrailingStop;
-g_AutoTrading = EnableAutomaticTrading;
-g_UseEvenOddHoursEntry = UseEvenOddHoursEntry;
+
+   // グローバル変数とinputの設定を同期
+   g_EnableNanpin = EnableNanpin;
+   g_EnableGhostEntry = EnableGhostEntry;
+   g_EnableFixedTP = EnableFixedTP;
+   g_EnableIndicatorsTP = EnableIndicatorsTP;
+   g_EnableTrailingStop = EnableTrailingStop;
+   g_AutoTrading = EnableAutomaticTrading;
+   g_UseEvenOddHoursEntry = UseEvenOddHoursEntry;
+   
    CreateGUI();
    
    // ポジションテーブルを作成
@@ -1044,163 +1042,4 @@ double GetLastPositionLot(int type)
    }
    
    return lastLotSize;
-}
-
-
-//+------------------------------------------------------------------+
-//| Hosopi3_Manager.mqh の ProcessRealEntries関数                     |
-//+------------------------------------------------------------------+
-void ProcessRealEntries(int side)
-{
-   Print("ProcessRealEntries: ", side == 0 ? "Buy" : "Sell", " 処理開始");
-   
-   // リアルポジションがある場合はスキップ
-   if(position_count(OP_BUY) > 0 || position_count(OP_SELL) > 0) {
-      Print("ProcessRealEntries: リアルポジションが存在するためスキップします");
-      return;
-   }
-
-   // 処理対象のオペレーションタイプを決定
-   int operationType = (side == 0) ? OP_BUY : OP_SELL;
-   string direction = (side == 0) ? "Buy" : "Sell";
-
-   // エントリーモードに基づくチェック
-   bool modeAllowed = false;
-   if(side == 0) // Buy
-      modeAllowed = (EntryMode == MODE_BUY_ONLY || EntryMode == MODE_BOTH);
-   else // Sell
-      modeAllowed = (EntryMode == MODE_SELL_ONLY || EntryMode == MODE_BOTH);
-
-   if(!modeAllowed) {
-      Print("ProcessRealEntries: エントリーモードにより", direction, "側はスキップします");
-      return;
-   }
-
-   // 時間条件とインジケーター条件をチェック
-   bool timeSignal = false;
-   bool indicatorSignal = false;
-   string entryReason = "";
-   
-   // 時間条件のチェック
-   if(g_EnableTimeEntry) {
-      timeSignal = IsTimeEntryAllowed(side);
-      Print("ProcessRealEntries: 時間条件=", timeSignal ? "成立" : "不成立");
-      if(timeSignal) {
-         entryReason += "時間条件OK ";
-      } else {
-         entryReason += "時間条件NG ";
-      }
-   } else {
-      // 時間条件が無効の場合
-      if(!g_EnableIndicatorsEntry) {
-         // 両方無効の場合は特別処理
-         timeSignal = false;
-         Print("ProcessRealEntries: 時間条件とインジケーターの両方が無効のため、エントリーしません");
-         entryReason += "両方の条件が無効 ";
-      } else {
-         // インジケーター条件が有効なら時間条件はスキップ
-         timeSignal = true;
-         Print("ProcessRealEntries: 時間条件チェック無効");
-         entryReason += "時間条件チェック無効 ";
-      }
-   }
-   
-   // インジケーター条件のチェック
-   if(g_EnableIndicatorsEntry) {
-      // インジケーターが有効な場合、詳細なログを出力
-      int enabledCount = 0;
-      if(MA_Cross_Strategy != STRATEGY_DISABLED) enabledCount++;
-      if(RSI_Strategy != STRATEGY_DISABLED) enabledCount++;
-      if(BB_Strategy != STRATEGY_DISABLED) enabledCount++;
-      if(RCI_Strategy != STRATEGY_DISABLED) enabledCount++;
-      if(Stochastic_Strategy != STRATEGY_DISABLED) enabledCount++;
-      if(CCI_Strategy != STRATEGY_DISABLED) enabledCount++;
-      if(ADX_Strategy != STRATEGY_DISABLED) enabledCount++;
-      
-      Print("ProcessRealEntries: 有効なインジケーター数: ", enabledCount);
-      
-      if(enabledCount == 0) {
-         indicatorSignal = false;
-         Print("ProcessRealEntries: インジケーターが1つも有効になっていないため、インジケーター条件は不成立とします");
-         entryReason += "インジケーター無効 ";
-      } else {
-         // インジケーターのチェック結果
-         indicatorSignal = EvaluateIndicatorsForEntry(side);
-         
-         if(indicatorSignal) {
-            // どのインジケーターがシグナルを出したか確認
-            string activeSignals = GetActiveIndicatorSignals(side);
-            entryReason += "インジケーター条件OK(" + activeSignals + ") ";
-         } else {
-            entryReason += "インジケーター条件NG ";
-         }
-      }
-      
-      Print("ProcessRealEntries: インジケーター条件=", indicatorSignal ? "成立" : "不成立");
-   } else {
-      // インジケーター条件が無効の場合
-      if(!g_EnableTimeEntry) {
-         // 両方無効の場合は特別処理
-         indicatorSignal = false;
-         Print("ProcessRealEntries: 時間条件とインジケーターの両方が無効のため、エントリーしません");
-         entryReason += "両方の条件が無効 ";
-      } else {
-         // 時間条件が有効ならインジケーター条件はスキップ
-         indicatorSignal = true;
-         Print("ProcessRealEntries: インジケーター条件チェック無効");
-         entryReason += "インジケーター条件チェック無効 ";
-      }
-   }
-   
-   // エントリー確認方法に応じた判断
-   bool shouldEnter = false;
-   
-   if(1) {
-      // いずれかの条件を満たせばOK
-      if(!g_EnableTimeEntry && !g_EnableIndicatorsEntry) {
-         // 両方無効の場合は特別処理
-         Print("ProcessRealEntries: 警告: 時間とインジケーターの両方の条件が無効です");
-         shouldEnter = false; // デフォルトでエントリーしない
-         entryReason += "（両方の条件が無効のためエントリーしません）";
-      } else {
-         shouldEnter = (timeSignal || indicatorSignal);
-         if(shouldEnter) entryReason += "（いずれかの条件OK）";
-         else entryReason += "（すべての条件がNG）";
-      }
-   } else {
-      // すべての条件を満たす必要あり
-      if(!g_EnableTimeEntry && !g_EnableIndicatorsEntry) {
-         // 両方無効の場合は特別処理
-         Print("ProcessRealEntries: 警告: 時間とインジケーターの両方の条件が無効です");
-         shouldEnter = false; // デフォルトでエントリーしない
-         entryReason += "（両方の条件が無効のためエントリーしません）";
-      } else {
-         shouldEnter = (timeSignal && indicatorSignal);
-         if(shouldEnter) entryReason += "（すべての条件OK）";
-         else entryReason += "（いずれかの条件がNG）";
-      }
-   }
-   
-   Print("ProcessRealEntries: 最終エントリー判断: ", shouldEnter ? "エントリー実行" : "エントリーなし");
-   
-   // リアルポジションがない場合は新規エントリー
-   if(shouldEnter)
-   {
-      // スプレッドチェック
-      double spreadPoints = (GetAskPrice() - GetBidPrice()) / Point;
-      if(spreadPoints <= MaxSpreadPoints || MaxSpreadPoints <= 0)
-      {
-         Print("ProcessRealEntries: リアル", direction, "エントリー実行 - 理由: ", entryReason);
-         
-         // 直接リアルエントリーを実行
-         ExecuteRealEntry(operationType, entryReason);
-      }
-      else
-      {
-         Print("ProcessRealEntries: スプレッドが大きすぎるため、リアル", direction, "エントリーをスキップしました: ", 
-               spreadPoints, " > ", MaxSpreadPoints);
-      }
-   } else {
-      Print("ProcessRealEntries: リアル", direction, "エントリー条件不成立のためスキップします: ", entryReason);
-   }
 }
