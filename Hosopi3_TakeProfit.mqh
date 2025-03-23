@@ -128,7 +128,6 @@ void CheckTrailingStopConditions(int side)
    }
 }
 
-
 //+------------------------------------------------------------------+
 //| 利確処理の統合関数 - 決済方法に応じて処理                         |
 //+------------------------------------------------------------------+
@@ -165,7 +164,7 @@ void ManageTakeProfit(int side)
                   avgPrice - TakeProfitPoints * Point;
 
    // ======== 指値決済処理（LIMIT） ========
-   if(TakeProfitMode == TP_LIMIT && positionCount > 0)
+   if(TakeProfitMode == TP_LIMIT)
    {
       // シンボルの最小ストップレベルを取得
       int minStopLevel = (int)MarketInfo(Symbol(), MODE_STOPLEVEL);
@@ -188,44 +187,107 @@ void ManageTakeProfit(int side)
                DoubleToString(tpPrice, Digits));
       }
       
-      // 各ポジションにリミット注文を設定
-      for(int i = OrdersTotal() - 1; i >= 0; i--)
+      // ゴーストポジションのみの場合の処理
+      if(positionCount == 0 && ghostCount > 0)
       {
-         if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+         // 利確条件の判定（ゴーストの場合も同じ条件でチェック）
+         bool tpCondition = false;
+
+         if(side == 0) // Buy
          {
-            if(OrderType() == operationType && OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
-            {
-               // 現在のストップロス価格を取得
-               double currentSL = OrderStopLoss();
-               
-               // 現在のテイクプロフィット価格を取得
-               double currentTP = OrderTakeProfit();
-               
-               // 新しいTPとの差が小さい場合はスキップ
-               if(MathAbs(currentTP - tpPrice) < Point * 2)
-                  continue;
-               
-               // リミット価格を更新（ストップロスはそのまま）
-               bool result = OrderModify(
-                  OrderTicket(),        // チケット番号
-                  OrderOpenPrice(),     // オープン価格
-                  currentSL,            // 現在のストップロス
-                  tpPrice,              // 新しいテイクプロフィット
-                  0,                    // 有効期限
-                  (side == 0) ? clrBlue : clrRed
-               );
-               
-               if(result)
-               {
-                  Print("リミット決済を設定しました: ", OrderTicket(), 
-                        ", 方向=", direction, 
-                        ", TP=", DoubleToString(tpPrice, Digits));
+            // Buy側の利確条件: 現在価格が平均価格+TPポイント以上
+            tpCondition = (currentPrice >= tpPrice);
+         }
+         else // Sell
+         {
+            // Sell側の利確条件: 現在価格が平均価格-TPポイント以下
+            tpCondition = (currentPrice <= tpPrice);
+         }
+
+         // 利確条件が満たされた場合
+         if(tpCondition)
+         {
+            Print(direction, "ゴーストのみで利確条件成立: 平均価格=", DoubleToString(avgPrice, Digits),
+                  ", TP価格=", DoubleToString(tpPrice, Digits),
+                  ", 現在価格=", DoubleToString(currentPrice, Digits));
+            
+            // ゴーストポジションをリセット
+            if(operationType == OP_BUY) {
+               // ゴーストポジションの状態をリセット
+               for(int i = 0; i < g_GhostBuyCount; i++) {
+                  g_GhostBuyPositions[i].isGhost = false;  // ゴーストフラグをオフに
                }
-               else
+               // 決済済みフラグを設定
+               g_BuyGhostClosed = true;
+               g_GhostBuyCount = 0;
+            } else {
+               // ゴーストポジションの状態をリセット
+               for(int i = 0; i < g_GhostSellCount; i++) {
+                  g_GhostSellPositions[i].isGhost = false;  // ゴーストフラグをオフに
+               }
+               // 決済済みフラグを設定
+               g_SellGhostClosed = true;
+               g_GhostSellCount = 0;
+            }
+            
+            // 点線オブジェクトを削除
+            DeleteGhostLinesAndPreventRecreation(operationType);
+            
+            // グローバル変数を更新
+            SaveGhostPositionsToGlobal();
+            
+            Print(direction, "ゴーストポジション利確: リセットしました");
+            
+            // 平均価格ラインとTPラインを削除
+            CleanupLinesOnClose(side);
+            
+            // テーブルを更新
+            UpdatePositionTable();
+         }
+      }
+      
+      // リアルポジションがある場合は通常の指値設定
+      if(positionCount > 0)
+      {
+         // 各ポジションにリミット注文を設定
+         for(int i = OrdersTotal() - 1; i >= 0; i--)
+         {
+            if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+            {
+               if(OrderType() == operationType && OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
                {
-                  Print("リミット決済の設定に失敗: ", OrderTicket(), 
-                        ", エラー=", GetLastError(), 
-                        ", 最小ストップレベル=", minStopLevel);
+                  // 現在のストップロス価格を取得
+                  double currentSL = OrderStopLoss();
+                  
+                  // 現在のテイクプロフィット価格を取得
+                  double currentTP = OrderTakeProfit();
+                  
+                  // 新しいTPとの差が小さい場合はスキップ
+                  if(MathAbs(currentTP - tpPrice) < Point * 2)
+                     continue;
+                  
+                  // リミット価格を更新（ストップロスはそのまま）
+                  bool result = OrderModify(
+                     OrderTicket(),        // チケット番号
+                     OrderOpenPrice(),     // オープン価格
+                     currentSL,            // 現在のストップロス
+                     tpPrice,              // 新しいテイクプロフィット
+                     0,                    // 有効期限
+                     (side == 0) ? clrBlue : clrRed
+                  );
+                  
+                  if(result)
+                  {
+                     Print("リミット決済を設定しました: ", OrderTicket(), 
+                           ", 方向=", direction, 
+                           ", TP=", DoubleToString(tpPrice, Digits));
+                  }
+                  else
+                  {
+                     Print("リミット決済の設定に失敗: ", OrderTicket(), 
+                           ", エラー=", GetLastError(), 
+                           ", 最小ストップレベル=", minStopLevel);
+                  }
                }
             }
          }
@@ -261,74 +323,40 @@ void ManageTakeProfit(int side)
             Print("リアル", direction, "ポジションを決済しました: 結果=", closeResult ? "成功" : "失敗");
          }
          
-         // 反対側のポジションとゴーストをチェック
-         int oppositePositionCount = position_count(oppositeType);
-         int oppositeGhostCount = ghost_position_count(oppositeType);
-         
          // ゴーストポジションの処理 - ゴーストがある場合は必ず処理する
          if(ghostCount > 0)
          {
             Print("ゴースト", direction, "ポジション(", ghostCount, "個)が存在します");
             
-            // 反対側にリアルポジションやゴーストがある場合は現在の方向のみリセット
-            if(oppositePositionCount > 0 || oppositeGhostCount > 0) {
-               Print("反対側に", oppositePositionCount, "個のリアルポジションと", 
-                     oppositeGhostCount, "個のゴーストがあるため、", direction, "側のみリセットします");
-               
-               // 点線を削除し再生成を防止
-               DeleteGhostLinesAndPreventRecreation(operationType);
-
-               CleanupLinesOnClose(operationType);
-               
+            // ゴーストポジションをリセット（リアルポジションの有無に関わらず）
+            if(operationType == OP_BUY) {
                // ゴーストポジションの状態をリセット
-               if(operationType == OP_BUY) {
-                  // ゴーストポジションの状態をリセット
-                  for(int i = 0; i < g_GhostBuyCount; i++) {
-                     g_GhostBuyPositions[i].isGhost = false;  // ゴーストフラグをオフに
-                  }
-                  // 決済済みフラグを設定
-                  g_BuyGhostClosed = true;
-                  g_GhostBuyCount = 0;
-               } else {
-                  // ゴーストポジションの状態をリセット
-                  for(int i = 0; i < g_GhostSellCount; i++) {
-                     g_GhostSellPositions[i].isGhost = false;  // ゴーストフラグをオフに
-                  }
-                  // 決済済みフラグを設定
-                  g_SellGhostClosed = true;
-                  g_GhostSellCount = 0;
-               }
-               
-               // グローバル変数を更新
-               SaveGhostPositionsToGlobal();
-            } else {
-               // 反対側に何もなければ両方のゴーストをリセット
-               Print("反対側に何もないため、すべてのゴーストポジションをリセットします");
-               // 点線を削除し再生成を防止
-               DeleteGhostLinesAndPreventRecreation(OP_BUY);
-               DeleteGhostLinesAndPreventRecreation(OP_SELL);
-               
-               // Buy側ゴーストポジションの状態をリセット
                for(int i = 0; i < g_GhostBuyCount; i++) {
                   g_GhostBuyPositions[i].isGhost = false;  // ゴーストフラグをオフに
                }
-               g_BuyGhostClosed = true; // 決済済みフラグを設定
+               // 決済済みフラグを設定
+               g_BuyGhostClosed = true;
                g_GhostBuyCount = 0;
-               
-               // Sell側ゴーストポジションの状態をリセット
+            } else {
+               // ゴーストポジションの状態をリセット
                for(int i = 0; i < g_GhostSellCount; i++) {
                   g_GhostSellPositions[i].isGhost = false;  // ゴーストフラグをオフに
                }
-               g_SellGhostClosed = true; // 決済済みフラグを設定
+               // 決済済みフラグを設定
+               g_SellGhostClosed = true;
                g_GhostSellCount = 0;
-               
-               // グローバル変数を更新
-               SaveGhostPositionsToGlobal();
             }
             
-            Print(direction, "ポジション利確: ゴーストポジションをリセットしました");
-
+            // 点線オブジェクトを削除
+            DeleteGhostLinesAndPreventRecreation(operationType);
             
+            // グローバル変数を更新
+            SaveGhostPositionsToGlobal();
+            
+            Print(direction, "ゴーストポジション利確: リセットしました");
+            
+            // 平均価格ラインとTPラインを削除
+            CleanupLinesOnClose(side);
             
             // テーブルを更新
             UpdatePositionTable();
@@ -349,6 +377,7 @@ void ManageTakeProfit(int side)
       ObjectDelete(g_ObjectPrefix + labelName);
       
    string labelText = (TakeProfitMode == TP_LIMIT ? "Limit" : "Market") + " TP: " + 
-                     DoubleToString(tpPrice, Digits) + " (+" + IntegerToString(TakeProfitPoints) + "pt)";
+                     DoubleToString(tpPrice, Digits) + " (" + 
+                     (side == 0 ? "+" : "-") + IntegerToString(TakeProfitPoints) + "pt)";
    CreatePriceLabel(g_ObjectPrefix + labelName, labelText, tpPrice, TakeProfitLineColor, side == 0);
 }

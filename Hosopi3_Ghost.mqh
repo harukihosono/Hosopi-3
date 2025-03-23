@@ -1977,3 +1977,62 @@ bool CheckIndicatorSignals(int side)
           (CCI_Strategy != STRATEGY_DISABLED && CheckCCISignal(side)) ||
           (ADX_Strategy != STRATEGY_DISABLED && CheckADXSignal(side));
 }
+
+
+//+------------------------------------------------------------------+
+//| 指値決済時のゴーストリセット処理を監視する関数                     |
+//+------------------------------------------------------------------+
+void CheckLimitTakeProfitExecutions()
+{
+   // 前回のポジション数を保存する静的変数
+   static int prevBuyCount = 0;
+   static int prevSellCount = 0;
+   
+   // 現在のポジション数を取得
+   int currentBuyCount = position_count(OP_BUY);
+   int currentSellCount = position_count(OP_SELL);
+   
+   // Buy側でポジション数減少を検出
+   if(currentBuyCount < prevBuyCount)
+   {
+      Print("Buy側ポジション減少検出: ", prevBuyCount, " -> ", currentBuyCount);
+      
+      // 完全に決済された場合
+      if(currentBuyCount == 0)
+      {
+         // 同方向のゴーストをリセット
+         if(ghost_position_count(OP_BUY) > 0)
+         {
+            Print("Buy側指値決済検出: ゴーストポジションもリセットします");
+            ResetSpecificGhost(OP_BUY);
+         }
+      }
+      
+      // 関連するラインを削除
+      CleanupLinesOnClose(0);
+   }
+   
+   // Sell側でポジション数減少を検出
+   if(currentSellCount < prevSellCount)
+   {
+      Print("Sell側ポジション減少検出: ", prevSellCount, " -> ", currentSellCount);
+      
+      // 完全に決済された場合
+      if(currentSellCount == 0)
+      {
+         // 同方向のゴーストをリセット
+         if(ghost_position_count(OP_SELL) > 0)
+         {
+            Print("Sell側指値決済検出: ゴーストポジションもリセットします");
+            ResetSpecificGhost(OP_SELL);
+         }
+      }
+      
+      // 関連するラインを削除
+      CleanupLinesOnClose(1);
+   }
+   
+   // 現在のカウントを保存（次回のチェックのため）
+   prevBuyCount = currentBuyCount;
+   prevSellCount = currentSellCount;
+}
