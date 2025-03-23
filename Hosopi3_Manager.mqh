@@ -664,8 +664,14 @@ void ExecuteEntryFromLevel(int type, int level)
 }
 
 
+
+
+
+
+
+
 //+------------------------------------------------------------------+
-//| OnTickManager関数の修正部分 - CheckTakeProfitConditionsの呼び出しを追加
+//| OnTickManager関数 - トレーリングストップ対応版                    |
 //+------------------------------------------------------------------+
 void OnTickManager()
 {
@@ -674,7 +680,7 @@ void OnTickManager()
    {
       UpdatePositionTable();
       g_LastUpdateTime = TimeCurrent();
-      // ポジションがない場合のライン削除チェック - ここに追加
+      // ポジションがない場合のライン削除チェック
       CheckAndDeleteLinesIfNoPositions();
       // 定期的にゴーストポジション情報を保存 (1分ごと)
       static datetime lastSaveTime = 0;
@@ -716,43 +722,43 @@ void OnTickManager()
    // GUIを更新
    UpdateGUI();
 
-// 平均取得価格ラインの表示更新
-if(AveragePriceLine == ON_MODE && g_AvgPriceVisible)
-{
-   // Buy/Sellポジションがあるかチェック
-   int buyPositions = position_count(OP_BUY) + ghost_position_count(OP_BUY);
-   int sellPositions = position_count(OP_SELL) + ghost_position_count(OP_SELL);
-   
-   // ポジションがない場合は強制的にラインを削除
-   if(buyPositions == 0 && sellPositions == 0)
+   // 平均取得価格ラインの表示更新
+   if(AveragePriceLine == ON_MODE && g_AvgPriceVisible)
    {
-      DeleteAllLines();
+      // Buy/Sellポジションがあるかチェック
+      int buyPositions = position_count(OP_BUY) + ghost_position_count(OP_BUY);
+      int sellPositions = position_count(OP_SELL) + ghost_position_count(OP_SELL);
+      
+      // ポジションがない場合は強制的にラインを削除
+      if(buyPositions == 0 && sellPositions == 0)
+      {
+         DeleteAllLines();
+      }
+      else
+      {
+         // 通常の更新処理
+         static datetime lastAvgPriceUpdateTime = 0;
+         if(TimeCurrent() - lastAvgPriceUpdateTime > 1) // 1秒間隔
+         {
+            if(buyPositions > 0)
+               UpdateAveragePriceLines(0); // Buy側
+            else
+               DeleteSpecificLine(0); // Buy側のラインを削除
+            
+            if(sellPositions > 0)
+               UpdateAveragePriceLines(1); // Sell側
+            else
+               DeleteSpecificLine(1); // Sell側のラインを削除
+            
+            lastAvgPriceUpdateTime = TimeCurrent();
+         }
+      }
    }
    else
    {
-      // 通常の更新処理
-      static datetime lastAvgPriceUpdateTime = 0;
-      if(TimeCurrent() - lastAvgPriceUpdateTime > 1) // 1秒間隔
-      {
-         if(buyPositions > 0)
-            UpdateAveragePriceLines(0); // Buy側
-         else
-            DeleteSpecificLine(0); // Buy側のラインを削除
-         
-         if(sellPositions > 0)
-            UpdateAveragePriceLines(1); // Sell側
-         else
-            DeleteSpecificLine(1); // Sell側のラインを削除
-         
-         lastAvgPriceUpdateTime = TimeCurrent();
-      }
+      // 表示設定オフの場合、すべてのラインを削除
+      DeleteAllLines();
    }
-}
-else
-{
-   // 表示設定オフの場合、すべてのラインを削除
-   DeleteAllLines();
-}
    
    // 利確条件の処理（統合関数を使用）
    if(TakeProfitMode != TP_OFF) // TPが有効なときだけ処理
@@ -764,17 +770,30 @@ else
    // トレールストップ条件のチェック（独立して動作）
    if(EnableTrailingStop)
    {
+      // リアルポジションのトレーリングストップ
       CheckTrailingStopConditions(0); // Buy側
       CheckTrailingStopConditions(1); // Sell側
+      
+      // ゴーストポジションのトレーリングストップ - 新規追加
+      CheckGhostTrailingStopConditions(0); // Buy側
+      CheckGhostTrailingStopConditions(1); // Sell側
    }
 
-   CheckPositionChanges();// リアルポジション数の変化をチェック
+   // リアルポジション数の変化をチェック
+   CheckPositionChanges();
 
-
-      // 指値決済の検出とゴーストリセット処理
-      CheckLimitTakeProfitExecutions();
-      
+   // 指値決済の検出とゴーストリセット処理
+   CheckLimitTakeProfitExecutions();
 }
+
+
+
+
+
+
+
+
+
 //+------------------------------------------------------------------+
 //| 特定方向のラインのみを削除                                        |
 //+------------------------------------------------------------------+

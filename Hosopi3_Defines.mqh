@@ -91,6 +91,7 @@ enum NANPIN_SKIP {
     datetime openTime;  // オープン時間
     bool isGhost;       // ゴーストフラグ
     int level;          // ナンピンレベル
+    double stopLoss;    // ストップロスレベル（新規追加） ← ここを追加
  };
  
  // MQL4/MQL5互換性のための定義

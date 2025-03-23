@@ -378,12 +378,10 @@ void ResetSpecificGhost(int type)
 }
 
 //+------------------------------------------------------------------+
-//| ResetGhost関数 - ゴーストポジションをリセットする - 修正版       |
+//| ゴーストポジションをリセットする - トレーリングストップ対応版      |
 //+------------------------------------------------------------------+
 void ResetGhost(int type)
 {
-
-
    CleanupLinesOnClose(type == OP_BUY ? 0 : 1);
    if(type == OP_BUY)
    {
@@ -398,6 +396,16 @@ void ResetGhost(int type)
       
       // 特に点線に関連するオブジェクトを明示的に削除
       DeleteGhostLinesByType(OP_BUY, LINE_TYPE_GHOST);
+      
+      // トレーリングストップラインを削除 - 新規追加
+      string stopLineName = g_ObjectPrefix + "GhostStopLineBuy";
+      string stopLabelName = g_ObjectPrefix + "GhostStopLabelBuy";
+      
+      if(ObjectFind(stopLineName) >= 0)
+         ObjectDelete(stopLineName);
+      
+      if(ObjectFind(stopLabelName) >= 0)
+         ObjectDelete(stopLabelName);
       
       // ゴーストBuyポジションカウントをリセット
       g_GhostBuyCount = 0;
@@ -414,9 +422,10 @@ void ResetGhost(int type)
          g_GhostBuyPositions[i].openTime = 0;
          g_GhostBuyPositions[i].isGhost = false;
          g_GhostBuyPositions[i].level = 0;
+         g_GhostBuyPositions[i].stopLoss = 0; // stopLossもリセット - 新規追加
       }
       
-      // フラグをリセット - ここをfalseに修正
+      // フラグをリセット
       g_BuyGhostClosed = false;
       
       Print("ゴーストBuyポジションをリセットしました");
@@ -435,6 +444,16 @@ void ResetGhost(int type)
       // 特に点線に関連するオブジェクトを明示的に削除
       DeleteGhostLinesByType(OP_SELL, LINE_TYPE_GHOST);
       
+      // トレーリングストップラインを削除 - 新規追加
+      string stopLineName = g_ObjectPrefix + "GhostStopLineSell";
+      string stopLabelName = g_ObjectPrefix + "GhostStopLabelSell";
+      
+      if(ObjectFind(stopLineName) >= 0)
+         ObjectDelete(stopLineName);
+      
+      if(ObjectFind(stopLabelName) >= 0)
+         ObjectDelete(stopLabelName);
+      
       g_GhostSellCount = 0;
       for(int i = 0; i < ArraySize(g_GhostSellPositions); i++)
       {
@@ -447,9 +466,10 @@ void ResetGhost(int type)
          g_GhostSellPositions[i].openTime = 0;
          g_GhostSellPositions[i].isGhost = false;
          g_GhostSellPositions[i].level = 0;
+         g_GhostSellPositions[i].stopLoss = 0; // stopLossもリセット - 新規追加
       }
       
-      // フラグをリセット - ここをfalseに修正
+      // フラグをリセット
       g_SellGhostClosed = false;
       
       Print("ゴーストSellポジションをリセットしました");
@@ -496,7 +516,6 @@ void ResetGhost(int type)
       DeleteAllGhostObjectsByType(1);
    }
 }
-
 
 
 //+------------------------------------------------------------------+
@@ -1375,7 +1394,7 @@ void ClearGhostPositionsFromGlobal()
 }
 
 //+------------------------------------------------------------------+
-//| グローバル変数からゴーストポジション情報を読み込み                 |
+//| グローバル変数からゴーストポジション情報を読み込み - トレーリングストップ対応版 |
 //+------------------------------------------------------------------+
 bool LoadGhostPositionsFromGlobal()
 {
@@ -1402,7 +1421,6 @@ bool LoadGhostPositionsFromGlobal()
    g_LastBuyNanpinTime = (datetime)GlobalVariableGet(g_GlobalVarPrefix + "LastBuyNanpinTime");
    g_LastSellNanpinTime = (datetime)GlobalVariableGet(g_GlobalVarPrefix + "LastSellNanpinTime");
    
-   
    // Buy ゴーストポジション読み込み
    for(int i = 0; i < buyCount; i++)
    {
@@ -1419,6 +1437,12 @@ bool LoadGhostPositionsFromGlobal()
          g_GhostBuyPositions[i].openTime = (datetime)GlobalVariableGet(posPrefix + "OpenTime");
          g_GhostBuyPositions[i].isGhost = GlobalVariableGet(posPrefix + "IsGhost") > 0;
          g_GhostBuyPositions[i].level = (int)GlobalVariableGet(posPrefix + "Level");
+         
+         // ストップロスの読み込み - 新規追加
+         if(GlobalVariableCheck(posPrefix + "StopLoss"))
+            g_GhostBuyPositions[i].stopLoss = GlobalVariableGet(posPrefix + "StopLoss");
+         else
+            g_GhostBuyPositions[i].stopLoss = 0;  // 存在しない場合は0
       }
    }
    g_GhostBuyCount = buyCount;
@@ -1439,6 +1463,12 @@ bool LoadGhostPositionsFromGlobal()
          g_GhostSellPositions[i].openTime = (datetime)GlobalVariableGet(posPrefix + "OpenTime");
          g_GhostSellPositions[i].isGhost = GlobalVariableGet(posPrefix + "IsGhost") > 0;
          g_GhostSellPositions[i].level = (int)GlobalVariableGet(posPrefix + "Level");
+         
+         // ストップロスの読み込み - 新規追加
+         if(GlobalVariableCheck(posPrefix + "StopLoss"))
+            g_GhostSellPositions[i].stopLoss = GlobalVariableGet(posPrefix + "StopLoss");
+         else
+            g_GhostSellPositions[i].stopLoss = 0;  // 存在しない場合は0
       }
    }
    g_GhostSellCount = sellCount;
@@ -1449,14 +1479,73 @@ bool LoadGhostPositionsFromGlobal()
    g_BuyGhostClosed = GlobalVariableGet(g_GlobalVarPrefix + "BuyGhostClosed") > 0;
    g_SellGhostClosed = GlobalVariableGet(g_GlobalVarPrefix + "SellGhostClosed") > 0;
    
+   // トレーリングストップ有効フラグの読み込み - 新規追加
+   if(GlobalVariableCheck(g_GlobalVarPrefix + "TrailingStopEnabled"))
+      g_EnableTrailingStop = GlobalVariableGet(g_GlobalVarPrefix + "TrailingStopEnabled") > 0;
+   
    Print("グローバル変数からゴーストポジション情報を読み込みました - Buy: ", buyCount, ", Sell: ", sellCount);
+   
+   // ストップロスラインを再表示 - 新規追加
+   RestoreGhostStopLines();
    
    // 読み込み成功
    return true;
 }
+//+------------------------------------------------------------------+
+//| トレーリングストップラインを復元表示する                           |
+//+------------------------------------------------------------------+
+void RestoreGhostStopLines()
+{
+   // Buy側のチェック
+   bool foundValidBuyStop = false;
+   double buyStopLevel = 0;
+   
+   for(int i = 0; i < g_GhostBuyCount; i++)
+   {
+      if(g_GhostBuyPositions[i].isGhost && g_GhostBuyPositions[i].stopLoss > 0)
+      {
+         // 最も高いストップロスを採用（安全サイド）
+         if(g_GhostBuyPositions[i].stopLoss > buyStopLevel || !foundValidBuyStop)
+         {
+            buyStopLevel = g_GhostBuyPositions[i].stopLoss;
+            foundValidBuyStop = true;
+         }
+      }
+   }
+   
+   // 有効なBuyストップがあれば表示
+   if(foundValidBuyStop)
+   {
+      UpdateGhostStopLine(0, buyStopLevel);
+   }
+   
+   // Sell側のチェック
+   bool foundValidSellStop = false;
+   double sellStopLevel = 0;
+   
+   for(int i = 0; i < g_GhostSellCount; i++)
+   {
+      if(g_GhostSellPositions[i].isGhost && g_GhostSellPositions[i].stopLoss > 0)
+      {
+         // 最も低いストップロスを採用（安全サイド）
+         if(g_GhostSellPositions[i].stopLoss < sellStopLevel || !foundValidSellStop)
+         {
+            sellStopLevel = g_GhostSellPositions[i].stopLoss;
+            foundValidSellStop = true;
+         }
+      }
+   }
+   
+   // 有効なSellストップがあれば表示
+   if(foundValidSellStop)
+   {
+      UpdateGhostStopLine(1, sellStopLevel);
+   }
+}
+
 
 //+------------------------------------------------------------------+
-//| ゴーストポジション情報をグローバル変数に保存                       |
+//| ゴーストポジション情報をグローバル変数に保存 - トレーリングストップ対応版  |
 //+------------------------------------------------------------------+
 void SaveGhostPositionsToGlobal()
 {
@@ -1469,7 +1558,6 @@ void SaveGhostPositionsToGlobal()
    // 最後のナンピン時間保存
    GlobalVariableSet(g_GlobalVarPrefix + "LastBuyNanpinTime", g_LastBuyNanpinTime);
    GlobalVariableSet(g_GlobalVarPrefix + "LastSellNanpinTime", g_LastSellNanpinTime);
-
    
    // Buy ゴーストポジション保存
    for(int i = 0; i < g_GhostBuyCount; i++)
@@ -1483,6 +1571,7 @@ void SaveGhostPositionsToGlobal()
       GlobalVariableSet(posPrefix + "OpenTime", g_GhostBuyPositions[i].openTime);
       GlobalVariableSet(posPrefix + "IsGhost", g_GhostBuyPositions[i].isGhost ? 1 : 0);
       GlobalVariableSet(posPrefix + "Level", g_GhostBuyPositions[i].level);
+      GlobalVariableSet(posPrefix + "StopLoss", g_GhostBuyPositions[i].stopLoss); // ストップロスを保存 - 新規追加
    }
 
    // Sell ゴーストポジション保存
@@ -1497,6 +1586,7 @@ void SaveGhostPositionsToGlobal()
       GlobalVariableSet(posPrefix + "OpenTime", g_GhostSellPositions[i].openTime);
       GlobalVariableSet(posPrefix + "IsGhost", g_GhostSellPositions[i].isGhost ? 1 : 0);
       GlobalVariableSet(posPrefix + "Level", g_GhostSellPositions[i].level);
+      GlobalVariableSet(posPrefix + "StopLoss", g_GhostSellPositions[i].stopLoss); // ストップロスを保存 - 新規追加
    }
 
    // フラグ設定（ゴーストモード状態を保存）
@@ -1504,6 +1594,8 @@ void SaveGhostPositionsToGlobal()
    GlobalVariableSet(g_GlobalVarPrefix + "AvgPriceVisible", g_AvgPriceVisible ? 1 : 0);
    GlobalVariableSet(g_GlobalVarPrefix + "BuyGhostClosed", g_BuyGhostClosed ? 1 : 0);
    GlobalVariableSet(g_GlobalVarPrefix + "SellGhostClosed", g_SellGhostClosed ? 1 : 0);
+   // トレーリングストップ有効フラグも保存 - 新規追加
+   GlobalVariableSet(g_GlobalVarPrefix + "TrailingStopEnabled", EnableTrailingStop ? 1 : 0);
 
    // 保存時間を記録
    GlobalVariableSet(g_GlobalVarPrefix + "SaveTime", TimeCurrent());
@@ -2064,5 +2156,240 @@ void ProcessGhostEntries(int side)
    else if(ghostCount > 0 && ghostCount < maxGhostPositions && EnableNanpin) {
       Print("ProcessGhostEntries: 既存ゴーストあり、ナンピン条件チェック開始");
       CheckGhostNanpinCondition(operationType);
+   }
+}
+
+
+/+------------------------------------------------------------------+
+//| ゴーストポジションのトレーリングストップを計算・更新する関数      |
+//+------------------------------------------------------------------+
+void CheckGhostTrailingStopConditions(int side)
+{
+   // トレールストップが無効な場合はスキップ
+   if(!EnableTrailingStop)
+   {
+      return;
+   }
+
+   // 処理対象のオペレーションタイプを決定
+   int operationType = (side == 0) ? OP_BUY : OP_SELL;
+
+   // ゴーストポジションがない場合はスキップ
+   int ghostCount = ghost_position_count(operationType);
+   if(ghostCount <= 0)
+      return;
+
+   // 平均価格を計算
+   double avgPrice = CalculateGhostAveragePrice(operationType);
+   if(avgPrice <= 0)
+      return;
+
+   // 現在価格を取得（BuyならBid、SellならAsk）
+   double currentPrice = (side == 0) ? GetBidPrice() : GetAskPrice();
+
+   // トレールトリガー価格とオフセット価格を計算
+   double triggerPrice, stopPrice;
+   
+   if(side == 0) // Buy
+   {
+      // トレールトリガー: 平均価格 + トリガーポイント
+      triggerPrice = avgPrice + TrailingTrigger * Point;
+      
+      // 現在価格がトリガー以上の場合のみトレーリング
+      if(currentPrice >= triggerPrice)
+      {
+         // ストップ価格: 現在価格 - オフセット
+         stopPrice = currentPrice - TrailingOffset * Point;
+         
+         // 各ゴーストポジションのストップロスを更新
+         for(int i = 0; i < g_GhostBuyCount; i++)
+         {
+            if(g_GhostBuyPositions[i].isGhost) // 有効なゴーストのみ
+            {
+               // 現在のストップロスを確認
+               double currentSL = g_GhostBuyPositions[i].stopLoss;
+               
+               // ストップロスが設定されていないか、または新しいストップが現在より高い場合
+               if(currentSL == 0 || stopPrice > currentSL)
+               {
+                  // ストップロスを更新
+                  g_GhostBuyPositions[i].stopLoss = stopPrice;
+                  Print("ゴーストBuy トレールストップ更新: レベル=", g_GhostBuyPositions[i].level + 1, 
+                       ", 平均価格=", DoubleToString(avgPrice, Digits),
+                       ", 現在価格=", DoubleToString(currentPrice, Digits),
+                       ", 新ストップ=", DoubleToString(stopPrice, Digits));
+               }
+            }
+         }
+         
+         // ストップラインを表示
+         UpdateGhostStopLine(side, stopPrice);
+      }
+   }
+   else // Sell
+   {
+      // トレールトリガー: 平均価格 - トリガーポイント
+      triggerPrice = avgPrice - TrailingTrigger * Point;
+      
+      // 現在価格がトリガー以下の場合のみトレーリング
+      if(currentPrice <= triggerPrice)
+      {
+         // ストップ価格: 現在価格 + オフセット
+         stopPrice = currentPrice + TrailingOffset * Point;
+         
+         // 各ゴーストポジションのストップロスを更新
+         for(int i = 0; i < g_GhostSellCount; i++)
+         {
+            if(g_GhostSellPositions[i].isGhost) // 有効なゴーストのみ
+            {
+               // 現在のストップロスを確認
+               double currentSL = g_GhostSellPositions[i].stopLoss;
+               
+               // ストップロスが設定されていないか、または新しいストップが現在より低い場合
+               if(currentSL == 0 || stopPrice < currentSL)
+               {
+                  // ストップロスを更新
+                  g_GhostSellPositions[i].stopLoss = stopPrice;
+                  Print("ゴーストSell トレールストップ更新: レベル=", g_GhostSellPositions[i].level + 1, 
+                       ", 平均価格=", DoubleToString(avgPrice, Digits),
+                       ", 現在価格=", DoubleToString(currentPrice, Digits),
+                       ", 新ストップ=", DoubleToString(stopPrice, Digits));
+               }
+            }
+         }
+         
+         // ストップラインを表示
+         UpdateGhostStopLine(side, stopPrice);
+      }
+   }
+   
+   // グローバル変数に保存
+   SaveGhostPositionsToGlobal();
+   
+   // ストップロス発動チェック
+   CheckGhostStopLossHit(side);
+}
+
+//+------------------------------------------------------------------+
+//| ゴーストストップロスのラインを更新                                |
+//+------------------------------------------------------------------+
+void UpdateGhostStopLine(int side, double stopPrice)
+{
+   string lineName = "GhostStopLine" + ((side == 0) ? "Buy" : "Sell");
+   string labelName = "GhostStopLabel" + ((side == 0) ? "Buy" : "Sell");
+   
+   // ラインの色を設定（赤系）
+   color lineColor = (side == 0) ? C'255,128,128' : C'255,64,64';
+   
+   // ラインを作成または更新
+   CreateHorizontalLine(g_ObjectPrefix + lineName, stopPrice, lineColor, STYLE_DASH, 1);
+   
+   // ラベルテキスト
+   string labelText = "Trail SL: " + DoubleToString(stopPrice, Digits);
+   
+   // ラベルを作成または更新
+   CreatePriceLabel(g_ObjectPrefix + labelName, labelText, stopPrice, lineColor, side == 0);
+}
+
+//+------------------------------------------------------------------+
+//| ゴーストのストップロス発動チェック                                |
+//+------------------------------------------------------------------+
+void CheckGhostStopLossHit(int side)
+{
+   // 処理対象のオペレーションタイプを決定
+   int operationType = (side == 0) ? OP_BUY : OP_SELL;
+   
+   // 現在価格を取得（BuyならBid、SellならAsk）
+   double currentPrice = (side == 0) ? GetBidPrice() : GetAskPrice();
+   
+   bool stopLossHit = false;
+   
+   if(side == 0) // Buy
+   {
+      // 有効なゴーストが1つ以上あるか確認
+      int validCount = CountValidGhosts(OP_BUY);
+      if(validCount <= 0)
+         return;
+      
+      // 一番低いストップロスを見つける
+      double lowestStopLoss = 999999;
+      
+      for(int i = 0; i < g_GhostBuyCount; i++)
+      {
+         if(g_GhostBuyPositions[i].isGhost && g_GhostBuyPositions[i].stopLoss > 0)
+         {
+            if(g_GhostBuyPositions[i].stopLoss < lowestStopLoss)
+               lowestStopLoss = g_GhostBuyPositions[i].stopLoss;
+         }
+      }
+      
+      // ストップロスがヒットしたかチェック
+      if(lowestStopLoss < 999999 && currentPrice <= lowestStopLoss)
+         stopLossHit = true;
+   }
+   else // Sell
+   {
+      // 有効なゴーストが1つ以上あるか確認
+      int validCount = CountValidGhosts(OP_SELL);
+      if(validCount <= 0)
+         return;
+      
+      // 一番高いストップロスを見つける
+      double highestStopLoss = 0;
+      
+      for(int i = 0; i < g_GhostSellCount; i++)
+      {
+         if(g_GhostSellPositions[i].isGhost && g_GhostSellPositions[i].stopLoss > 0)
+         {
+            if(g_GhostSellPositions[i].stopLoss > highestStopLoss)
+               highestStopLoss = g_GhostSellPositions[i].stopLoss;
+         }
+      }
+      
+      // ストップロスがヒットしたかチェック
+      if(highestStopLoss > 0 && currentPrice >= highestStopLoss)
+         stopLossHit = true;
+   }
+   
+   // ストップロスがヒットした場合の処理
+   if(stopLossHit)
+   {
+      Print("ゴースト", side == 0 ? "Buy" : "Sell", "のトレーリングストップがヒットしました: 価格=", DoubleToString(currentPrice, Digits));
+      
+      // リアルポジションとゴーストポジションを決済
+      if(side == 0)
+      {
+         // ゴーストポジションをリセット
+         ResetSpecificGhost(OP_BUY);
+         
+         // リアルポジションがあれば決済
+         if(position_count(OP_BUY) > 0)
+            position_close(OP_BUY);
+      }
+      else
+      {
+         // ゴーストポジションをリセット
+         ResetSpecificGhost(OP_SELL);
+         
+         // リアルポジションがあれば決済
+         if(position_count(OP_SELL) > 0)
+            position_close(OP_SELL);
+      }
+      
+      // ストップロスラインを削除
+      string lineName = "GhostStopLine" + ((side == 0) ? "Buy" : "Sell");
+      string labelName = "GhostStopLabel" + ((side == 0) ? "Buy" : "Sell");
+      
+      if(ObjectFind(g_ObjectPrefix + lineName) >= 0)
+         ObjectDelete(g_ObjectPrefix + lineName);
+      
+      if(ObjectFind(g_ObjectPrefix + labelName) >= 0)
+         ObjectDelete(g_ObjectPrefix + labelName);
+      
+      // その他の関連ラインも削除
+      CleanupLinesOnClose(side);
+      
+      // ポジションテーブルを更新
+      UpdatePositionTable();
    }
 }
