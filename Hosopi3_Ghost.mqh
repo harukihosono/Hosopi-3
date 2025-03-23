@@ -382,6 +382,9 @@ void ResetSpecificGhost(int type)
 //+------------------------------------------------------------------+
 void ResetGhost(int type)
 {
+
+
+   CleanupLinesOnClose(type == OP_BUY ? 0 : 1);
    if(type == OP_BUY)
    {
       // ゴーストBuyポジションのカウントをログに出力
@@ -877,16 +880,16 @@ void DeleteGhostLinesByType(int operationType, int lineType)
 }
 
 
+
+//+------------------------------------------------------------------+
+//| 平均価格ラインを更新する関数 - 改良版                             |
+//+------------------------------------------------------------------+
 void UpdateAveragePriceLines(int side)
 {
    // 処理対象のオペレーションタイプを決定
    int operationType = (side == 0) ? OP_BUY : OP_SELL;
 
-   // 決済済みの方向は処理しない
-   if((side == 0 && g_BuyGhostClosed) || (side == 1 && g_SellGhostClosed))
-      return;
-
-   // ポジションとゴーストカウントの取得
+   // ポジションカウントとゴーストカウントの取得
    int positionCount = position_count(operationType);
    int ghostCount = ghost_position_count(operationType);
 
@@ -894,22 +897,25 @@ void UpdateAveragePriceLines(int side)
    if(positionCount <= 0 && ghostCount <= 0)
    {
       // 平均価格ラインと利確ラインを削除
-      DeleteGhostLinesByType(operationType, LINE_TYPE_AVG_PRICE); // 平均価格ライン削除
-      DeleteGhostLinesByType(operationType, LINE_TYPE_TP);        // TP価格ライン削除
-      
-      // ラベルも削除
+      string lineName = "AvgPrice" + ((side == 0) ? "Buy" : "Sell");
       string labelName = "AvgPriceLabel" + ((side == 0) ? "Buy" : "Sell");
-      string tpLabelName = "TpLabel" + ((side == 0) ? "Buy" : "Sell");
+      string tpLineName = "TPLine" + ((side == 0) ? "Buy" : "Sell");
+      string tpLabelName = "TPLabel" + ((side == 0) ? "Buy" : "Sell");
       
+      // 各オブジェクトを個別に削除
+      if(ObjectFind(g_ObjectPrefix + lineName) >= 0)
+         ObjectDelete(g_ObjectPrefix + lineName);
       if(ObjectFind(g_ObjectPrefix + labelName) >= 0)
          ObjectDelete(g_ObjectPrefix + labelName);
+      if(ObjectFind(g_ObjectPrefix + tpLineName) >= 0)
+         ObjectDelete(g_ObjectPrefix + tpLineName);
       if(ObjectFind(g_ObjectPrefix + tpLabelName) >= 0)
          ObjectDelete(g_ObjectPrefix + tpLabelName);
       
       return;
    }
 
-   // 平均価格を計算 - ゴーストのみでも計算
+   // 平均価格を計算
    double avgPrice = CalculateCombinedAveragePrice(operationType);
    if(avgPrice <= 0)
       return;
@@ -920,35 +926,17 @@ void UpdateAveragePriceLines(int side)
    // 方向によって異なる変数を設定
    string direction = (side == 0) ? "BUY" : "SELL";
    string lineName = "AvgPrice" + ((side == 0) ? "Buy" : "Sell");
-   string tpLineName = "TpLine" + ((side == 0) ? "Buy" : "Sell");
+   string tpLineName = "TPLine" + ((side == 0) ? "Buy" : "Sell");
    string labelName = "AvgPriceLabel" + ((side == 0) ? "Buy" : "Sell");
-   string tpLabelName = "TpLabel" + ((side == 0) ? "Buy" : "Sell");
+   string tpLabelName = "TPLabel" + ((side == 0) ? "Buy" : "Sell");
 
-   // 既存のラインの価格を取得し、変更があった場合のみ更新
-   bool needsUpdate = true;
-   double currentLinePrice = 0;
-   
+   // ラインオブジェクトを削除して再作成
    if(ObjectFind(g_ObjectPrefix + lineName) >= 0)
-   {
-      currentLinePrice = ObjectGet(g_ObjectPrefix + lineName, OBJPROP_PRICE1);
-      // 価格の変更が小さい場合は更新しない（頻繁な更新を避ける）
-      if(MathAbs(currentLinePrice - avgPrice) < Point)
-      {
-         needsUpdate = false;
-      }
-   }
-   
-   // 更新が必要ない場合は処理終了
-   if(!needsUpdate)
-      return;
-   
-   // 既存のラインを削除して再作成する
-   DeleteGhostLinesByType(operationType, LINE_TYPE_AVG_PRICE); // 平均価格ライン削除
-   DeleteGhostLinesByType(operationType, LINE_TYPE_TP);        // TP価格ライン削除
-   
-   // ラベルも削除
+      ObjectDelete(g_ObjectPrefix + lineName);
    if(ObjectFind(g_ObjectPrefix + labelName) >= 0)
       ObjectDelete(g_ObjectPrefix + labelName);
+   if(ObjectFind(g_ObjectPrefix + tpLineName) >= 0)
+      ObjectDelete(g_ObjectPrefix + tpLineName);
    if(ObjectFind(g_ObjectPrefix + tpLabelName) >= 0)
       ObjectDelete(g_ObjectPrefix + tpLabelName);
 
@@ -962,13 +950,13 @@ void UpdateAveragePriceLines(int side)
    // 平均取得価格ライン（カスタムデザイン）
    CreateHorizontalLine(g_ObjectPrefix + lineName, avgPrice, lineColor, STYLE_SOLID, 2);
 
-   // 平均価格のラベル表示（見やすく）
+   // 平均価格のラベル表示
    string labelText = direction + " AVG: " + DoubleToString(avgPrice, Digits) + 
                   " P/L: " + DoubleToStr(combinedProfit, 2) + "$";
    CreatePriceLabel(g_ObjectPrefix + labelName, labelText, avgPrice, lineColor, side == 0);
 
-   // TPが有効な場合のみ、利確ラインと利確ラベルを表示
-if(TakeProfitMode != TP_OFF)
+   // TPが有効な場合、利確ラインも表示
+   if(TakeProfitMode != TP_OFF)
    {
       // TP価格の計算
       double tpPrice = (side == 0) ? 
@@ -979,25 +967,25 @@ if(TakeProfitMode != TP_OFF)
       CreateHorizontalLine(g_ObjectPrefix + tpLineName, tpPrice, TakeProfitLineColor, STYLE_DASH, 1);
 
       // 利確価格のラベル表示
-      string tpLabelText = "TP: " + DoubleToString(tpPrice, Digits) + " (+" + IntegerToString(TakeProfitPoints) + "pt)";
+      string tpLabelText = (TakeProfitMode == TP_LIMIT ? "Limit" : "Market") + " TP: " + 
+                           DoubleToString(tpPrice, Digits) + " (" + 
+                           (side == 0 ? "+" : "-") + IntegerToString(TakeProfitPoints) + "pt)";
       CreatePriceLabel(g_ObjectPrefix + tpLabelName, tpLabelText, tpPrice, TakeProfitLineColor, side == 0);
    }
 
-   // 静的変数で最後の更新時間を記録
+   // 更新のログ出力（1分に1回程度）
    static datetime lastUpdateLogTime = 0;
-   if(TimeCurrent() - lastUpdateLogTime > 30) // 30秒に1回だけログ出力
+   if(TimeCurrent() - lastUpdateLogTime > 60)
    {
       Print("平均取得価格ライン更新: ", direction, ", 平均価格=", DoubleToString(avgPrice, Digits));
-if(TakeProfitMode != TP_OFF)
-      {
-         double tpPrice = (side == 0) ? avgPrice + TakeProfitPoints * Point : avgPrice - TakeProfitPoints * Point;
-         Print("TP=", DoubleToString(tpPrice, Digits));
-      }
       lastUpdateLogTime = TimeCurrent();
    }
 }
 
-//+------------------------------------------------------------------+
+
+
+
+
 //| 決済時に点線と関連ラインを完全に削除する関数                      |
 //+------------------------------------------------------------------+
 void DeleteGhostLinesAndPreventRecreation(int type)

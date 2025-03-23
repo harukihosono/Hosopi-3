@@ -644,47 +644,132 @@ ObjectSet(objectName, OBJPROP_SELECTABLE, false);
 // オブジェクト名を保存
 SaveObjectName(objectName, g_LineNames, g_LineObjectCount);
 }
-
 //+------------------------------------------------------------------+
-//| すべてのラインを削除                                              |
+//| すべてのラインを削除 - ボタン保護版                               |
 //+------------------------------------------------------------------+
 void DeleteAllLines()
 {
-// 配列に保存されたオブジェクトを削除
-for(int i = 0; i < g_LineObjectCount; i++)
-{
-   if(ObjectFind(g_LineNames[i]) >= 0)
-      ObjectDelete(g_LineNames[i]);
-}
-
-// 追加: 平均価格関連の命名パターンを持つすべてのオブジェクトを検索して削除（ボタンは保護）
-for(int i = ObjectsTotal() - 1; i >= 0; i--)
-{
-   string name = ObjectName(i);
-   
-   // 現在のEAのプレフィックスを持つオブジェクトのみ処理（複数チャート対策）
-   if(StringFind(name, g_ObjectPrefix) != 0)
-      continue;
+   // チャート上のすべてのオブジェクトを検索して関連するラインを削除
+   for(int i = ObjectsTotal() - 1; i >= 0; i--)
+   {
+      string name = ObjectName(i);
       
-   // ボタンや他の重要なGUI要素を保護
-   if(StringFind(name, "btn") >= 0 ||       // ボタン
-      StringFind(name, "Panel") >= 0 ||     // パネル
-      StringFind(name, "Title") >= 0 ||     // タイトル
-      StringFind(name, "Table") >= 0)       // テーブル
-   {
-      continue; // これらのオブジェクトは保護
+      // 自分のEAのオブジェクトのみを対象にする
+      if(StringFind(name, g_ObjectPrefix) != 0) 
+         continue;
+      
+      // GUIボタンを保護 - 重要
+      if(StringFind(name, "btn") >= 0 || StringFind(name, "Panel") >= 0 || StringFind(name, "Title") >= 0)
+         continue;
+      
+      // 平均価格ラインとTP関連のオブジェクトを削除
+      if(StringFind(name, "AvgPrice") >= 0 || 
+         StringFind(name, "TPLine") >= 0 || 
+         StringFind(name, "Label") >= 0 || 
+         StringFind(name, "LimitTP") >= 0)
+      {
+         ObjectDelete(name);
+      }
    }
    
-   // 平均価格関連のオブジェクトを検索
-   if(StringFind(name, "AvgPrice") >= 0 || 
-      StringFind(name, "TpLine") >= 0 || 
-      StringFind(name, "TpLabel") >= 0 ||
-      StringFind(name, "AvgPriceLabel") >= 0)
+   // 配列に保存されたオブジェクトも削除
+   for(int i = 0; i < g_LineObjectCount; i++)
    {
-      ObjectDelete(name);
+      if(ObjectFind(g_LineNames[i]) >= 0)
+      {
+         // ここでもボタン保護
+         if(StringFind(g_LineNames[i], "btn") >= 0)
+            continue;
+            
+         ObjectDelete(g_LineNames[i]);
+      }
    }
+   
+   // 明示的に特定のオブジェクト名を指定して削除
+   string specificObjects[12]; // 配列サイズを宣言
+   
+   // 各要素に個別に値を代入
+   specificObjects[0] = g_ObjectPrefix + "AvgPriceBuy";
+   specificObjects[1] = g_ObjectPrefix + "AvgPriceSell";
+   specificObjects[2] = g_ObjectPrefix + "TPLineBuy";
+   specificObjects[3] = g_ObjectPrefix + "TPLineSell";
+   specificObjects[4] = g_ObjectPrefix + "AvgPriceLabelBuy";
+   specificObjects[5] = g_ObjectPrefix + "AvgPriceLabelSell";
+   specificObjects[6] = g_ObjectPrefix + "TPLabelBuy";
+   specificObjects[7] = g_ObjectPrefix + "TPLabelSell";
+   specificObjects[8] = g_ObjectPrefix + "LimitTPBuy";
+   specificObjects[9] = g_ObjectPrefix + "LimitTPSell";
+   specificObjects[10] = g_ObjectPrefix + "LimitTPLabelBuy";
+   specificObjects[11] = g_ObjectPrefix + "LimitTPLabelSell";
+   
+   for(int i = 0; i < ArraySize(specificObjects); i++)
+   {
+      if(ObjectFind(specificObjects[i]) >= 0)
+      {
+         ObjectDelete(specificObjects[i]);
+      }
+   }
+   
+   // カウンターをリセット
+   g_LineObjectCount = 0;
+   
+   // チャートの再描画を強制
+   ChartRedraw();
 }
 
-// カウンターをリセット
-g_LineObjectCount = 0;
+
+//+------------------------------------------------------------------+
+//| 決済時にラインを削除する関数                                      |
+//+------------------------------------------------------------------+
+void CleanupLinesOnClose(int side)
+{
+    // 方向に対応するラインを削除
+    string direction = (side == 0) ? "Buy" : "Sell";
+    
+    // 平均価格ライン、TPライン、各ラベルを削除
+    string objects[6];
+    objects[0] = g_ObjectPrefix + "AvgPrice" + direction;
+    objects[1] = g_ObjectPrefix + "TPLine" + direction;
+    objects[2] = g_ObjectPrefix + "AvgPriceLabel" + direction;
+    objects[3] = g_ObjectPrefix + "TPLabel" + direction;
+    objects[4] = g_ObjectPrefix + "LimitTP" + direction;
+    objects[5] = g_ObjectPrefix + "LimitTPLabel" + direction;
+    
+    for(int i = 0; i < ArraySize(objects); i++)
+    {
+        if(ObjectFind(objects[i]) >= 0)
+        {
+            ObjectDelete(objects[i]);
+            Print("決済時にライン削除: ", objects[i]);
+        }
+    }
+    
+    // チャートを再描画
+    ChartRedraw();
+}
+
+//+------------------------------------------------------------------+
+//| ポジションがない場合にラインを削除するチェック関数                 |
+//+------------------------------------------------------------------+
+void CheckAndDeleteLinesIfNoPositions()
+{
+   // Buy方向のチェック
+   int buyPositions = position_count(OP_BUY);
+   int buyGhosts = ghost_position_count(OP_BUY);
+   
+   // Buy方向のポジションがゼロならラインを削除
+   if(buyPositions == 0 && buyGhosts == 0)
+   {
+      CleanupLinesOnClose(0); // Buy側のライン削除
+   }
+   
+   // Sell方向のチェック
+   int sellPositions = position_count(OP_SELL);
+   int sellGhosts = ghost_position_count(OP_SELL);
+   
+   // Sell方向のポジションがゼロならラインを削除
+   if(sellPositions == 0 && sellGhosts == 0)
+   {
+      CleanupLinesOnClose(1); // Sell側のライン削除
+   }
 }

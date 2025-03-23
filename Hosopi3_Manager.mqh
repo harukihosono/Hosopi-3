@@ -697,7 +697,8 @@ void OnTickManager()
    {
       UpdatePositionTable();
       g_LastUpdateTime = TimeCurrent();
-      
+      // ポジションがない場合のライン削除チェック - ここに追加
+      CheckAndDeleteLinesIfNoPositions();
       // 定期的にゴーストポジション情報を保存 (1分ごと)
       static datetime lastSaveTime = 0;
       if(TimeCurrent() - lastSaveTime > 60)
@@ -738,27 +739,41 @@ void OnTickManager()
    // GUIを更新
    UpdateGUI();
 
-// 平均取得価格ラインの表示更新 - 修正版
+// 平均取得価格ラインの表示更新
 if(AveragePriceLine == ON_MODE && g_AvgPriceVisible)
 {
-   static datetime lastLineUpdateTime = 0;
-   if(TimeCurrent() - lastLineUpdateTime > 5) // 5秒間隔で更新
+   // Buy/Sellポジションがあるかチェック
+   int buyPositions = position_count(OP_BUY) + ghost_position_count(OP_BUY);
+   int sellPositions = position_count(OP_SELL) + ghost_position_count(OP_SELL);
+   
+   // ポジションがない場合は強制的にラインを削除
+   if(buyPositions == 0 && sellPositions == 0)
    {
-      // 各方向のリアルポジション数をチェック
-      bool hasBuyPosition = position_count(OP_BUY) > 0;
-      bool hasSellPosition = position_count(OP_SELL) > 0;
-      
-      // Buy側の更新（リアルポジションがある場合のみ）
-      UpdateAveragePriceLines(0); // この関数内部でリアルポジションをチェックしています
-      
-      // Sell側の更新（リアルポジションがある場合のみ）
-      UpdateAveragePriceLines(1); // この関数内部でリアルポジションをチェックしています
-      
-      lastLineUpdateTime = TimeCurrent();
+      DeleteAllLines();
+   }
+   else
+   {
+      // 通常の更新処理
+      static datetime lastAvgPriceUpdateTime = 0;
+      if(TimeCurrent() - lastAvgPriceUpdateTime > 1) // 1秒間隔
+      {
+         if(buyPositions > 0)
+            UpdateAveragePriceLines(0); // Buy側
+         else
+            DeleteSpecificLine(0); // Buy側のラインを削除
+         
+         if(sellPositions > 0)
+            UpdateAveragePriceLines(1); // Sell側
+         else
+            DeleteSpecificLine(1); // Sell側のラインを削除
+         
+         lastAvgPriceUpdateTime = TimeCurrent();
+      }
    }
 }
 else
 {
+   // 表示設定オフの場合、すべてのラインを削除
    DeleteAllLines();
 }
    
@@ -777,14 +792,42 @@ else
    }
       
 }
-
-
 //+------------------------------------------------------------------+
-//| ナンピン条件のチェック - 最適化版                                  |
+//| 特定方向のラインのみを削除                                        |
+//+------------------------------------------------------------------+
+void DeleteSpecificLine(int side)
+{
+   string direction = (side == 0) ? "Buy" : "Sell";
+   
+   // 平均価格ライン関連のオブジェクトを削除
+   string objects[6]; // 配列サイズを宣言
+   
+   // 各要素に個別に値を代入
+   objects[0] = g_ObjectPrefix + "AvgPrice" + direction;
+   objects[1] = g_ObjectPrefix + "TPLine" + direction;
+   objects[2] = g_ObjectPrefix + "AvgPriceLabel" + direction;
+   objects[3] = g_ObjectPrefix + "TPLabel" + direction;
+   objects[4] = g_ObjectPrefix + "LimitTP" + direction;
+   objects[5] = g_ObjectPrefix + "LimitTPLabel" + direction;
+   
+   for(int i = 0; i < ArraySize(objects); i++)
+   {
+      if(ObjectFind(objects[i]) >= 0)
+      {
+         ObjectDelete(objects[i]);
+         Print("方向別オブジェクト削除: ", objects[i]);
+      }
+   }
+   
+   // チャートの再描画
+   ChartRedraw();
+}
+//+------------------------------------------------------------------+
+//| ナンピン条件のチェック - 修正版                                    |
 //+------------------------------------------------------------------+
 void CheckNanpinConditions(int side)
 {
-   // 前回のチェックからの経過時間を確認
+   // 前回のチェックからの経過時間を確認（このチェックは保持）
    static datetime lastCheckTime[2] = {0, 0}; // [0] = Buy, [1] = Sell
    int typeIndex = side;
    
@@ -801,31 +844,44 @@ void CheckNanpinConditions(int side)
    
    // ポジションがないか最大数に達している場合はスキップ
    if(positionCount <= 0 || positionCount >= (int)MaxPositions)
+   {
+      if(positionCount >= (int)MaxPositions)
+         Print("CheckNanpinConditions: 最大ポジション数(", (int)MaxPositions, ")に達しているため、ナンピンをスキップします");
       return;
+   }
+   
+   // ナンピン機能が無効の場合はスキップ
+   if(!EnableNanpin)
+   {
+      Print("CheckNanpinConditions: ナンピン機能が無効のため、スキップします");
+      return;
+   }
    
    // 最後のナンピン時間を取得
    datetime lastNanpinTime = (side == 0) ? g_LastBuyNanpinTime : g_LastSellNanpinTime;
    
-   // 最後のナンピン時間からのインターバルチェック
-   if(TimeCurrent() - lastNanpinTime < NanpinInterval * 60)
+   // ナンピンインターバルの有効性をチェック
+   bool intervalOK = true; // デフォルトでOK
+   
+   if(NanpinInterval > 0) // インターバルが設定されている場合のみチェック
    {
-      // デバッグログの追加（1分に1回のみ出力）
-      static datetime lastIntervalDebugTime[2] = {0, 0};
-      if(TimeCurrent() - lastIntervalDebugTime[typeIndex] > 60)
+      intervalOK = (TimeCurrent() - lastNanpinTime >= NanpinInterval * 60);
+      
+      if(!intervalOK)
       {
-         Print("リアルナンピンインターバルが経過していません: ", 
-              (TimeCurrent() - lastNanpinTime) / 60, "分 / ", 
-              NanpinInterval, "分");
-         lastIntervalDebugTime[typeIndex] = TimeCurrent();
+         Print("ナンピンインターバル待機中: ", 
+               (TimeCurrent() - lastNanpinTime) / 60, "分 / ", 
+               NanpinInterval, "分");
+         return;
       }
-      return;
    }
+
    
    // 最後のポジション価格を取得
    double lastPrice = GetLastPositionPrice(operationType);
    if(lastPrice <= 0)
    {
-      Print("最後のポジション価格が取得できません。ナンピン条件チェックをスキップします。");
+      Print("CheckNanpinConditions: 最後のポジション価格が取得できません。スキップします。");
       return;
    }
    
@@ -836,17 +892,14 @@ void CheckNanpinConditions(int side)
    // positionCountは1から始まるので、配列インデックスに変換するために1を引く
    int nanpinSpread = g_NanpinSpreadTable[positionCount - 1];
    
-   // デバッグ出力（1分に1回のみ）
-   static datetime lastDebugLogTime[2] = {0, 0};
-   if(TimeCurrent() - lastDebugLogTime[typeIndex] > 60)
-   {
-      string direction = (side == 0) ? "Buy" : "Sell";
-      Print(direction, " リアルナンピン条件チェック: 現在価格=", currentPrice, 
-            ", 前回価格=", lastPrice, 
-            ", ナンピン幅=", nanpinSpread, 
-            " ポイント, 差=", (side == 0 ? (lastPrice - currentPrice) : (currentPrice - lastPrice)) / Point);
-      lastDebugLogTime[typeIndex] = TimeCurrent();
-   }
+   // デバッグ出力を強化（重要なパラメータをすべて表示）
+   string direction = (side == 0) ? "Buy" : "Sell";
+   Print("CheckNanpinConditions 詳細: 方向=", direction, 
+         ", ポジション数=", positionCount,
+         ", 最後の価格=", DoubleToString(lastPrice, Digits),
+         ", 現在価格=", DoubleToString(currentPrice, Digits),
+         ", ナンピン幅=", nanpinSpread, "ポイント",
+         ", 差=", MathAbs((side == 0) ? (lastPrice - currentPrice) : (currentPrice - lastPrice)) / Point, "ポイント");
    
    // ナンピン条件の判定
    bool nanpinCondition = false;
@@ -856,10 +909,12 @@ void CheckNanpinConditions(int side)
    else // Sell
       nanpinCondition = (currentPrice > lastPrice + nanpinSpread * Point);
    
+   Print("CheckNanpinConditions 条件判定: ", nanpinCondition ? "成立" : "不成立");
+   
    // ナンピン条件が満たされた場合
    if(nanpinCondition)
    {
-      Print((side == 0 ? "Buy" : "Sell"), " リアルナンピン条件成立、実行を開始します");
+      Print(direction, " リアルナンピン条件成立、実行を開始します");
       ExecuteRealNanpin(operationType);
       
       // ナンピン時間を更新
@@ -869,8 +924,6 @@ void CheckNanpinConditions(int side)
          g_LastSellNanpinTime = TimeCurrent();
    }
 }
-
-
 
 //+------------------------------------------------------------------+
 //| Expert initialization function - バックテスト用修正                |

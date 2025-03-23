@@ -277,6 +277,8 @@ void ManageTakeProfit(int side)
                
                // 点線を削除し再生成を防止
                DeleteGhostLinesAndPreventRecreation(operationType);
+
+               CleanupLinesOnClose(operationType);
                
                // ゴーストポジションの状態をリセット
                if(operationType == OP_BUY) {
@@ -325,6 +327,8 @@ void ManageTakeProfit(int side)
             }
             
             Print(direction, "ポジション利確: ゴーストポジションをリセットしました");
+
+            
             
             // テーブルを更新
             UpdatePositionTable();

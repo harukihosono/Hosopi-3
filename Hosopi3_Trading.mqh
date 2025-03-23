@@ -276,12 +276,14 @@ int order_count(int magic = 0)
 }
 
 //+------------------------------------------------------------------+
-//| GetLastPositionPrice関数（修正版）- 最新ポジションの価格を確実に取得 |
+//| GetLastPositionPrice関数（強化版）- 最新ポジションの価格を確実に取得 |
 //+------------------------------------------------------------------+
 double GetLastPositionPrice(int type)
 {
    double lastPrice = 0;
    datetime lastTime = 0;
+   
+   Print("GetLastPositionPrice: ", type == OP_BUY ? "Buy" : "Sell", "の最新ポジション価格を検索中");
    
    // このEAが管理するポジションのみを対象に
    for(int i = OrdersTotal() - 1; i >= 0; i--)
@@ -290,11 +292,17 @@ double GetLastPositionPrice(int type)
       {
          if(OrderType() == type && OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
          {
+            Print("  ポジション検出: チケット=", OrderTicket(), 
+                  ", 価格=", DoubleToString(OrderOpenPrice(), Digits), 
+                  ", 時間=", TimeToString(OrderOpenTime()));
+            
             // 最も新しいポジションを探す
             if(OrderOpenTime() > lastTime)
             {
                lastTime = OrderOpenTime();
                lastPrice = OrderOpenPrice();
+               Print("  [更新] 最新ポジション: 価格=", DoubleToString(lastPrice, Digits), 
+                     ", 時間=", TimeToString(lastTime));
             }
          }
       }
@@ -303,7 +311,9 @@ double GetLastPositionPrice(int type)
    // デバッグログ追加
    if(lastPrice > 0)
    {
-      Print("最後の", type == OP_BUY ? "Buy" : "Sell", "ポジション価格: ", lastPrice, ", 時間: ", TimeToString(lastTime));
+      Print("GetLastPositionPrice 結果: ", type == OP_BUY ? "Buy" : "Sell", 
+            "の最新ポジション価格=", DoubleToString(lastPrice, Digits), 
+            ", 時間=", TimeToString(lastTime));
    }
    else
    {
