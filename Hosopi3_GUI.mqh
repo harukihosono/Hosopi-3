@@ -7,18 +7,18 @@
 #include "Hosopi3_Trading.mqh"
 
 //+------------------------------------------------------------------+
-//| GUIを作成する - 修正版                                           |
+//| GUIを作成する - 改訂版                                           |
 //+------------------------------------------------------------------+
 void CreateGUI()
 {
    DeleteGUI(); // 既存のGUIを削除
    g_PanelObjectCount = 0; // オブジェクトカウントリセット
    
-   // パネル位置を100上げる
+   // パネル位置を調整
    int adjustedPanelY = PanelY;
    
-   // メインパネル背景
-   CreatePanel("MainPanel", PanelX, adjustedPanelY, PANEL_WIDTH, PANEL_HEIGHT + 250, COLOR_PANEL_BG, COLOR_PANEL_BORDER); // 高さを拡大
+   // メインパネル背景 - 不要なボタンを削除したため高さを縮小
+   CreatePanel("MainPanel", PanelX, adjustedPanelY, PANEL_WIDTH, PANEL_HEIGHT + 120, COLOR_PANEL_BG, COLOR_PANEL_BORDER);
    
    // パネルタイトル
    CreateTitleBar("TitleBar", PanelX, adjustedPanelY, PANEL_WIDTH, TITLE_HEIGHT, COLOR_TITLE_BG, PanelTitle);
@@ -41,7 +41,7 @@ void CreateGUI()
    // 全決済ボタン（横いっぱい）
    CreateButton("btnCloseAll", "Close All", PanelX + PANEL_MARGIN, row2Y, fullWidth, BUTTON_HEIGHT, COLOR_BUTTON_CLOSE_ALL, COLOR_TEXT_DARK);
    
-   // ========== 行3: 直接エントリーボタン (新規追加) ==========
+   // ========== 行3: 直接エントリーボタン ==========
    int row3Y = row2Y + BUTTON_HEIGHT + PANEL_MARGIN * 2; // 間隔を広く
    
    // セクションラベル
@@ -53,17 +53,21 @@ void CreateGUI()
    // Buyエントリーボタン (右)
    CreateButton("btnDirectBuy", "BUY NOW", PanelX + PANEL_MARGIN * 2 + buttonWidth, row3Y + 15, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_BUY, COLOR_TEXT_LIGHT);
    
-   // ========== 行4: 途中からエントリーボタン (新規追加) ==========
+   // ========== 行4: 途中からエントリーボタン ==========
    int row4Y = row3Y + BUTTON_HEIGHT + PANEL_MARGIN * 2 + 15; // 間隔を広く
    
    // セクションラベル
    CreateLabel("lblLevelEntry", "【レベル指定エントリー】", PanelX + PANEL_MARGIN, row4Y - 5, COLOR_TEXT_LIGHT);
    
+   // 現在のゴーストカウントに基づいてレベルを決定
+   int buyLevel = ghost_position_count(OP_BUY) + 1;
+   int sellLevel = ghost_position_count(OP_SELL) + 1;
+   
    // Sellエントリーボタン (左)
-   CreateButton("btnLevelSell", "SELL Level 3", PanelX + PANEL_MARGIN, row4Y + 15, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_SELL, COLOR_TEXT_LIGHT);
+   CreateButton("btnLevelSell", "SELL Level " + IntegerToString(sellLevel), PanelX + PANEL_MARGIN, row4Y + 15, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_SELL, COLOR_TEXT_LIGHT);
    
    // Buyエントリーボタン (右)
-   CreateButton("btnLevelBuy", "BUY Level 3", PanelX + PANEL_MARGIN * 2 + buttonWidth, row4Y + 15, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_BUY, COLOR_TEXT_LIGHT);
+   CreateButton("btnLevelBuy", "BUY Level " + IntegerToString(buyLevel), PanelX + PANEL_MARGIN * 2 + buttonWidth, row4Y + 15, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_BUY, COLOR_TEXT_LIGHT);
    
    // ========== 行5: 設定セクション ==========
    int row5Y = row4Y + BUTTON_HEIGHT + PANEL_MARGIN * 2 + 15; // 間隔を広く
@@ -90,41 +94,17 @@ void CreateGUI()
                PanelX + PANEL_MARGIN, row7Y, fullWidth, BUTTON_HEIGHT, 
                g_AvgPriceVisible ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE, COLOR_TEXT_LIGHT);
    
-   // ========== 行8: 自動売買切替ボタン ==========
+   // ========== 行8: 情報表示ボタン ==========
    int row8Y = row7Y + BUTTON_HEIGHT + PANEL_MARGIN;
    
-   // 自動売買切替ボタン（横いっぱい）
-   CreateButton("btnAutoTrading", "AUTO TRADING " + (g_AutoTrading ? "ON" : "OFF"), 
-               PanelX + PANEL_MARGIN, row8Y, fullWidth, BUTTON_HEIGHT, 
-               g_AutoTrading ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE, COLOR_TEXT_LIGHT);
-   
-   // ========== 行9: ナンピン切替ボタン ==========
-   int row9Y = row8Y + BUTTON_HEIGHT + PANEL_MARGIN;
-   
-   // ナンピン切替ボタン（横いっぱい）
-   CreateButton("btnNanpin", "NANPIN " + (g_EnableNanpin ? "ON" : "OFF"), 
-               PanelX + PANEL_MARGIN, row9Y, fullWidth, BUTTON_HEIGHT, 
-               g_EnableNanpin ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE, COLOR_TEXT_LIGHT);
-   
-   // ========== 行10: テクニカル指標利用 ==========
-   int row10Y = row9Y + BUTTON_HEIGHT + PANEL_MARGIN;
-   
-   // テクニカル指標による入出切替ボタン（横いっぱい）
-   CreateButton("btnIndicatorsEntry", "INDICATORS " + (g_EnableIndicatorsEntry ? "ON" : "OFF"), 
-               PanelX + PANEL_MARGIN, row10Y, fullWidth, BUTTON_HEIGHT, 
-               g_EnableIndicatorsEntry ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE, COLOR_TEXT_LIGHT);
-   
-   // ========== 行11: 情報表示ボタン ==========
-   int row11Y = row10Y + BUTTON_HEIGHT + PANEL_MARGIN;
-   
    // ロット情報表示ボタン (左)
-   CreateButton("btnShowLotTable", "Lot Table", PanelX + PANEL_MARGIN, row11Y, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_NEUTRAL, COLOR_TEXT_LIGHT);
+   CreateButton("btnShowLotTable", "Lot Table", PanelX + PANEL_MARGIN, row8Y, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_NEUTRAL, COLOR_TEXT_LIGHT);
    
    // 設定情報表示ボタン (右)
-   CreateButton("btnShowSettings", "Settings", PanelX + PANEL_MARGIN * 2 + buttonWidth, row11Y, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_NEUTRAL, COLOR_TEXT_LIGHT);
+   CreateButton("btnShowSettings", "Settings", PanelX + PANEL_MARGIN * 2 + buttonWidth, row8Y, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_NEUTRAL, COLOR_TEXT_LIGHT);
    
    // パネルの高さを調整
-   int panelHeight = row11Y + BUTTON_HEIGHT + PANEL_MARGIN - adjustedPanelY;
+   int panelHeight = row8Y + BUTTON_HEIGHT + PANEL_MARGIN - adjustedPanelY;
    ObjectSet(g_ObjectPrefix + "MainPanel" + "BG", OBJPROP_YSIZE, panelHeight);
    
    ChartRedraw(); // チャートを再描画
@@ -303,16 +283,26 @@ void ShowSettingsDialog()
    string message = "現在の設定状態:\n\n";
    
    // 各設定の状態
-   message += "自動売買: " + (g_AutoTrading ? "ON" : "OFF") + "\n";
+   message += "自動売買: " + (EnableAutomaticTrading ? "ON" : "OFF") + "\n";
    message += "ゴーストモード: " + (g_GhostMode ? "ON" : "OFF") + "\n";
-   message += "ナンピン: " + (g_EnableNanpin ? "ON" : "OFF") + "\n";
-   message += "ゴーストエントリー: " + (g_EnableGhostEntry ? "ON" : "OFF") + "\n";
-   message += "テクニカル指標エントリー: " + (g_EnableIndicatorsEntry ? "ON" : "OFF") + "\n";
-   message += "時間エントリー: " + (g_EnableTimeEntry ? "ON" : "OFF") + "\n";
-   message += "固定利確: " + (g_EnableFixedTP ? "ON" : "OFF") + "\n";
-   message += "テクニカル指標利確: " + (g_EnableIndicatorsTP ? "ON" : "OFF") + "\n";
-   message += "トレーリングストップ: " + (g_EnableTrailingStop ? "ON" : "OFF") + "\n";
-   message += "偶数/奇数時間エントリー: " + (g_UseEvenOddHoursEntry ? "ON" : "OFF") + "\n";
+   message += "ナンピン: " + (EnableNanpin ? "ON" : "OFF") + "\n";
+   message += "ゴーストエントリー: " + (EnableGhostEntry ? "ON" : "OFF") + "\n";
+   
+   // インジケーター有効性の確認
+   bool hasActiveIndicators = (MA_Cross_Strategy != STRATEGY_DISABLED || 
+                              RSI_Strategy != STRATEGY_DISABLED || 
+                              BB_Strategy != STRATEGY_DISABLED || 
+                              RCI_Strategy != STRATEGY_DISABLED || 
+                              Stochastic_Strategy != STRATEGY_DISABLED || 
+                              CCI_Strategy != STRATEGY_DISABLED || 
+                              ADX_Strategy != STRATEGY_DISABLED);
+   
+   message += "テクニカル指標エントリー: " + (hasActiveIndicators ? "ON" : "OFF") + "\n";
+   message += "時間エントリー: " + (UseEvenOddHoursEntry ? "ON" : "OFF") + "\n";
+   message += "固定利確: " + (EnableFixedTP ? "ON" : "OFF") + "\n";
+   message += "テクニカル指標利確: " + (EnableIndicatorsTP ? "ON" : "OFF") + "\n";
+   message += "トレーリングストップ: " + (EnableTrailingStop ? "ON" : "OFF") + "\n";
+   message += "偶数/奇数時間エントリー: " + (UseEvenOddHoursEntry ? "ON" : "OFF") + "\n";
    
    // 主要パラメータ
    message += "\n主要パラメータ:\n";
@@ -354,16 +344,22 @@ void DeleteGUI()
 }
 
 //+------------------------------------------------------------------+
-//| GUIを更新する - 修正版                                           |
+//| GUIを更新する - レベルボタン対応版                               |
 //+------------------------------------------------------------------+
 void UpdateGUI()
 {
    // オブジェクト名にプレフィックスを追加（複数チャート対策）
    string ghostBtnPrefix = g_ObjectPrefix + "btnGhostToggle";
    string avgPriceBtnPrefix = g_ObjectPrefix + "btnToggleAvgPrice";
-   string autoTradingBtnPrefix = g_ObjectPrefix + "btnAutoTrading";
-   string nanpinBtnPrefix = g_ObjectPrefix + "btnNanpin";
-   string indicatorsBtnPrefix = g_ObjectPrefix + "btnIndicatorsEntry";
+   string levelBuyBtnPrefix = g_ObjectPrefix + "btnLevelBuy";
+   string levelSellBtnPrefix = g_ObjectPrefix + "btnLevelSell";
+   
+   // レベルボタンのラベルを更新
+   int buyLevel = ghost_position_count(OP_BUY) + 1;
+   int sellLevel = ghost_position_count(OP_SELL) + 1;
+   
+   ObjectSetText(levelBuyBtnPrefix, "BUY Level " + IntegerToString(buyLevel), 9, "MS Gothic", COLOR_TEXT_LIGHT);
+   ObjectSetText(levelSellBtnPrefix, "SELL Level " + IntegerToString(sellLevel), 9, "MS Gothic", COLOR_TEXT_LIGHT);
    
    // Ghost ON/OFFボタン状態更新
    color ghostButtonColor = g_GhostMode ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE;
@@ -371,7 +367,7 @@ void UpdateGUI()
    ObjectSet(ghostBtnPrefix + "BG", OBJPROP_COLOR, ColorDarken(ghostButtonColor, 20));
    ObjectSet(ghostBtnPrefix, OBJPROP_BGCOLOR, ghostButtonColor);
    ObjectSet(ghostBtnPrefix, OBJPROP_BORDER_COLOR, ColorDarken(ghostButtonColor, 20));
-   ObjectSetText(ghostBtnPrefix, g_GhostMode ? "GHOST ON" : "GHOST OFF", 9, "Arial", COLOR_TEXT_LIGHT);
+   ObjectSetText(ghostBtnPrefix, g_GhostMode ? "GHOST ON" : "GHOST OFF", 9, "MS Gothic", COLOR_TEXT_LIGHT);
    
    // 平均取得単価表示ボタン状態更新
    color avgPriceButtonColor = g_AvgPriceVisible ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE;
@@ -379,38 +375,13 @@ void UpdateGUI()
    ObjectSet(avgPriceBtnPrefix + "BG", OBJPROP_COLOR, ColorDarken(avgPriceButtonColor, 20));
    ObjectSet(avgPriceBtnPrefix, OBJPROP_BGCOLOR, avgPriceButtonColor);
    ObjectSet(avgPriceBtnPrefix, OBJPROP_BORDER_COLOR, ColorDarken(avgPriceButtonColor, 20));
-   ObjectSetText(avgPriceBtnPrefix, g_AvgPriceVisible ? "AVG PRICE ON" : "AVG PRICE OFF", 9, "Arial", COLOR_TEXT_LIGHT);
-   
-   // 自動売買ボタン状態更新
-   color autoTradingButtonColor = g_AutoTrading ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE;
-   ObjectSet(autoTradingBtnPrefix + "BG", OBJPROP_BGCOLOR, autoTradingButtonColor);
-   ObjectSet(autoTradingBtnPrefix + "BG", OBJPROP_COLOR, ColorDarken(autoTradingButtonColor, 20));
-   ObjectSet(autoTradingBtnPrefix, OBJPROP_BGCOLOR, autoTradingButtonColor);
-   ObjectSet(autoTradingBtnPrefix, OBJPROP_BORDER_COLOR, ColorDarken(autoTradingButtonColor, 20));
-   ObjectSetText(autoTradingBtnPrefix, g_AutoTrading ? "AUTO TRADING ON" : "AUTO TRADING OFF", 9, "Arial", COLOR_TEXT_LIGHT);
-   
-   // ナンピンボタン状態更新
-   color nanpinButtonColor = g_EnableNanpin ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE;
-   ObjectSet(nanpinBtnPrefix + "BG", OBJPROP_BGCOLOR, nanpinButtonColor);
-   ObjectSet(nanpinBtnPrefix + "BG", OBJPROP_COLOR, ColorDarken(nanpinButtonColor, 20));
-   ObjectSet(nanpinBtnPrefix, OBJPROP_BGCOLOR, nanpinButtonColor);
-   ObjectSet(nanpinBtnPrefix, OBJPROP_BORDER_COLOR, ColorDarken(nanpinButtonColor, 20));
-   ObjectSetText(nanpinBtnPrefix, g_EnableNanpin ? "NANPIN ON" : "NANPIN OFF", 9, "Arial", COLOR_TEXT_LIGHT);
-   
-   // テクニカル指標ボタン状態更新
-   color indicatorsButtonColor = g_EnableIndicatorsEntry ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE;
-   ObjectSet(indicatorsBtnPrefix + "BG", OBJPROP_BGCOLOR, indicatorsButtonColor);
-   ObjectSet(indicatorsBtnPrefix + "BG", OBJPROP_COLOR, ColorDarken(indicatorsButtonColor, 20));
-   ObjectSet(indicatorsBtnPrefix, OBJPROP_BGCOLOR, indicatorsButtonColor);
-   ObjectSet(indicatorsBtnPrefix, OBJPROP_BORDER_COLOR, ColorDarken(indicatorsButtonColor, 20));
-   ObjectSetText(indicatorsBtnPrefix, g_EnableIndicatorsEntry ? "INDICATORS ON" : "INDICATORS OFF", 9, "Arial", COLOR_TEXT_LIGHT);
+   ObjectSetText(avgPriceBtnPrefix, g_AvgPriceVisible ? "AVG PRICE ON" : "AVG PRICE OFF", 9, "MS Gothic", COLOR_TEXT_LIGHT);
    
    ChartRedraw(); // チャートを再描画
 }
 
-
 //+------------------------------------------------------------------+
-//| ボタンクリックを処理する - 拡張版                                |
+//| ボタンクリックを処理する - 修正版                                |
 //+------------------------------------------------------------------+
 void ProcessButtonClick(string buttonName)
 {
@@ -526,31 +497,7 @@ void ProcessButtonClick(string buttonName)
       Print("平均価格ラインを", g_AvgPriceVisible ? "表示" : "非表示", "に切り替えました");
    }
    
-   // 自動売買切り替えボタン
-   else if(buttonName == "btnAutoTrading")
-   {
-      g_AutoTrading = !g_AutoTrading;
-      UpdateGUI();
-      Print("自動売買を", g_AutoTrading ? "ON" : "OFF", "に切り替えました");
-   }
-   
-   // ナンピン切り替えボタン
-   else if(buttonName == "btnNanpin")
-   {
-      g_EnableNanpin = !g_EnableNanpin;
-      UpdateGUI();
-      Print("ナンピン機能を", g_EnableNanpin ? "ON" : "OFF", "に切り替えました");
-   }
-   
-   // テクニカル指標切り替えボタン
-   else if(buttonName == "btnIndicatorsEntry")
-   {
-      g_EnableIndicatorsEntry = !g_EnableIndicatorsEntry;
-      UpdateGUI();
-      Print("テクニカル指標によるエントリーを", g_EnableIndicatorsEntry ? "ON" : "OFF", "に切り替えました");
-   }
-   
-   // ===== 新規追加ボタン - 直接エントリー機能 =====
+   // ===== 直接エントリー機能 =====
    
    // 直接Buy
    else if(buttonName == "btnDirectBuy")
@@ -558,6 +505,7 @@ void ProcessButtonClick(string buttonName)
       Print("直接Buyボタンがクリックされました");
       ExecuteDiscretionaryEntry(OP_BUY);
       UpdatePositionTable();
+      UpdateGUI(); // レベルボタンのラベルを更新
    }
    
    // 直接Sell
@@ -566,49 +514,52 @@ void ProcessButtonClick(string buttonName)
       Print("直接Sellボタンがクリックされました");
       ExecuteDiscretionaryEntry(OP_SELL);
       UpdatePositionTable();
+      UpdateGUI(); // レベルボタンのラベルを更新
    }
    
-   // ===== 新規追加ボタン - レベル指定エントリー機能 =====
+   // ===== レベル指定エントリーボタン =====
    
    // レベル指定Buy
    else if(buttonName == "btnLevelBuy")
    {
-      Print("レベル指定Buyボタンがクリックされました");
-      // デフォルトでレベル3を指定（GUI上のボタンテキストと合わせる）
-      int entryLevel = 3;
+      // 現在のゴーストカウント+1をレベルとして使用
+      int entryLevel = ghost_position_count(OP_BUY) + 1;
+      Print("レベル指定Buyボタンがクリックされました: レベル", entryLevel);
       ExecuteEntryFromLevel(OP_BUY, entryLevel);
       UpdatePositionTable();
+      UpdateGUI(); // レベルボタンのラベルを更新
    }
    
    // レベル指定Sell
    else if(buttonName == "btnLevelSell")
    {
-      Print("レベル指定Sellボタンがクリックされました");
-      // デフォルトでレベル3を指定（GUI上のボタンテキストと合わせる）
-      int entryLevel = 3;
+      // 現在のゴーストカウント+1をレベルとして使用
+      int entryLevel = ghost_position_count(OP_SELL) + 1;
+      Print("レベル指定Sellボタンがクリックされました: レベル", entryLevel);
       ExecuteEntryFromLevel(OP_SELL, entryLevel);
       UpdatePositionTable();
+      UpdateGUI(); // レベルボタンのラベルを更新
    }
    
-   // ロットテーブル表示ボタン
-   else if(buttonName == "btnShowLotTable")
-   {
-      Print("ロットテーブル表示ボタンがクリックされました");
-      CreateLotTableDialog();
-   }
-   
-   // 設定情報表示ボタン
-   else if(buttonName == "btnShowSettings")
-   {
-      Print("設定情報表示ボタンがクリックされました");
-      ShowSettingsDialog();
-   }
-   
-   // 未知のボタンの場合
-   else
-   {
-      Print("未知のボタンがクリックされました: ", buttonName);
-   }
+// ロットテーブル表示ボタン
+else if(buttonName == "btnShowLotTable")
+{
+   Print("ロットテーブル表示ボタンがクリックされました");
+   CreateLotTableDialog();
+}
+
+// 設定情報表示ボタン
+else if(buttonName == "btnShowSettings")
+{
+   Print("設定情報表示ボタンがクリックされました");
+   ShowSettingsDialog();
+}
+
+// 未知のボタンの場合
+else
+{
+   Print("未知のボタンがクリックされました: ", buttonName);
+}
 }
 
 //+------------------------------------------------------------------+
@@ -616,19 +567,19 @@ void ProcessButtonClick(string buttonName)
 //+------------------------------------------------------------------+
 void ToggleAveragePriceVisibility(bool visible)
 {
-   if(visible)
-   {
-      // 表示ONの場合は平均取得価格ラインを更新表示
-      UpdateAveragePriceLines(0); // Buy側
-      UpdateAveragePriceLines(1); // Sell側
-   }
-   else
-   {
-      // 表示OFFの場合はラインを削除
-      DeleteAllLines();
-   }
-   
-   ChartRedraw(); // チャートを再描画
+if(visible)
+{
+   // 表示ONの場合は平均取得価格ラインを更新表示
+   UpdateAveragePriceLines(0); // Buy側
+   UpdateAveragePriceLines(1); // Sell側
+}
+else
+{
+   // 表示OFFの場合はラインを削除
+   DeleteAllLines();
+}
+
+ChartRedraw(); // チャートを再描画
 }
 
 //+------------------------------------------------------------------+
@@ -636,23 +587,23 @@ void ToggleAveragePriceVisibility(bool visible)
 //+------------------------------------------------------------------+
 void CreateHorizontalLine(string name, double price, color lineColor, int style, int width)
 {
-   // オブジェクト名にプレフィックスを追加（複数チャート対策）
-   string objectName = g_ObjectPrefix + name;
+// オブジェクト名にプレフィックスを追加（複数チャート対策）
+string objectName = g_ObjectPrefix + name;
+
+if(ObjectFind(objectName) >= 0)
+   ObjectDelete(objectName);
    
-   if(ObjectFind(objectName) >= 0)
-      ObjectDelete(objectName);
-      
-   ObjectCreate(objectName, OBJ_HLINE, 0, 0, price);
-   ObjectSet(objectName, OBJPROP_COLOR, lineColor);
-   ObjectSet(objectName, OBJPROP_STYLE, style);
-   ObjectSet(objectName, OBJPROP_WIDTH, width);
-   ObjectSet(objectName, OBJPROP_BACK, false);
-   ObjectSet(objectName, OBJPROP_SELECTABLE, true);
-   ObjectSet(objectName, OBJPROP_SELECTED, false);
-   ObjectSet(objectName, OBJPROP_HIDDEN, true);
-   
-   // オブジェクト名を保存
-   SaveObjectName(objectName, g_LineNames, g_LineObjectCount);
+ObjectCreate(objectName, OBJ_HLINE, 0, 0, price);
+ObjectSet(objectName, OBJPROP_COLOR, lineColor);
+ObjectSet(objectName, OBJPROP_STYLE, style);
+ObjectSet(objectName, OBJPROP_WIDTH, width);
+ObjectSet(objectName, OBJPROP_BACK, false);
+ObjectSet(objectName, OBJPROP_SELECTABLE, true);
+ObjectSet(objectName, OBJPROP_SELECTED, false);
+ObjectSet(objectName, OBJPROP_HIDDEN, true);
+
+// オブジェクト名を保存
+SaveObjectName(objectName, g_LineNames, g_LineObjectCount);
 }
 
 //+------------------------------------------------------------------+
@@ -660,22 +611,22 @@ void CreateHorizontalLine(string name, double price, color lineColor, int style,
 //+------------------------------------------------------------------+
 void CreatePriceLabel(string name, string text, double price, color textColor, bool isAbove)
 {
-   // オブジェクト名にプレフィックスを追加（複数チャート対策）
-   string objectName = g_ObjectPrefix + name;
+// オブジェクト名にプレフィックスを追加（複数チャート対策）
+string objectName = g_ObjectPrefix + name;
+
+// 既存のラベルがあれば削除
+if(ObjectFind(objectName) >= 0)
+   ObjectDelete(objectName);
    
-   // 既存のラベルがあれば削除
-   if(ObjectFind(objectName) >= 0)
-      ObjectDelete(objectName);
-      
-   // ラベルの作成
-   datetime labelTime = TimeCurrent() + 1800; // 現在時刻から30分後の位置に表示
-   ObjectCreate(objectName, OBJ_TEXT, 0, labelTime, price + (isAbove ? 25*Point : -25*Point));
-   ObjectSetText(objectName, text, 8, "Arial Bold", textColor);
-   ObjectSet(objectName, OBJPROP_BACK, false);
-   ObjectSet(objectName, OBJPROP_SELECTABLE, false);
-   
-   // オブジェクト名を保存
-   SaveObjectName(objectName, g_LineNames, g_LineObjectCount);
+// ラベルの作成
+datetime labelTime = TimeCurrent() + 1800; // 現在時刻から30分後の位置に表示
+ObjectCreate(objectName, OBJ_TEXT, 0, labelTime, price + (isAbove ? 25*Point : -25*Point));
+ObjectSetText(objectName, text, 8, "Arial Bold", textColor);
+ObjectSet(objectName, OBJPROP_BACK, false);
+ObjectSet(objectName, OBJPROP_SELECTABLE, false);
+
+// オブジェクト名を保存
+SaveObjectName(objectName, g_LineNames, g_LineObjectCount);
 }
 
 //+------------------------------------------------------------------+
@@ -683,41 +634,41 @@ void CreatePriceLabel(string name, string text, double price, color textColor, b
 //+------------------------------------------------------------------+
 void DeleteAllLines()
 {
-   // 配列に保存されたオブジェクトを削除
-   for(int i = 0; i < g_LineObjectCount; i++)
+// 配列に保存されたオブジェクトを削除
+for(int i = 0; i < g_LineObjectCount; i++)
+{
+   if(ObjectFind(g_LineNames[i]) >= 0)
+      ObjectDelete(g_LineNames[i]);
+}
+
+// 追加: 平均価格関連の命名パターンを持つすべてのオブジェクトを検索して削除（ボタンは保護）
+for(int i = ObjectsTotal() - 1; i >= 0; i--)
+{
+   string name = ObjectName(i);
+   
+   // 現在のEAのプレフィックスを持つオブジェクトのみ処理（複数チャート対策）
+   if(StringFind(name, g_ObjectPrefix) != 0)
+      continue;
+      
+   // ボタンや他の重要なGUI要素を保護
+   if(StringFind(name, "btn") >= 0 ||       // ボタン
+      StringFind(name, "Panel") >= 0 ||     // パネル
+      StringFind(name, "Title") >= 0 ||     // タイトル
+      StringFind(name, "Table") >= 0)       // テーブル
    {
-      if(ObjectFind(g_LineNames[i]) >= 0)
-         ObjectDelete(g_LineNames[i]);
+      continue; // これらのオブジェクトは保護
    }
    
-   // 追加: 平均価格関連の命名パターンを持つすべてのオブジェクトを検索して削除（ボタンは保護）
-   for(int i = ObjectsTotal() - 1; i >= 0; i--)
+   // 平均価格関連のオブジェクトを検索
+   if(StringFind(name, "AvgPrice") >= 0 || 
+      StringFind(name, "TpLine") >= 0 || 
+      StringFind(name, "TpLabel") >= 0 ||
+      StringFind(name, "AvgPriceLabel") >= 0)
    {
-      string name = ObjectName(i);
-      
-      // 現在のEAのプレフィックスを持つオブジェクトのみ処理（複数チャート対策）
-      if(StringFind(name, g_ObjectPrefix) != 0)
-         continue;
-         
-      // ボタンや他の重要なGUI要素を保護
-      if(StringFind(name, "btn") >= 0 ||       // ボタン
-         StringFind(name, "Panel") >= 0 ||     // パネル
-         StringFind(name, "Title") >= 0 ||     // タイトル
-         StringFind(name, "Table") >= 0)       // テーブル
-      {
-         continue; // これらのオブジェクトは保護
-      }
-      
-      // 平均価格関連のオブジェクトを検索
-      if(StringFind(name, "AvgPrice") >= 0 || 
-         StringFind(name, "TpLine") >= 0 || 
-         StringFind(name, "TpLabel") >= 0 ||
-         StringFind(name, "AvgPriceLabel") >= 0)
-      {
-         ObjectDelete(name);
-      }
+      ObjectDelete(name);
    }
-   
-   // カウンターをリセット
-   g_LineObjectCount = 0;
+}
+
+// カウンターをリセット
+g_LineObjectCount = 0;
 }

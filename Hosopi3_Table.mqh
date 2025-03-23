@@ -30,7 +30,7 @@ void CreatePositionTable()
    // パネル位置の調整を考慮したテーブル位置
    int adjustedPanelY = PanelY;
    int adjustedGhostTableX = PanelX;
-   int adjustedGhostTableY = adjustedPanelY + 600; // テーブル位置をさらに下げる
+   int adjustedGhostTableY = adjustedPanelY + 450; // テーブル位置をさらに下げる
    
    // オブジェクト名にプレフィックスを追加（複数チャート対策）
    string tablePrefix = g_ObjectPrefix + "GhostTable_";
@@ -146,7 +146,7 @@ void UpdatePositionTable()
    // 修正: テーブル位置の調整
    int adjustedPanelY = PanelY;
    int adjustedGhostTableX = PanelX;
-   int adjustedGhostTableY = adjustedPanelY + 600; // テーブル位置をさらに下げる
+   int adjustedGhostTableY = adjustedPanelY + 450; // テーブル位置をさらに下げる
    
    // 列の位置を定義
    int columnWidths[8] = {25, 45, 45, 90, 95, 140, 45, 90}; // 各列の幅

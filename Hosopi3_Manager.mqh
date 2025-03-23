@@ -433,7 +433,7 @@ void ExecuteRealEntry(int type, string entryReason)
 //+------------------------------------------------------------------+
 //| リアルナンピンの実行 - 最適化とログ出力を追加                     |
 //+------------------------------------------------------------------+
-void ExecuteRealNanpin(int type)
+void ExecuteRealNanpin(int typeOrder)
 {
    // 自動売買が無効の場合は何もしない
    if(!EnableAutomaticTrading)
@@ -450,28 +450,28 @@ void ExecuteRealNanpin(int type)
    }
    
    // 現在のポジション数を確認
-   int positionCount = position_count(type);
-   if(positionCount <= 0)
+   int posCount = position_count(typeOrder);
+   if(posCount <= 0)
    {
       Print("リアルポジションが存在しないため、リアルナンピンはスキップされました");
       return;
    }
    
-   if(positionCount >= (int)MaxPositions)
+   if(posCount >= (int)MaxPositions)
    {
       Print("すでに最大ポジション数に達しているため、リアルナンピンはスキップされました");
       return;
    }
    
    // エントリー方向が許可されているかチェック
-   if(!IsEntryAllowed(type == OP_BUY ? 0 : 1))
+   if(!IsEntryAllowed(typeOrder == OP_BUY ? 0 : 1))
    {
       Print("エントリー方向が許可されていないため、リアルナンピンはスキップされました");
       return;
    }
    
    // エントリー時間が許可されているかチェック
-   if(!IsTimeAllowed(type))
+   if(!IsTimeAllowed(typeOrder))
    {
       Print("エントリー時間が許可されていないため、リアルナンピンはスキップされました");
       return;
@@ -480,20 +480,20 @@ void ExecuteRealNanpin(int type)
    // 最後のリアルポジションのロットサイズを取得
    double lastLotSize = 0;
    datetime lastOpenTime = 0;
-   double lastPrice = 0;
+   double priceLastPos = 0;
    
    for(int i = OrdersTotal() - 1; i >= 0; i--)
    {
       if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
       {
-         if(OrderType() == type && OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
+         if(OrderType() == typeOrder && OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
          {
             // 最新のポジションを探す
             if(OrderOpenTime() > lastOpenTime)
             {
                lastOpenTime = OrderOpenTime();
                lastLotSize = OrderLots();
-               lastPrice = OrderOpenPrice();
+               priceLastPos = OrderOpenPrice();
             }
          }
       }
@@ -507,67 +507,71 @@ void ExecuteRealNanpin(int type)
    }
    
    // 次のナンピンロットを計算
-   double lots;
+   double lotsToUse;
+   
+   // ゴーストポジション数を取得して考慮する
+   int ghostCount = ghost_position_count(typeOrder);
+   int totalLevel = posCount + ghostCount;
    
    // 個別指定モードが有効な場合はテーブルから取得
    if(IndividualLotEnabled == ON_MODE) {
-      // positionCountは1から始まるので、次のロットは[positionCount]の位置
-      // (0から始まる配列インデックスでは現在のカウントがそのまま次のインデックス)
-      if(positionCount < ArraySize(g_LotTable)) {
-         lots = g_LotTable[positionCount];
-         Print("個別指定ロットモード: ナンピンレベル", positionCount + 1, "のロットサイズ", DoubleToString(lots, 2), "を使用");
+      // 現在のポジション数に対応するレベルを使用
+      if(totalLevel < ArraySize(g_LotTable)) {
+         lotsToUse = g_LotTable[totalLevel];
+         Print("個別指定ロットモード: 合計レベル", totalLevel + 1, "のロットサイズ", DoubleToString(lotsToUse, 2), "を使用");
       } else {
          // インデックス範囲外の場合は最後のロットを使用
-         lots = g_LotTable[ArraySize(g_LotTable) - 1];
-         Print("警告: ナンピンレベルがロットテーブルを超えています。最後のロット", DoubleToString(lots, 2), "を使用");
+         lotsToUse = g_LotTable[ArraySize(g_LotTable) - 1];
+         Print("警告: ナンピンレベルがロットテーブルを超えています。最後のロット", DoubleToString(lotsToUse, 2), "を使用");
       }
    } else {
       // マーチンゲールモードでは最後のポジションのロットに倍率を掛ける
-      lots = lastLotSize * LotMultiplier;
+      lotsToUse = lastLotSize * LotMultiplier;
       
       // 小数点以下3桁で切り上げ（ロットテーブルと同様の計算）
-      lots = MathCeil(lots * 1000) / 1000;
+      lotsToUse = MathCeil(lotsToUse * 1000) / 1000;
       
       Print("マーチンゲールモード: ベースロット=", DoubleToString(lastLotSize, 2),
          ", 倍率=", DoubleToString(LotMultiplier, 2),
-         ", 次のロット=", DoubleToString(lots, 2));
+         ", 次のロット=", DoubleToString(lotsToUse, 2));
    }
    
    // 現在の価格を取得（BuyならBid、SellならAsk）
-   double currentPrice = (type == OP_BUY) ? GetBidPrice() : GetAskPrice();
+   double priceCurrent = (typeOrder == OP_BUY) ? GetBidPrice() : GetAskPrice();
    
    // 現在のレベルに対応するナンピン幅を取得
-   int nanpinSpread = g_NanpinSpreadTable[positionCount - 1];
+   int spreadForNanpin = g_NanpinSpreadTable[posCount - 1];
    
    // ナンピン理由をログに記録
-   string reason = StringFormat("ナンピン条件成立: 前回価格=%s, 現在価格=%s, 差=%d ポイント (ナンピン幅=%d)",
-                              DoubleToString(lastPrice, Digits),
-                              DoubleToString(currentPrice, Digits),
-                              (int)MathAbs((lastPrice - currentPrice) / Point),
-                              nanpinSpread);
+   string reasonText = StringFormat("ナンピン条件成立: 前回価格=%s, 現在価格=%s, 差=%d ポイント (ナンピン幅=%d)",
+                              DoubleToString(priceLastPos, Digits),
+                              DoubleToString(priceCurrent, Digits),
+                              (int)MathAbs((priceLastPos - priceCurrent) / Point),
+                              spreadForNanpin);
    
-   LogEntryReason(type, "ナンピン", reason);
+   LogEntryReason(typeOrder, "ナンピン", reasonText);
    
    // MQL4/MQL5互換のposition_entry関数を使用
-   bool result = position_entry(type, lots, Slippage, MagicNumber, "Hosopi 3 EA Nanpin");
+   bool entryResult = position_entry(typeOrder, lotsToUse, Slippage, MagicNumber, "Hosopi 3 EA Nanpin");
    
-   if(result)
+   if(entryResult)
    {
-      Print("リアル", type == OP_BUY ? "Buy" : "Sell", "ナンピン成功: ", 
-            "ロット=", DoubleToString(lots, 2), ", 価格=", 
-            DoubleToString(type == OP_BUY ? GetAskPrice() : GetBidPrice(), 5));
+      Print("リアル", typeOrder == OP_BUY ? "Buy" : "Sell", "ナンピン成功: ", 
+            "ロット=", DoubleToString(lotsToUse, 2), ", 価格=", 
+            DoubleToString(typeOrder == OP_BUY ? GetAskPrice() : GetBidPrice(), 5));
    }
    else
    {
-      Print("リアル", type == OP_BUY ? "Buy" : "Sell", "ナンピンエラー: ", GetLastError());
+      Print("リアル", typeOrder == OP_BUY ? "Buy" : "Sell", "ナンピンエラー: ", GetLastError());
    }
 }
-//+------------------------------------------------------------------+
+
+
 //| 裁量エントリー用関数 - ユーザーが手動で行うエントリー             |
 //+------------------------------------------------------------------+
-void ExecuteDiscretionaryEntry(int type, double lotSize = 0)
+void ExecuteDiscretionaryEntry(int typeOrder, double lotSize = 0)
 {
-   if(!g_AutoTrading)
+   if(!EnableAutomaticTrading)
    {
       Print("自動売買が無効のため、裁量エントリーはスキップされました");
       return;
@@ -579,38 +583,50 @@ void ExecuteDiscretionaryEntry(int type, double lotSize = 0)
       return;
    }
       
-   int existingCount = position_count(type);
+   int existingCount = position_count(typeOrder);
    if(existingCount > 0)
    {
       Print("既にリアルポジションが存在するため、裁量エントリーはスキップされました: ", existingCount, "ポジション");
       return;
    }
    
-   // ロットサイズ指定がない場合は初期ロットを使用
-   double lots = (lotSize > 0) ? lotSize : g_LotTable[0];
+   // ゴーストポジション数に基づいてロットサイズを決定
+   int ghostCount = ghost_position_count(typeOrder);
+   double lotsToUse;
    
-   Print("裁量エントリー実行: ", type == OP_BUY ? "Buy" : "Sell", 
-         ", ロット=", DoubleToString(lots, 2));
+   if(lotSize > 0) {
+      // 明示的に指定されたロットサイズを使用
+      lotsToUse = lotSize;
+   } else if(ghostCount > 0) {
+      // ゴーストポジションがある場合、そのレベルに対応するロットサイズを使用
+      lotsToUse = g_LotTable[ghostCount];
+      Print("ゴーストポジション数に基づいたロットサイズを使用: レベル=", ghostCount + 1, ", ロット=", DoubleToString(lotsToUse, 2));
+   } else {
+      // ゴーストポジションがない場合は初期ロットを使用
+      lotsToUse = g_LotTable[0];
+      Print("初期ロットサイズを使用: ", DoubleToString(lotsToUse, 2));
+   }
+   
+   Print("裁量エントリー実行: ", typeOrder == OP_BUY ? "Buy" : "Sell", 
+         ", ロット=", DoubleToString(lotsToUse, 2));
    
    // エントリー理由をログに記録
-   LogEntryReason(type, "裁量エントリー", "手動ボタン操作によるエントリー");
+   LogEntryReason(typeOrder, "裁量エントリー", "手動ボタン操作によるエントリー");
    
    // MQL4/MQL5互換のposition_entry関数を使用
-   bool result = position_entry(type, lots, Slippage, MagicNumber, "Hosopi 3 EA Manual");
+   bool entryResult = position_entry(typeOrder, lotsToUse, Slippage, MagicNumber, "Hosopi 3 EA Manual");
    
-   if(result)
+   if(entryResult)
    {
-      Print("裁量", type == OP_BUY ? "Buy" : "Sell", "エントリー成功: ロット=", 
-            DoubleToString(lots, 2), ", 価格=", 
-            DoubleToString(type == OP_BUY ? GetAskPrice() : GetBidPrice(), 5));
+      Print("裁量", typeOrder == OP_BUY ? "Buy" : "Sell", "エントリー成功: ロット=", 
+            DoubleToString(lotsToUse, 2), ", 価格=", 
+            DoubleToString(typeOrder == OP_BUY ? GetAskPrice() : GetBidPrice(), 5));
       
-      // 裁量エントリー後にゴーストをリセット
-      ResetGhost(OP_BUY);
-      ResetGhost(OP_SELL);
+      // ゴーストポジションをリセットしない
    }
    else
    {
-      Print("裁量", type == OP_BUY ? "Buy" : "Sell", "エントリーエラー: ", GetLastError());
+      Print("裁量", typeOrder == OP_BUY ? "Buy" : "Sell", "エントリーエラー: ", GetLastError());
    }
 }
 
@@ -619,7 +635,7 @@ void ExecuteDiscretionaryEntry(int type, double lotSize = 0)
 //+------------------------------------------------------------------+
 void ExecuteEntryFromLevel(int type, int level)
 {
-   if(!g_AutoTrading)
+   if(!EnableAutomaticTrading)
    {
       Print("自動売買が無効のため、レベル指定エントリーはスキップされました");
       return;
@@ -634,48 +650,47 @@ void ExecuteEntryFromLevel(int type, int level)
    int existingCount = position_count(type);
    if(existingCount > 0)
    {
-      Print("既にリアルポジションが存在するため、レベル指定エントリーはスキップされました: ", existingCount, "ポジション");
+      Print("既にリアルポジションが存在するため、レベル指定エントリーをスキップしました: ", existingCount, "ポジション");
       return;
    }
    
-   // 指定レベルが範囲内かチェック - level引数は無視する
+   // 指定レベルが範囲内かチェック
    if(level < 1 || level >= ArraySize(g_LotTable))
    {
       Print("指定レベルが範囲外のため、レベル指定エントリーはスキップされました: ", level);
       return;
    }
    
-   // 現在のゴーストカウントに基づいて次のロットを選択
-   int currentGhostCount = ghost_position_count(type);
-   double lots = g_LotTable[currentGhostCount]; // 次のレベルのロットサイズ
+   // ゴーストポジションのカウントを取得
+   int ghostCount = ghost_position_count(type);
+   
+   // 指定されたレベルのロットを使用
+   double lots = g_LotTable[level - 1]; // level は1始まりなので調整
    
    // ロット選択のログ出力
-   Print("レベル指定エントリー: 現在のゴーストカウント=", currentGhostCount, 
-         ", 次のレベルのロットサイズを使用 - ロット=", DoubleToString(lots, 2));
+   Print("レベル指定エントリー: レベル=", level, 
+         ", ロットサイズ=", DoubleToString(lots, 2));
    
    Print("指定エントリー実行: ", type == OP_BUY ? "Buy" : "Sell", 
          ", ロット=", DoubleToString(lots, 2));
    
    // エントリー理由をログに記録
-   LogEntryReason(type, "レベル指定エントリー", "手動選択: 次のゴーストレベル (カウント=" + 
-                  IntegerToString(currentGhostCount) + ")");
+   LogEntryReason(type, "レベル指定エントリー", "手動選択: レベル" + IntegerToString(level));
    
    // MQL4/MQL5互換のposition_entry関数を使用
-   bool result = position_entry(type, lots, Slippage, MagicNumber, "Hosopi 3 EA NextLevel");
+   bool result = position_entry(type, lots, Slippage, MagicNumber, "Hosopi 3 EA Level " + IntegerToString(level));
    
    if(result)
    {
-      Print("次のレベルから", type == OP_BUY ? "Buy" : "Sell", "エントリー成功: ロット=", 
+      Print("レベル", level, "からの", type == OP_BUY ? "Buy" : "Sell", "エントリー成功: ロット=", 
             DoubleToString(lots, 2), ", 価格=", 
             DoubleToString(type == OP_BUY ? GetAskPrice() : GetBidPrice(), 5));
       
-      // エントリー後にゴーストをリセット
-      ResetGhost(OP_BUY);
-      ResetGhost(OP_SELL);
+      // 修正: ゴーストポジションをリセットしない
    }
    else
    {
-      Print("次のレベルから", type == OP_BUY ? "Buy" : "Sell", "エントリーエラー: ", GetLastError());
+      Print("レベル", level, "からの", type == OP_BUY ? "Buy" : "Sell", "エントリーエラー: ", GetLastError());
    }
 }
 
