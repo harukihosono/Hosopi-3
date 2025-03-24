@@ -147,6 +147,7 @@ bool IsEntryAllowed(int side)
    
    return false; // デフォルト戻り値
 }
+
 //+------------------------------------------------------------------+
 //| オブジェクト名を保存                                               |
 //+------------------------------------------------------------------+
@@ -179,6 +180,174 @@ color ColorDarken(color clr, int percent)
 }
 
 //+------------------------------------------------------------------+
+//| 曜日に応じた時間設定を取得する                                     |
+//+------------------------------------------------------------------+
+void GetDayTimeSettings(int dayOfWeek, int type, int &startHour, int &startMinute, int &endHour, int &endMinute)
+{
+   // type: 0 = Buy, 1 = Sell
+   
+   // 曜日別時間設定が無効な場合は共通設定を使用
+   if(DayTimeControl_Active == OFF_MODE)
+   {
+      if(type == 0) // Buy
+      {
+         startHour = buy_StartHour;
+         startMinute = buy_StartMinute;
+         endHour = buy_EndHour;
+         endMinute = buy_EndMinute;
+      }
+      else // Sell
+      {
+         startHour = sell_StartHour;
+         startMinute = sell_StartMinute;
+         endHour = sell_EndHour;
+         endMinute = sell_EndMinute;
+      }
+      return;
+   }
+   
+   // 曜日別設定を取得
+   switch(dayOfWeek)
+   {
+      case 0: // 日曜日
+         if(type == 0) // Buy
+         {
+            startHour = Sunday_Buy_StartHour;
+            startMinute = Sunday_Buy_StartMinute;
+            endHour = Sunday_Buy_EndHour;
+            endMinute = Sunday_Buy_EndMinute;
+         }
+         else // Sell
+         {
+            startHour = Sunday_Sell_StartHour;
+            startMinute = Sunday_Sell_StartMinute;
+            endHour = Sunday_Sell_EndHour;
+            endMinute = Sunday_Sell_EndMinute;
+         }
+         break;
+         
+      case 1: // 月曜日
+         if(type == 0) // Buy
+         {
+            startHour = Monday_Buy_StartHour;
+            startMinute = Monday_Buy_StartMinute;
+            endHour = Monday_Buy_EndHour;
+            endMinute = Monday_Buy_EndMinute;
+         }
+         else // Sell
+         {
+            startHour = Monday_Sell_StartHour;
+            startMinute = Monday_Sell_StartMinute;
+            endHour = Monday_Sell_EndHour;
+            endMinute = Monday_Sell_EndMinute;
+         }
+         break;
+         
+      case 2: // 火曜日
+         if(type == 0) // Buy
+         {
+            startHour = Tuesday_Buy_StartHour;
+            startMinute = Tuesday_Buy_StartMinute;
+            endHour = Tuesday_Buy_EndHour;
+            endMinute = Tuesday_Buy_EndMinute;
+         }
+         else // Sell
+         {
+            startHour = Tuesday_Sell_StartHour;
+            startMinute = Tuesday_Sell_StartMinute;
+            endHour = Tuesday_Sell_EndHour;
+            endMinute = Tuesday_Sell_EndMinute;
+         }
+         break;
+         
+      case 3: // 水曜日
+         if(type == 0) // Buy
+         {
+            startHour = Wednesday_Buy_StartHour;
+            startMinute = Wednesday_Buy_StartMinute;
+            endHour = Wednesday_Buy_EndHour;
+            endMinute = Wednesday_Buy_EndMinute;
+         }
+         else // Sell
+         {
+            startHour = Wednesday_Sell_StartHour;
+            startMinute = Wednesday_Sell_StartMinute;
+            endHour = Wednesday_Sell_EndHour;
+            endMinute = Wednesday_Sell_EndMinute;
+         }
+         break;
+         
+      case 4: // 木曜日
+         if(type == 0) // Buy
+         {
+            startHour = Thursday_Buy_StartHour;
+            startMinute = Thursday_Buy_StartMinute;
+            endHour = Thursday_Buy_EndHour;
+            endMinute = Thursday_Buy_EndMinute;
+         }
+         else // Sell
+         {
+            startHour = Thursday_Sell_StartHour;
+            startMinute = Thursday_Sell_StartMinute;
+            endHour = Thursday_Sell_EndHour;
+            endMinute = Thursday_Sell_EndMinute;
+         }
+         break;
+         
+      case 5: // 金曜日
+         if(type == 0) // Buy
+         {
+            startHour = Friday_Buy_StartHour;
+            startMinute = Friday_Buy_StartMinute;
+            endHour = Friday_Buy_EndHour;
+            endMinute = Friday_Buy_EndMinute;
+         }
+         else // Sell
+         {
+            startHour = Friday_Sell_StartHour;
+            startMinute = Friday_Sell_StartMinute;
+            endHour = Friday_Sell_EndHour;
+            endMinute = Friday_Sell_EndMinute;
+         }
+         break;
+         
+      case 6: // 土曜日
+         if(type == 0) // Buy
+         {
+            startHour = Saturday_Buy_StartHour;
+            startMinute = Saturday_Buy_StartMinute;
+            endHour = Saturday_Buy_EndHour;
+            endMinute = Saturday_Buy_EndMinute;
+         }
+         else // Sell
+         {
+            startHour = Saturday_Sell_StartHour;
+            startMinute = Saturday_Sell_StartMinute;
+            endHour = Saturday_Sell_EndHour;
+            endMinute = Saturday_Sell_EndMinute;
+         }
+         break;
+         
+      default: // 不明な曜日の場合は共通設定を使用
+         if(type == 0) // Buy
+         {
+            startHour = buy_StartHour;
+            startMinute = buy_StartMinute;
+            endHour = buy_EndHour;
+            endMinute = buy_EndMinute;
+         }
+         else // Sell
+         {
+            startHour = sell_StartHour;
+            startMinute = sell_StartMinute;
+            endHour = sell_EndHour;
+            endMinute = sell_EndMinute;
+         }
+         break;
+   }
+}
+
+//+------------------------------------------------------------------+
 //| エントリー可能時間かどうかをチェック                              |
 //+------------------------------------------------------------------+
 bool IsTimeAllowed(int type)
@@ -204,54 +373,33 @@ bool IsTimeAllowed(int type)
       return false;
    }
    
-   // 時間帯チェック
+   // 現在の時間と分を取得
    int hour = TimeHour(jpTime);
    int minute = TimeMinute(jpTime);
    int currentTimeInMinutes = hour * 60 + minute;
    
-   if(type == OP_BUY)
+   // 曜日に応じた時間設定を取得
+   int startHour, startMinute, endHour, endMinute;
+   GetDayTimeSettings(dayOfWeek, type == OP_BUY ? 0 : 1, startHour, startMinute, endHour, endMinute);
+   
+   int startTimeInMinutes = startHour * 60 + startMinute;
+   int endTimeInMinutes = endHour * 60 + endMinute;
+   
+   // 開始・終了時刻が同じ場合は24時間稼働と判断
+   if(startHour == endHour && startMinute == endMinute)
+      return true;
+   
+   // 日をまたがない場合 (開始時間 < 終了時間)
+   if(startTimeInMinutes < endTimeInMinutes)
    {
-      int startTimeInMinutes = buy_StartHour * 60 + buy_StartMinute;
-      int endTimeInMinutes = buy_EndHour * 60 + buy_EndMinute;
-      
-      // 開始・終了時刻が同じ場合は24時間稼働と判断
-      if(buy_StartHour == buy_EndHour && buy_StartMinute == buy_EndMinute)
-         return true;
-      
-      // 日をまたがない場合 (開始時間 < 終了時間)
-      if(startTimeInMinutes < endTimeInMinutes)
-      {
-         // 現在時刻が開始時刻以上、終了時刻未満であればtrue
-         return (currentTimeInMinutes >= startTimeInMinutes && currentTimeInMinutes < endTimeInMinutes);
-      }
-      // 日をまたぐ場合 (開始時間 > 終了時間)
-      else
-      {
-         // 現在時刻が開始時刻以上、または終了時刻未満であればtrue
-         return (currentTimeInMinutes >= startTimeInMinutes || currentTimeInMinutes < endTimeInMinutes);
-      }
+      // 現在時刻が開始時刻以上、終了時刻未満であればtrue
+      return (currentTimeInMinutes >= startTimeInMinutes && currentTimeInMinutes < endTimeInMinutes);
    }
-   else // OP_SELL
+   // 日をまたぐ場合 (開始時間 > 終了時間)
+   else
    {
-      int startTimeInMinutes = sell_StartHour * 60 + sell_StartMinute;
-      int endTimeInMinutes = sell_EndHour * 60 + sell_EndMinute;
-      
-      // 開始・終了時刻が同じ場合は24時間稼働と判断
-      if(sell_StartHour == sell_EndHour && sell_StartMinute == sell_EndMinute)
-         return true;
-      
-      // 日をまたがない場合 (開始時間 < 終了時間)
-      if(startTimeInMinutes < endTimeInMinutes)
-      {
-         // 現在時刻が開始時刻以上、終了時刻未満であればtrue
-         return (currentTimeInMinutes >= startTimeInMinutes && currentTimeInMinutes < endTimeInMinutes);
-      }
-      // 日をまたぐ場合 (開始時間 > 終了時間)
-      else
-      {
-         // 現在時刻が開始時刻以上、または終了時刻未満であればtrue
-         return (currentTimeInMinutes >= startTimeInMinutes || currentTimeInMinutes < endTimeInMinutes);
-      }
+      // 現在時刻が開始時刻以上、または終了時刻未満であればtrue
+      return (currentTimeInMinutes >= startTimeInMinutes || currentTimeInMinutes < endTimeInMinutes);
    }
 }
 
@@ -324,7 +472,6 @@ void InitializeLotTable()
       Print(calcExample);
    }
 }
-
 
 //+------------------------------------------------------------------+
 //| ナンピン幅テーブルの初期化                                         |

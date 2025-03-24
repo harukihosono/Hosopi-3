@@ -4,7 +4,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025"
 #property link      ""
-#property version   "3.0"
+#property version   "3.1"
 #property strict
 
 // インクルードファイル
@@ -38,17 +38,6 @@ input USE_TIMES set_time = GMT9;     // 時間取得方法
 input int natu = 6;                  // 夏加算時間（バックテスト用）
 input int huyu = 7;                  // 冬加算時間（バックテスト用）
 
-// エントリー可能時間設定
-input ON_OFF TimeControl_Active = ON_MODE;    // 時間制御を有効にする(ON/OFF)
-input int buy_StartHour = 0;             // Buy取引開始時刻-時(日本時間)
-input int buy_StartMinute = 0;          // Buy取引開始時刻-分(日本時間)
-input int buy_EndHour = 24;              // Buy取引終了時刻-時(日本時間)
-input int buy_EndMinute = 0;             // Buy取引終了時刻-分(日本時間)
-input int sell_StartHour = 0;            // Sell取引開始時刻-時(日本時間)
-input int sell_StartMinute = 00;         // Sell取引開始時刻-分(日本時間)
-input int sell_EndHour = 24;             // Sell取引終了時刻-時(日本時間)
-input int sell_EndMinute = 0;            // Sell取引終了時刻-分(日本時間)
-
 // ======== 曜日フィルター設定 ========
 sinput string Comment_DayFilter = ""; //+--- 曜日フィルター設定 ---+
 input ON_OFF Sunday_Enable = ON_MODE;      // 日曜日を有効にする
@@ -59,6 +48,98 @@ input ON_OFF Thursday_Enable = ON_MODE;    // 木曜日を有効にする
 input ON_OFF Friday_Enable = ON_MODE;      // 金曜日を有効にする
 input ON_OFF Saturday_Enable = ON_MODE;    // 土曜日を有効にする
 
+// ======== 曜日別時間設定 ========
+sinput string Comment_DayTime = ""; //+--- 曜日別時間設定 ---+
+input ON_OFF TimeControl_Active = ON_MODE;    // 時間制御を有効にする(ON/OFF)
+input ON_OFF DayTimeControl_Active = OFF_MODE; // 曜日別時間設定を有効にする(ON/OFF)
+
+// 日曜日の時間設定
+sinput string Comment_Sunday_Time = ""; //+--- 日曜日の時間設定 ---+
+input int Sunday_Buy_StartHour = 0;      // 日曜日Buy開始時刻-時
+input int Sunday_Buy_StartMinute = 0;    // 日曜日Buy開始時刻-分
+input int Sunday_Buy_EndHour = 24;       // 日曜日Buy終了時刻-時
+input int Sunday_Buy_EndMinute = 0;      // 日曜日Buy終了時刻-分
+input int Sunday_Sell_StartHour = 0;     // 日曜日Sell開始時刻-時
+input int Sunday_Sell_StartMinute = 0;   // 日曜日Sell開始時刻-分
+input int Sunday_Sell_EndHour = 24;      // 日曜日Sell終了時刻-時
+input int Sunday_Sell_EndMinute = 0;     // 日曜日Sell終了時刻-分
+
+// 月曜日の時間設定
+sinput string Comment_Monday_Time = ""; //+--- 月曜日の時間設定 ---+
+input int Monday_Buy_StartHour = 0;      // 月曜日Buy開始時刻-時
+input int Monday_Buy_StartMinute = 0;    // 月曜日Buy開始時刻-分
+input int Monday_Buy_EndHour = 24;       // 月曜日Buy終了時刻-時
+input int Monday_Buy_EndMinute = 0;      // 月曜日Buy終了時刻-分
+input int Monday_Sell_StartHour = 0;     // 月曜日Sell開始時刻-時
+input int Monday_Sell_StartMinute = 0;   // 月曜日Sell開始時刻-分
+input int Monday_Sell_EndHour = 24;      // 月曜日Sell終了時刻-時
+input int Monday_Sell_EndMinute = 0;     // 月曜日Sell終了時刻-分
+
+// 火曜日の時間設定
+sinput string Comment_Tuesday_Time = ""; //+--- 火曜日の時間設定 ---+
+input int Tuesday_Buy_StartHour = 0;      // 火曜日Buy開始時刻-時
+input int Tuesday_Buy_StartMinute = 0;    // 火曜日Buy開始時刻-分
+input int Tuesday_Buy_EndHour = 24;       // 火曜日Buy終了時刻-時
+input int Tuesday_Buy_EndMinute = 0;      // 火曜日Buy終了時刻-分
+input int Tuesday_Sell_StartHour = 0;     // 火曜日Sell開始時刻-時
+input int Tuesday_Sell_StartMinute = 0;   // 火曜日Sell開始時刻-分
+input int Tuesday_Sell_EndHour = 24;      // 火曜日Sell終了時刻-時
+input int Tuesday_Sell_EndMinute = 0;     // 火曜日Sell終了時刻-分
+
+// 水曜日の時間設定
+sinput string Comment_Wednesday_Time = ""; //+--- 水曜日の時間設定 ---+
+input int Wednesday_Buy_StartHour = 0;      // 水曜日Buy開始時刻-時
+input int Wednesday_Buy_StartMinute = 0;    // 水曜日Buy開始時刻-分
+input int Wednesday_Buy_EndHour = 24;       // 水曜日Buy終了時刻-時
+input int Wednesday_Buy_EndMinute = 0;      // 水曜日Buy終了時刻-分
+input int Wednesday_Sell_StartHour = 0;     // 水曜日Sell開始時刻-時
+input int Wednesday_Sell_StartMinute = 0;   // 水曜日Sell開始時刻-分
+input int Wednesday_Sell_EndHour = 24;      // 水曜日Sell終了時刻-時
+input int Wednesday_Sell_EndMinute = 0;     // 水曜日Sell終了時刻-分
+
+// 木曜日の時間設定
+sinput string Comment_Thursday_Time = ""; //+--- 木曜日の時間設定 ---+
+input int Thursday_Buy_StartHour = 0;      // 木曜日Buy開始時刻-時
+input int Thursday_Buy_StartMinute = 0;    // 木曜日Buy開始時刻-分
+input int Thursday_Buy_EndHour = 24;       // 木曜日Buy終了時刻-時
+input int Thursday_Buy_EndMinute = 0;      // 木曜日Buy終了時刻-分
+input int Thursday_Sell_StartHour = 0;     // 木曜日Sell開始時刻-時
+input int Thursday_Sell_StartMinute = 0;   // 木曜日Sell開始時刻-分
+input int Thursday_Sell_EndHour = 24;      // 木曜日Sell終了時刻-時
+input int Thursday_Sell_EndMinute = 0;     // 木曜日Sell終了時刻-分
+
+// 金曜日の時間設定
+sinput string Comment_Friday_Time = ""; //+--- 金曜日の時間設定 ---+
+input int Friday_Buy_StartHour = 0;      // 金曜日Buy開始時刻-時
+input int Friday_Buy_StartMinute = 0;    // 金曜日Buy開始時刻-分
+input int Friday_Buy_EndHour = 24;       // 金曜日Buy終了時刻-時
+input int Friday_Buy_EndMinute = 0;      // 金曜日Buy終了時刻-分
+input int Friday_Sell_StartHour = 0;     // 金曜日Sell開始時刻-時
+input int Friday_Sell_StartMinute = 0;   // 金曜日Sell開始時刻-分
+input int Friday_Sell_EndHour = 24;      // 金曜日Sell終了時刻-時
+input int Friday_Sell_EndMinute = 0;     // 金曜日Sell終了時刻-分
+
+// 土曜日の時間設定
+sinput string Comment_Saturday_Time = ""; //+--- 土曜日の時間設定 ---+
+input int Saturday_Buy_StartHour = 0;      // 土曜日Buy開始時刻-時
+input int Saturday_Buy_StartMinute = 0;    // 土曜日Buy開始時刻-分
+input int Saturday_Buy_EndHour = 24;       // 土曜日Buy終了時刻-時
+input int Saturday_Buy_EndMinute = 0;      // 土曜日Buy終了時刻-分
+input int Saturday_Sell_StartHour = 0;     // 土曜日Sell開始時刻-時
+input int Saturday_Sell_StartMinute = 0;   // 土曜日Sell開始時刻-分
+input int Saturday_Sell_EndHour = 24;      // 土曜日Sell終了時刻-時
+input int Saturday_Sell_EndMinute = 0;     // 土曜日Sell終了時刻-分
+
+// 共通時間設定（曜日別設定が無効の場合に使用）
+sinput string Comment_Common_Time = ""; //+--- 共通時間設定 ---+
+input int buy_StartHour = 0;             // Buy取引開始時刻-時(日本時間)
+input int buy_StartMinute = 0;          // Buy取引開始時刻-分(日本時間)
+input int buy_EndHour = 24;              // Buy取引終了時刻-時(日本時間)
+input int buy_EndMinute = 0;             // Buy取引終了時刻-分(日本時間)
+input int sell_StartHour = 0;            // Sell取引開始時刻-時(日本時間)
+input int sell_StartMinute = 00;         // Sell取引開始時刻-分(日本時間)
+input int sell_EndHour = 24;             // Sell取引終了時刻-時(日本時間)
+input int sell_EndMinute = 0;            // Sell取引終了時刻-分(日本時間)
 
 // ======== ナンピンマーチン基本設定 ========
 sinput string Comment_Martingale = ""; //+--- ナンピンマーチン基本設定 ---+
@@ -149,14 +230,16 @@ input bool EnableAutomaticTrading = true;     // 自動売買を有効化
 input bool EnablePositionTable = true;        // ポジションテーブル表示を有効化
 input bool EnablePriceLabels = true;          // 価格ラベル表示を有効化
 
-
-
 // ======== 時刻エントリー設定 ========
 sinput string Comment_Jiikoku_Entry = ""; //+--- 時刻エントリー設定 ---+
 input bool UseEvenOddHoursEntry = false;     // 偶数/奇数時間エントリーを使用する
 input ENTRY_DIRECTION buy_EntryDirection = EVEN_HOURS;  // Buy エントリー方向
 input ENTRY_DIRECTION sell_EntryDirection = ODD_HOURS;  // Sell エントリー方向
 input ENTRY_MODE EntryMode = MODE_BOTH;   // エントリー方向
+
+// ======== 戦略の時間足設定 ========
+sinput string Comment_Strategy_Timeframe = ""; //+--- 戦略の時間足設定 ---+
+input ENUM_TIMEFRAMES Strategy_Timeframe = PERIOD_CURRENT; // 戦略適用時間足
 
 #include "Hosopi3_Strategy.mqh"
 
@@ -174,6 +257,30 @@ input int TakeProfitPoints = 2000;            // 利確幅（Point）
 input bool EnableTrailingStop = false;        // トレールストップを有効化
 input int TrailingTrigger = 1000;             // トレールトリガー（Point）
 input int TrailingOffset = 500;               // トレールオフセット（Point）
+
+// ======== ポジション数に応じた利確設定 ========
+sinput string Comment_Position_TP = ""; //+--- ポジション数に応じた利確設定 ---+
+input bool VariableTP_Enabled = false;   // ポジション数に応じた利確を有効にする
+input int TP_Level1 = 2000;              // 1ポジション時の利確幅(ポイント)
+input int TP_Level2 = 1500;              // 2ポジション時の利確幅(ポイント)
+input int TP_Level3 = 1000;              // 3ポジション時の利確幅(ポイント)
+input int TP_Level4 = 800;               // 4ポジション時の利確幅(ポイント)
+input int TP_Level5 = 600;               // 5ポジション時の利確幅(ポイント)
+input int TP_Level6 = 500;               // 6ポジション時の利確幅(ポイント)
+input int TP_Level7 = 400;               // 7ポジション時の利確幅(ポイント)
+input int TP_Level8 = 350;               // 8ポジション時の利確幅(ポイント)
+input int TP_Level9 = 300;               // 9ポジション時の利確幅(ポイント)
+input int TP_Level10 = 250;              // 10ポジション時の利確幅(ポイント)
+input int TP_Level11 = 220;              // 11ポジション時の利確幅(ポイント)
+input int TP_Level12 = 200;              // 12ポジション時の利確幅(ポイント)
+input int TP_Level13 = 180;              // 13ポジション時の利確幅(ポイント)
+input int TP_Level14 = 160;              // 14ポジション時の利確幅(ポイント)
+input int TP_Level15 = 150;              // 15ポジション時の利確幅(ポイント)
+input int TP_Level16 = 140;              // 16ポジション時の利確幅(ポイント)
+input int TP_Level17 = 130;              // 17ポジション時の利確幅(ポイント)
+input int TP_Level18 = 120;              // 18ポジション時の利確幅(ポイント)
+input int TP_Level19 = 110;              // 19ポジション時の利確幅(ポイント)
+input int TP_Level20 = 100;              // 20ポジション時の利確幅(ポイント)
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |

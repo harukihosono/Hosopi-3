@@ -7,8 +7,39 @@
 #include "Hosopi3_Utils.mqh"
 #include "Hosopi3_Ghost.mqh"
 
-
-
+// ポジション数に応じた利確幅を取得する関数
+int GetTakeProfitPointsByPositionCount(int positionCount)
+{
+   // ポジション数に応じた利確設定が無効の場合は固定値を返す
+   if(!VariableTP_Enabled)
+      return TakeProfitPoints;
+   
+   // ポジション数に基づいて利確幅を返す
+   switch(positionCount)
+   {
+      case 1:  return TP_Level1;
+      case 2:  return TP_Level2;
+      case 3:  return TP_Level3;
+      case 4:  return TP_Level4;
+      case 5:  return TP_Level5;
+      case 6:  return TP_Level6;
+      case 7:  return TP_Level7;
+      case 8:  return TP_Level8;
+      case 9:  return TP_Level9;
+      case 10: return TP_Level10;
+      case 11: return TP_Level11;
+      case 12: return TP_Level12;
+      case 13: return TP_Level13;
+      case 14: return TP_Level14;
+      case 15: return TP_Level15;
+      case 16: return TP_Level16;
+      case 17: return TP_Level17;
+      case 18: return TP_Level18;
+      case 19: return TP_Level19;
+      case 20: return TP_Level20;
+      default: return TP_Level20; // 20ポジション以上は最後のレベルを使用
+   }
+}
 
 //+------------------------------------------------------------------+
 //| トレールストップ条件のチェック                                    |
@@ -129,6 +160,115 @@ void CheckTrailingStopConditions(int side)
 }
 
 //+------------------------------------------------------------------+
+//| ゴーストポジションのトレーリングストップを計算・更新する関数      |
+//+------------------------------------------------------------------+
+void CheckGhostTrailingStopConditions(int side)
+{
+   // トレールストップが無効な場合はスキップ
+   if(!EnableTrailingStop)
+   {
+      return;
+   }
+
+   // 処理対象のオペレーションタイプを決定
+   int operationType = (side == 0) ? OP_BUY : OP_SELL;
+
+   // ゴーストポジションがない場合はスキップ
+   int ghostCount = ghost_position_count(operationType);
+   if(ghostCount <= 0)
+      return;
+
+   // 平均価格を計算
+   double avgPrice = CalculateGhostAveragePrice(operationType);
+   if(avgPrice <= 0)
+      return;
+
+   // 現在価格を取得（BuyならBid、SellならAsk）
+   double currentPrice = (side == 0) ? GetBidPrice() : GetAskPrice();
+
+   // トレールトリガー価格とオフセット価格を計算
+   double triggerPrice, stopPrice;
+   
+   if(side == 0) // Buy
+   {
+      // トレールトリガー: 平均価格 + トリガーポイント
+      triggerPrice = avgPrice + TrailingTrigger * Point;
+      
+      // 現在価格がトリガー以上の場合のみトレーリング
+      if(currentPrice >= triggerPrice)
+      {
+         // ストップ価格: 現在価格 - オフセット
+         stopPrice = currentPrice - TrailingOffset * Point;
+         
+         // 各ゴーストポジションのストップロスを更新
+         for(int i = 0; i < g_GhostBuyCount; i++)
+         {
+            if(g_GhostBuyPositions[i].isGhost) // 有効なゴーストのみ
+            {
+               // 現在のストップロスを確認
+               double currentSL = g_GhostBuyPositions[i].stopLoss;
+               
+               // ストップロスが設定されていないか、または新しいストップが現在より高い場合
+               if(currentSL == 0 || stopPrice > currentSL)
+               {
+                  // ストップロスを更新
+                  g_GhostBuyPositions[i].stopLoss = stopPrice;
+                  Print("ゴーストBuy トレールストップ更新: レベル=", g_GhostBuyPositions[i].level + 1, 
+                       ", 平均価格=", DoubleToString(avgPrice, Digits),
+                       ", 現在価格=", DoubleToString(currentPrice, Digits),
+                       ", 新ストップ=", DoubleToString(stopPrice, Digits));
+               }
+            }
+         }
+         
+         // ストップラインを表示
+         UpdateGhostStopLine(side, stopPrice);
+      }
+   }
+   else // Sell
+   {
+      // トレールトリガー: 平均価格 - トリガーポイント
+      triggerPrice = avgPrice - TrailingTrigger * Point;
+      
+      // 現在価格がトリガー以下の場合のみトレーリング
+      if(currentPrice <= triggerPrice)
+      {
+         // ストップ価格: 現在価格 + オフセット
+         stopPrice = currentPrice + TrailingOffset * Point;
+         
+         // 各ゴーストポジションのストップロスを更新
+         for(int i = 0; i < g_GhostSellCount; i++)
+         {
+            if(g_GhostSellPositions[i].isGhost) // 有効なゴーストのみ
+            {
+               // 現在のストップロスを確認
+               double currentSL = g_GhostSellPositions[i].stopLoss;
+               
+               // ストップロスが設定されていないか、または新しいストップが現在より低い場合
+               if(currentSL == 0 || stopPrice < currentSL)
+               {
+                  // ストップロスを更新
+                  g_GhostSellPositions[i].stopLoss = stopPrice;
+                  Print("ゴーストSell トレールストップ更新: レベル=", g_GhostSellPositions[i].level + 1, 
+                       ", 平均価格=", DoubleToString(avgPrice, Digits),
+                       ", 現在価格=", DoubleToString(currentPrice, Digits),
+                       ", 新ストップ=", DoubleToString(stopPrice, Digits));
+               }
+            }
+         }
+         
+         // ストップラインを表示
+         UpdateGhostStopLine(side, stopPrice);
+      }
+   }
+   
+   // グローバル変数に保存
+   SaveGhostPositionsToGlobal();
+   
+   // ストップロス発動チェック
+   CheckGhostStopLossHit(side);
+}
+//+------------------------------------------------------------------+
 //| 利確処理の統合関数 - 決済方法に応じて処理                         |
 //+------------------------------------------------------------------+
 void ManageTakeProfit(int side)
@@ -158,10 +298,13 @@ void ManageTakeProfit(int side)
    // 現在価格を取得（BuyならBid、SellならAsk）
    double currentPrice = (side == 0) ? GetBidPrice() : GetAskPrice();
 
+   // ポジション数に応じた利確幅を取得
+   int tpPoints = GetTakeProfitPointsByPositionCount(positionCount + ghostCount);
+
    // TP価格の計算（ロット加重平均の価格から指定ポイント離れた価格）
    double tpPrice = (side == 0) ? 
-                  avgPrice + TakeProfitPoints * Point : 
-                  avgPrice - TakeProfitPoints * Point;
+                  avgPrice + tpPoints * Point : 
+                  avgPrice - tpPoints * Point;
 
    // ======== 指値決済処理（LIMIT） ========
    if(TakeProfitMode == TP_LIMIT)
@@ -378,6 +521,6 @@ void ManageTakeProfit(int side)
       
    string labelText = (TakeProfitMode == TP_LIMIT ? "Limit" : "Market") + " TP: " + 
                      DoubleToString(tpPrice, Digits) + " (" + 
-                     (side == 0 ? "+" : "-") + IntegerToString(TakeProfitPoints) + "pt)";
+                     (side == 0 ? "+" : "-") + IntegerToString(tpPoints) + "pt)";
    CreatePriceLabel(g_ObjectPrefix + labelName, labelText, tpPrice, TakeProfitLineColor, side == 0);
 }
