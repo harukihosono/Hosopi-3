@@ -153,6 +153,9 @@ input int sell_EndMinute = 0;            // Sell取引終了時刻-分(日本時
 sinput string Comment_Martingale = ""; //+--- ナンピンマーチン基本設定 ---+
 input NANPIN_SKIP NanpinSkipLevel = SKIP_5;  // ナンピンスキップレベル
 input int NanpinSpread = 2000;               // ナンピン幅（Point）
+// リアルエントリーでの初期ロット使用の設定
+input bool UseInitialLotForRealEntry = false; // リアルエントリーは初期ロットを使う
+
 
 input double InitialLot = 0.01;             // 初期LOT
 input MAX_POSITIONS MaxPositions = POS_15;   // 最大ポジション数量

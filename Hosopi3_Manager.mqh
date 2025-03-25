@@ -111,29 +111,28 @@ void ExecuteRealEntry(int type, string entryReason)
    // ===== ロットサイズの選択ロジックを修正 =====
    double lots;
    
-   // ナンピンスキップレベルがSKIP_NONEの場合は常に初期ロットを使用
-   if(NanpinSkipLevel == SKIP_NONE) {
+   // UseInitialLotForRealEntryがONの場合は常に初期ロットを使用
+   if(UseInitialLotForRealEntry) {
+      lots = g_LotTable[0]; // 常に最初のロットを使用
+      Print("初期ロット設定有効: 初期ロット", DoubleToString(lots, 2), "を使用");
+   } 
+   // ナンピンスキップレベルがSKIP_NONEの場合も初期ロットを使用
+   else if(NanpinSkipLevel == SKIP_NONE) {
       lots = g_LotTable[0]; // 常に最初のロットを使用
       Print("ナンピンスキップなし: 初期ロット", DoubleToString(lots, 2), "を使用");
    } 
    else {
-      // 個別指定モードが有効な場合、常に初期ロットを使用
-      if(IndividualLotEnabled == ON_MODE) {
-         lots = g_LotTable[0]; // 修正: 個別指定の場合は常に初期ロットを使用
-         Print("個別指定ロットモード: 初期ロット", DoubleToString(lots, 2), "を使用");
-      } else {
-         // マーチンゲールモードの場合、スキップレベルに応じて計算されたロットを使用
-         lots = g_LotTable[0]; // 初期ロットから始める
-         
-         // スキップレベルに応じてマーチンゲール計算を行う
-         for(int i = 1; i < (int)NanpinSkipLevel; i++) {
-            lots = lots * LotMultiplier;
-            lots = MathCeil(lots * 1000) / 1000; // 小数点以下3桁で切り上げ
-         }
-         
-         Print("マーチンゲール計算: スキップレベル", (int)NanpinSkipLevel, 
-              "に対応するロット", DoubleToString(lots, 2), "を使用");
+      // マーチンゲールモードの場合、スキップレベルに応じて計算されたロットを使用
+      lots = g_LotTable[0]; // 初期ロットから始める
+      
+      // スキップレベルに応じてマーチンゲール計算を行う
+      for(int i = 1; i < (int)NanpinSkipLevel; i++) {
+         lots = lots * LotMultiplier;
+         lots = MathCeil(lots * 1000) / 1000; // 小数点以下3桁で切り上げ
       }
+      
+      Print("マーチンゲール計算: スキップレベル", (int)NanpinSkipLevel, 
+           "に対応するロット", DoubleToString(lots, 2), "を使用");
    }
    
    Print("リアルエントリー実行: ", type == OP_BUY ? "Buy" : "Sell", 
