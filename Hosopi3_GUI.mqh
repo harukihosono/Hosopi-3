@@ -271,46 +271,6 @@ void CreateLotTableDialog()
    MessageBox(message, title, MB_ICONINFORMATION);
 }
 
-//+------------------------------------------------------------------+
-//| 表示設定ダイアログを作成するための補助関数                         |
-//+------------------------------------------------------------------+
-void ShowSettingsDialog()
-{
-   // ダイアログタイトル
-   string title = "Hosopi 3 - 設定状態";
-   
-   // ダイアログ内容を構築
-   string message = "現在の設定状態:\n\n";
-   
-   // 各設定の状態
-   message += "自動売買: " + (EnableAutomaticTrading ? "ON" : "OFF") + "\n";
-   message += "ゴーストモード: " + (g_GhostMode ? "ON" : "OFF") + "\n";
-   message += "ナンピン: " + (EnableNanpin ? "ON" : "OFF") + "\n";
-   message += "ゴーストエントリー: " + (EnableGhostEntry ? "ON" : "OFF") + "\n";
-   
-   // インジケーター有効性の確認
-   bool hasActiveIndicators = (MA_Cross_Strategy != STRATEGY_DISABLED || 
-                              RSI_Strategy != STRATEGY_DISABLED || 
-                              BB_Strategy != STRATEGY_DISABLED || 
-                              RCI_Strategy != STRATEGY_DISABLED || 
-                              Stochastic_Strategy != STRATEGY_DISABLED || 
-                              CCI_Strategy != STRATEGY_DISABLED || 
-                              ADX_Strategy != STRATEGY_DISABLED);
-   
-   message += "テクニカル指標エントリー: " + (hasActiveIndicators ? "ON" : "OFF") + "\n";
-   message += "時間エントリー: " + (UseEvenOddHoursEntry ? "ON" : "OFF") + "\n";
-   message += "トレーリングストップ: " + (EnableTrailingStop ? "ON" : "OFF") + "\n";
-   message += "偶数/奇数時間エントリー: " + (UseEvenOddHoursEntry ? "ON" : "OFF") + "\n";
-   
-   // 主要パラメータ
-   message += "\n主要パラメータ:\n";
-   message += "ナンピンスキップレベル: " + EnumToString(NanpinSkipLevel) + "\n";
-   message += "最大ポジション数: " + EnumToString(MaxPositions) + "\n";
-   message += "エントリー方向: " + GetEntryModeString(EntryMode) + "\n";
-   
-   // メッセージボックスを表示
-   MessageBox(message, title, MB_ICONINFORMATION);
-}
 
 //+------------------------------------------------------------------+
 //| エントリーモードを文字列に変換する補助関数                         |
@@ -568,7 +528,7 @@ else if(buttonName == "btnShowLotTable")
 else if(buttonName == "btnShowSettings")
 {
    Print("設定情報表示ボタンがクリックされました");
-   ShowSettingsDialog();
+   //ShowSettingsDialog();
 }
 
 // 未知のボタンの場合
