@@ -65,8 +65,7 @@ void SaveEntryLogToFile(string logMessage)
 
 
 //+------------------------------------------------------------------+
-//| 実際のエントリー処理 - リアルエントリー時のロット選択ロジックと     |
-//| エントリーログを修正                                              |
+//| 実際のエントリー処理 - 個別指定ロットを正しく反映するよう修正      |
 //+------------------------------------------------------------------+
 void ExecuteRealEntry(int type, string entryReason)
 {
@@ -112,43 +111,28 @@ void ExecuteRealEntry(int type, string entryReason)
    // ===== ロットサイズの選択ロジックを修正 =====
    double lots;
    
-   // 常に初期ロットを使用するように修正
    // ナンピンスキップレベルがSKIP_NONEの場合は常に初期ロットを使用
    if(NanpinSkipLevel == SKIP_NONE) {
       lots = g_LotTable[0]; // 常に最初のロットを使用
       Print("ナンピンスキップなし: 初期ロット", DoubleToString(lots, 2), "を使用");
    } 
    else {
-      // スキップレベルに基づいてロットサイズを選択
-      // 個別指定モードが有効な場合
+      // 個別指定モードが有効な場合、常に初期ロットを使用
       if(IndividualLotEnabled == ON_MODE) {
-         // スキップレベルに対応するロットを使用
-         // NanpinSkipLevelは1から始まるため、配列インデックスに変換
-         int levelIndex = (int)NanpinSkipLevel - 1;
-         
-         // 配列の範囲を超えないようにチェック
-         if(levelIndex >= 0 && levelIndex < ArraySize(g_LotTable)) {
-            lots = g_LotTable[levelIndex];
-            Print("個別指定ロットモード + スキップレベル", (int)NanpinSkipLevel, ": ロット", DoubleToString(lots, 2), "を使用");
-         } else {
-            // 範囲外の場合は初期ロットを使用
-            lots = g_LotTable[0];
-            Print("警告: スキップレベルが範囲外のため初期ロット", DoubleToString(lots, 2), "を使用");
-         }
+         lots = g_LotTable[0]; // 修正: 個別指定の場合は常に初期ロットを使用
+         Print("個別指定ロットモード: 初期ロット", DoubleToString(lots, 2), "を使用");
       } else {
-         // マーチンゲールモードの場合
-         // スキップレベルに対応するロットを使用
-         int levelIndex = (int)NanpinSkipLevel - 1;
+         // マーチンゲールモードの場合、スキップレベルに応じて計算されたロットを使用
+         lots = g_LotTable[0]; // 初期ロットから始める
          
-         // 配列の範囲を超えないように制御
-         if(levelIndex >= 0 && levelIndex < ArraySize(g_LotTable)) {
-            lots = g_LotTable[levelIndex];
-            Print("マーチンゲールモード + スキップレベル", (int)NanpinSkipLevel, ": ロット", DoubleToString(lots, 2), "を使用");
-         } else {
-            // 範囲外の場合は初期ロットを使用
-            lots = g_LotTable[0];
-            Print("警告: スキップレベルが範囲外のため初期ロット", DoubleToString(lots, 2), "を使用");
+         // スキップレベルに応じてマーチンゲール計算を行う
+         for(int i = 1; i < (int)NanpinSkipLevel; i++) {
+            lots = lots * LotMultiplier;
+            lots = MathCeil(lots * 1000) / 1000; // 小数点以下3桁で切り上げ
          }
+         
+         Print("マーチンゲール計算: スキップレベル", (int)NanpinSkipLevel, 
+              "に対応するロット", DoubleToString(lots, 2), "を使用");
       }
    }
    
@@ -179,9 +163,8 @@ void ExecuteRealEntry(int type, string entryReason)
 
 
 
-
 //+------------------------------------------------------------------+
-//| リアルナンピンの実行 - 修正版（0.01ロットの条件を更新）           |
+//| リアルナンピンの実行 - 個別指定ロットを正しく反映するよう修正     |
 //+------------------------------------------------------------------+
 void ExecuteRealNanpin(int typeOrder)
 {
@@ -213,85 +196,64 @@ void ExecuteRealNanpin(int typeOrder)
       return;
    }
    
-   // 最後のリアルポジションのロットサイズを取得
-   double lastLotSize = 0;
-   datetime lastOpenTime = 0;
-   double priceLastPos = 0;
+   // ===== ロットサイズの選択ロジックを修正 =====
+   double lotsToUse;
    
-   for(int i = OrdersTotal() - 1; i >= 0; i--)
-   {
-      if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
-      {
-         if(OrderType() == typeOrder && OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
-         {
-            // 最新のポジションを探す
-            if(OrderOpenTime() > lastOpenTime)
-            {
-               lastOpenTime = OrderOpenTime();
-               lastLotSize = OrderLots();
-               priceLastPos = OrderOpenPrice();
-               Print("最新ポジション見つかりました: チケット=", OrderTicket(), 
-                     ", ロット=", DoubleToString(lastLotSize, 2), 
-                     ", 時間=", TimeToString(lastOpenTime));
-            }
-         }
+   // 個別指定モードが有効な場合
+   if(IndividualLotEnabled == ON_MODE) {
+      // 現在のポジション数に対応する次のレベルのロットを使用
+      int nextLevel = posCount; // 0-indexedのためそのまま使用可能
+      
+      // 配列の範囲を超えないようにチェック
+      if(nextLevel >= 0 && nextLevel < ArraySize(g_LotTable)) {
+         lotsToUse = g_LotTable[nextLevel];
+         Print("個別指定ロットモード: ナンピンレベル", nextLevel + 1, "のロット", DoubleToString(lotsToUse, 2), "を使用");
+      } else {
+         // 範囲外の場合は最後のロットを使用
+         lotsToUse = g_LotTable[ArraySize(g_LotTable)-1];
+         Print("警告: ナンピンレベルが範囲外のため最大レベルのロット", DoubleToString(lotsToUse, 2), "を使用");
+      }
+   }
+   else {
+      // マーチンゲールモードの場合は直前のポジションのロットに倍率を掛ける
+      double lastLotSize = GetLastPositionLot(typeOrder);
+      
+      // ロットサイズが取得できなかった場合
+      if(lastLotSize <= 0) {
+         Print("警告: 最後のポジションのロットサイズを取得できませんでした。デフォルトロットを使用します。");
+         lastLotSize = InitialLot;
+      }
+      
+      // 0.01ロットの場合のみ、かつマーチン倍率が1.3より大きい場合のみ特別処理
+      if(MathAbs(lastLotSize - 0.01) < 0.001 && LotMultiplier > 1.3) {
+         lotsToUse = 0.02;
+         Print("0.01ロット検出 + マーチン倍率>1.3: 次のロットを0.02に固定します");
+      }
+      else {
+         // それ以外は通常のマーチンゲール計算
+         lotsToUse = lastLotSize * LotMultiplier;
+         lotsToUse = MathCeil(lotsToUse * 1000) / 1000;
+         Print("通常マーチンゲール計算: ベースロット=", DoubleToString(lastLotSize, 3),
+             ", 倍率=", DoubleToString(LotMultiplier, 2),
+             ", 次のロット=", DoubleToString(lotsToUse, 3));
       }
    }
    
-   // ロットサイズが取得できなかった場合
-   if(lastLotSize <= 0)
-   {
-      Print("警告: 最後のポジションのロットサイズを取得できませんでした。デフォルトロットを使用します。");
-      lastLotSize = InitialLot;
-   }
-   
-   // 次のナンピンロットを計算
-   double lotsToUse;
-   
-   // 0.01ロットの場合のみ、かつマーチン倍率が1.3より大きい場合のみ特別処理
-   if(MathAbs(lastLotSize - 0.01) < 0.001 && LotMultiplier > 1.3)
-   {
-      lotsToUse = 0.02;
-      Print("0.01ロット検出 + マーチン倍率>1.3: 次のロットを0.02に固定します");
-   }
-   else
-   {
-      // それ以外は通常のマーチンゲール計算
-      lotsToUse = lastLotSize * LotMultiplier;
-      lotsToUse = MathCeil(lotsToUse * 1000) / 1000;
-      Print("通常マーチンゲール計算: ベースロット=", DoubleToString(lastLotSize, 3),
-          ", 倍率=", DoubleToString(LotMultiplier, 2),
-          ", 次のロット=", DoubleToString(lotsToUse, 3));
-   }
-   
-   // 現在の価格を取得（BuyならBid、SellならAsk）
-   double priceCurrent = (typeOrder == OP_BUY) ? GetBidPrice() : GetAskPrice();
-   
-   // 最新のナンピン幅を取得
-   int nanpinIndex = MathMin(posCount - 1, ArraySize(g_NanpinSpreadTable) - 1);
-   int spreadForNanpin = g_NanpinSpreadTable[nanpinIndex];
-   
-   // リアルナンピン実行
    Print("リアルナンピン実行: タイプ=", typeOrder == OP_BUY ? "Buy" : "Sell",
          ", ロット=", DoubleToString(lotsToUse, 3));
    
    // MQL4/MQL5互換のposition_entry関数を使用
    bool entryResult = position_entry(typeOrder, lotsToUse, Slippage, MagicNumber, "Hosopi 3 EA Nanpin");
    
-   if(entryResult)
-   {
+   if(entryResult) {
       Print("リアル", typeOrder == OP_BUY ? "Buy" : "Sell", "ナンピン成功: ", 
             "ロット=", DoubleToString(lotsToUse, 3), ", 価格=", 
             DoubleToString(typeOrder == OP_BUY ? GetAskPrice() : GetBidPrice(), 5));
    }
-   else
-   {
+   else {
       Print("リアル", typeOrder == OP_BUY ? "Buy" : "Sell", "ナンピンエラー: ", GetLastError());
    }
 }
-
-
-
 
 
 
@@ -358,8 +320,13 @@ void ExecuteDiscretionaryEntry(int typeOrder, double lotSize = 0)
    }
 }
 
+
+
+
+
+
 //+------------------------------------------------------------------+
-//| 途中からのエントリー用関数 - 指定レベルからのエントリー           |
+//| 途中からのエントリー用関数 - 個別指定ロットを正しく反映するよう修正 |
 //+------------------------------------------------------------------+
 void ExecuteEntryFromLevel(int type, int level)
 {
@@ -383,21 +350,20 @@ void ExecuteEntryFromLevel(int type, int level)
    }
    
    // 指定レベルが範囲内かチェック
-   if(level < 1 || level >= ArraySize(g_LotTable))
+   if(level < 1 || level > ArraySize(g_LotTable))
    {
       Print("指定レベルが範囲外のため、レベル指定エントリーはスキップされました: ", level);
       return;
    }
    
-   // ゴーストポジションのカウントを取得
-   int ghostCount = ghost_position_count(type);
+   // ロット選択を明確化 - レベルは1始まりだが配列は0始まりなので調整
+   double lots = g_LotTable[level - 1];
    
-   // 指定されたレベルのロットを使用
-   double lots = g_LotTable[level - 1]; // level は1始まりなので調整
-   
-   // ロット選択のログ出力
+   // ロット選択のログ出力を強化
    Print("レベル指定エントリー: レベル=", level, 
-         ", ロットサイズ=", DoubleToString(lots, 2));
+         ", インデックス=", level - 1,
+         ", ロットサイズ=", DoubleToString(lots, 2),
+         ", 個別指定モード=", IndividualLotEnabled == ON_MODE ? "有効" : "無効");
    
    Print("指定エントリー実行: ", type == OP_BUY ? "Buy" : "Sell", 
          ", ロット=", DoubleToString(lots, 2));
@@ -421,10 +387,6 @@ void ExecuteEntryFromLevel(int type, int level)
       Print("レベル", level, "からの", type == OP_BUY ? "Buy" : "Sell", "エントリーエラー: ", GetLastError());
    }
 }
-
-
-
-
 
 
 

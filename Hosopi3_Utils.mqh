@@ -404,7 +404,7 @@ bool IsTimeAllowed(int type)
 }
 
 //+------------------------------------------------------------------+
-//| ロットテーブルの初期化                                             |
+//| ロットテーブルの初期化 - 個別指定モードをより明確に処理            |
 //+------------------------------------------------------------------+
 void InitializeLotTable()
 {
@@ -455,23 +455,21 @@ void InitializeLotTable()
    }
    Print(lotTableStr);
    
-   // マーチンゲールモードが有効な場合、計算値と設定値の確認
-   if(IndividualLotEnabled == OFF_MODE)
+   // 追加: ロット使用ポリシーの明確化
+   if(IndividualLotEnabled == ON_MODE)
    {
-      Print("マーチンゲール設定確認: ");
-      Print("- 初期ロット: ", DoubleToString(InitialLot, 3));
-      Print("- 倍率: ", DoubleToString(LotMultiplier, 2));
-      
-      // 計算例を表示
-      double lot = InitialLot;
-      string calcExample = "倍率計算例: " + DoubleToString(lot, 3);
-      for(int i = 1; i < 5; i++) {
-         lot = MathCeil(lot * LotMultiplier * 1000) / 1000;
-         calcExample += " → " + DoubleToString(lot, 3);
-      }
-      Print(calcExample);
+      Print("個別指定ロット使用ポリシー:");
+      Print("- 初回エントリー: レベル1のロット (", DoubleToString(g_LotTable[0], 2), ")");
+      Print("- ナンピン: 対応するレベルのロット (レベルに基づいて選択)");
+   }
+   else
+   {
+      Print("マーチンゲールロット使用ポリシー:");
+      Print("- 初回エントリー: 初期ロット (", DoubleToString(InitialLot, 2), ")");
+      Print("- ナンピン: 前回ロット x 倍率 (", DoubleToString(LotMultiplier, 2), ")");
    }
 }
+
 
 //+------------------------------------------------------------------+
 //| ナンピン幅テーブルの初期化                                         |
