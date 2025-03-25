@@ -2034,16 +2034,14 @@ void ProcessGhostEntries(int side)
    {
       // エントリー条件: インジケーターまたは時間
       bool indicatorSignal = CheckIndicatorSignals(side);
-      bool timeSignal = UseEvenOddHoursEntry ? IsTimeEntryAllowed(side) : false;
       
-      Print("ProcessGhostEntries: ", direction, " インジケーターシグナル=", indicatorSignal, ", 時間シグナル=", timeSignal);
+      Print("ProcessGhostEntries: ", direction, " インジケーターシグナル=", indicatorSignal);
       
       // いずれかの条件が満たされればエントリー
-      bool shouldEnter = indicatorSignal || timeSignal;
+      bool shouldEnter = indicatorSignal;
       
       string reason = "";
       if(indicatorSignal) reason += "インジケーター条件OK ";
-      if(timeSignal) reason += "時間条件OK ";
       
       if(shouldEnter) {
          Print("新規ゴースト", direction, "エントリー実行 - 理由: ", reason);

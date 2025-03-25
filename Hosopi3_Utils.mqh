@@ -111,42 +111,7 @@ bool is_summer()
    return false;
 }
 
-//+------------------------------------------------------------------+
-//| エントリーが許可されているかチェック                              |
-//+------------------------------------------------------------------+
-bool IsEntryAllowed(int side)
-{
-   // 偶数/奇数時間エントリーが無効な場合はfalse
-   if(!UseEvenOddHoursEntry)
-      return false;
-      
-   // side: 0 = Buy, 1 = Sell
-   int entryDirection = (side == 0) ? buy_EntryDirection : sell_EntryDirection;
-   int hour;
-   
-   switch(entryDirection)
-   {
-      case ALWAYS:
-         return true;
-      
-      case EVEN_HOURS:
-         {
-            hour = TimeHour(calculate_time());
-            return (hour % 2 == 0); // 偶数時間
-         }
-      
-      case ODD_HOURS:
-         {
-            hour = TimeHour(calculate_time());
-            return (hour % 2 == 1); // 奇数時間
-         }
-      
-      case OFF:
-         return false;
-   }
-   
-   return false; // デフォルト戻り値
-}
+
 
 //+------------------------------------------------------------------+
 //| オブジェクト名を保存                                               |

@@ -762,7 +762,6 @@ int InitializeEA()
    g_EnableGhostEntry = EnableGhostEntry;
    g_EnableTrailingStop = EnableTrailingStop;
    g_AutoTrading = EnableAutomaticTrading;
-   g_UseEvenOddHoursEntry = UseEvenOddHoursEntry;
    
    CreateGUI();
    

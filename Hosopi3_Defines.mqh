@@ -52,13 +52,8 @@ enum NANPIN_SKIP {
     POS_20 = 20    // 20ポジション
  };
  
- // エントリー方向の列挙型
- enum ENTRY_DIRECTION {
-    ALWAYS = 0,        // 常時
-    EVEN_HOURS = 1,    // 偶数時間のみ
-    ODD_HOURS = 2,     // 奇数時間のみ
-    OFF = 3            // OFF
- };
+
+ 
  
  // OnOff列挙型
  enum ON_OFF {

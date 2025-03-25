@@ -27,6 +27,14 @@ input string PanelTitle = "Hosopi 3 EA"; // パネルタイトル
 input int PanelX = 20;     // パネルX座標
 input int PanelY = 50;    // パネルY座標
 
+//+------------------------------------------------------------------+
+//| エントリーモード設定 - 基本パラメーター                           |
+//+------------------------------------------------------------------+
+
+
+// 基本設定セクションに追加するパラメーター
+input ENTRY_MODE EntryMode = MODE_BOTH;   // エントリー方向
+
 // ======== スプレッド設定 ========
 sinput string Comment_Spread = ""; //+--- スプレッド設定 ---+
 input int MaxSpreadPoints = 2000;    // 最大スプレッド（Point）
@@ -230,16 +238,6 @@ input bool EnableAutomaticTrading = true;     // 自動売買を有効化
 input bool EnablePositionTable = true;        // ポジションテーブル表示を有効化
 input bool EnablePriceLabels = true;          // 価格ラベル表示を有効化
 
-// ======== 時刻エントリー設定 ========
-sinput string Comment_Jiikoku_Entry = ""; //+--- 時刻エントリー設定 ---+
-input bool UseEvenOddHoursEntry = false;     // 偶数/奇数時間エントリーを使用する
-input ENTRY_DIRECTION buy_EntryDirection = EVEN_HOURS;  // Buy エントリー方向
-input ENTRY_DIRECTION sell_EntryDirection = ODD_HOURS;  // Sell エントリー方向
-input ENTRY_MODE EntryMode = MODE_BOTH;   // エントリー方向
-
-// ======== 戦略の時間足設定 ========
-sinput string Comment_Strategy_Timeframe = ""; //+--- 戦略の時間足設定 ---+
-input ENUM_TIMEFRAMES Strategy_Timeframe = PERIOD_CURRENT; // 戦略適用時間足
 
 #include "Hosopi3_Strategy.mqh"
 
