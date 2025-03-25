@@ -6,8 +6,11 @@
 #include "Hosopi3_Utils.mqh"
 #include "Hosopi3_Trading.mqh"
 
+
+
+
 //+------------------------------------------------------------------+
-//| GUIを作成する - 改訂版                                           |
+//| GUIを作成する - ゴーストエントリーボタン追加版                      |
 //+------------------------------------------------------------------+
 void CreateGUI()
 {
@@ -17,8 +20,8 @@ void CreateGUI()
    // パネル位置を調整
    int adjustedPanelY = PanelY;
    
-   // メインパネル背景 - 不要なボタンを削除したため高さを縮小
-   CreatePanel("MainPanel", PanelX, adjustedPanelY, PANEL_WIDTH, PANEL_HEIGHT + 120, COLOR_PANEL_BG, COLOR_PANEL_BORDER);
+   // メインパネル背景 - ゴーストボタン追加のため高さを拡大
+   CreatePanel("MainPanel", PanelX, adjustedPanelY, PANEL_WIDTH, PANEL_HEIGHT + 170, COLOR_PANEL_BG, COLOR_PANEL_BORDER);
    
    // パネルタイトル
    CreateTitleBar("TitleBar", PanelX, adjustedPanelY, PANEL_WIDTH, TITLE_HEIGHT, COLOR_TITLE_BG, PanelTitle);
@@ -53,8 +56,20 @@ void CreateGUI()
    // Buyエントリーボタン (右)
    CreateButton("btnDirectBuy", "BUY NOW", PanelX + PANEL_MARGIN * 2 + buttonWidth, row3Y + 15, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_BUY, COLOR_TEXT_LIGHT);
    
+   // ========== 新規追加: 行3.5: ゴーストエントリーボタン ==========
+   int row3_5Y = row3Y + BUTTON_HEIGHT + PANEL_MARGIN + 15;
+   
+   // セクションラベル
+   CreateLabel("lblGhostEntry", "【ゴーストエントリー】", PanelX + PANEL_MARGIN, row3_5Y - 5, COLOR_TEXT_LIGHT);
+   
+   // ゴーストSellエントリーボタン (左)
+   CreateButton("btnGhostSell", "GHOST SELL", PanelX + PANEL_MARGIN, row3_5Y + 15, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_SELL, COLOR_TEXT_LIGHT);
+   
+   // ゴーストBuyエントリーボタン (右)
+   CreateButton("btnGhostBuy", "GHOST BUY", PanelX + PANEL_MARGIN * 2 + buttonWidth, row3_5Y + 15, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_BUY, COLOR_TEXT_LIGHT);
+   
    // ========== 行4: 途中からエントリーボタン ==========
-   int row4Y = row3Y + BUTTON_HEIGHT + PANEL_MARGIN * 2 + 15; // 間隔を広く
+   int row4Y = row3_5Y + BUTTON_HEIGHT + PANEL_MARGIN * 2 + 15; // 間隔を広く
    
    // セクションラベル
    CreateLabel("lblLevelEntry", "【レベル指定エントリー】", PanelX + PANEL_MARGIN, row4Y - 5, COLOR_TEXT_LIGHT);
@@ -338,8 +353,9 @@ void UpdateGUI()
    ChartRedraw(); // チャートを再描画
 }
 
+
 //+------------------------------------------------------------------+
-//| ボタンクリックを処理する - 修正版                                |
+//| ボタンクリックを処理する - ゴーストエントリーボタン対応版         |
 //+------------------------------------------------------------------+
 void ProcessButtonClick(string buttonName)
 {
@@ -374,32 +390,32 @@ void ProcessButtonClick(string buttonName)
       UpdateGUI();
    }
    
-// Close All
-else if(buttonName == "btnCloseAll")
-{
-   Print("Close All clicked");
-   
-   // リアルポジションを閉じる
-   position_close(0);
-   position_close(1);
-   
-   // ゴーストもリセット
-   ResetGhost(OP_BUY);
-   ResetGhost(OP_SELL);
-   
-   // グローバル変数からもクリア
-   ClearGhostPositionsFromGlobal();
-   
-   // 決済済みフラグもリセット
-   g_BuyGhostClosed = false;
-   g_SellGhostClosed = false;
-   SaveGhostPositionsToGlobal();
-   
-   Print("すべてのポジションとゴーストをリセットしました");
-   
-   UpdateGUI();
-   UpdatePositionTable();
-}
+   // Close All
+   else if(buttonName == "btnCloseAll")
+   {
+      Print("Close All clicked");
+      
+      // リアルポジションを閉じる
+      position_close(0);
+      position_close(1);
+      
+      // ゴーストもリセット
+      ResetGhost(OP_BUY);
+      ResetGhost(OP_SELL);
+      
+      // グローバル変数からもクリア
+      ClearGhostPositionsFromGlobal();
+      
+      // 決済済みフラグもリセット
+      g_BuyGhostClosed = false;
+      g_SellGhostClosed = false;
+      SaveGhostPositionsToGlobal();
+      
+      Print("すべてのポジションとゴーストをリセットしました");
+      
+      UpdateGUI();
+      UpdatePositionTable();
+   }
    
    // Ghost Toggle
    else if(buttonName == "btnGhostToggle" || buttonName == "btnGhostMode")
@@ -484,39 +500,89 @@ else if(buttonName == "btnCloseAll")
       UpdateGUI(); // レベルボタンのラベルを更新
    }
    
-   // 直接Sell
-   else if(buttonName == "btnDirectSell")
+// 直接Sell
+else if(buttonName == "btnDirectSell")
+{
+   Print("直接Sellボタンがクリックされました");
+   ExecuteDiscretionaryEntry(OP_SELL);
+   UpdatePositionTable();
+   UpdateGUI(); // レベルボタンのラベルを更新
+}
+
+// ===== ゴーストエントリーボタン処理（新規追加） =====
+
+// ゴーストBuy
+else if(buttonName == "btnGhostBuy")
+{
+   Print("ゴーストBuyボタンがクリックされました");
+   if(!g_GhostMode)
    {
-      Print("直接Sellボタンがクリックされました");
-      ExecuteDiscretionaryEntry(OP_SELL);
+      // ゴーストモードが無効の場合はメッセージを表示
+      MessageBox("ゴーストモードが無効です。先にGHOST ONにしてください。", "ゴーストエントリーエラー", MB_ICONWARNING);
+   }
+   else if(position_count(OP_BUY) > 0)
+   {
+      // すでにリアルポジションがある場合
+      MessageBox("すでにBuy方向のリアルポジションが存在します。\nゴーストエントリーはリアルポジションがない状態で行ってください。", 
+                 "ゴーストエントリーエラー", MB_ICONWARNING);
+   }
+   else
+   {
+      // ゴーストBuyポジション初期化
+      InitializeGhostPosition(OP_BUY, "手動ゴーストエントリー");
       UpdatePositionTable();
       UpdateGUI(); // レベルボタンのラベルを更新
    }
-   
-   // ===== レベル指定エントリーボタン =====
-   
-   // レベル指定Buy
-   else if(buttonName == "btnLevelBuy")
+}
+
+// ゴーストSell
+else if(buttonName == "btnGhostSell")
+{
+   Print("ゴーストSellボタンがクリックされました");
+   if(!g_GhostMode)
    {
-      // 現在のゴーストカウント+1をレベルとして使用
-      int entryLevel = ghost_position_count(OP_BUY) + 1;
-      Print("レベル指定Buyボタンがクリックされました: レベル", entryLevel);
-      ExecuteEntryFromLevel(OP_BUY, entryLevel);
+      // ゴーストモードが無効の場合はメッセージを表示
+      MessageBox("ゴーストモードが無効です。先にGHOST ONにしてください。", "ゴーストエントリーエラー", MB_ICONWARNING);
+   }
+   else if(position_count(OP_SELL) > 0)
+   {
+      // すでにリアルポジションがある場合
+      MessageBox("すでにSell方向のリアルポジションが存在します。\nゴーストエントリーはリアルポジションがない状態で行ってください。", 
+                 "ゴーストエントリーエラー", MB_ICONWARNING);
+   }
+   else
+   {
+      // ゴーストSellポジション初期化
+      InitializeGhostPosition(OP_SELL, "手動ゴーストエントリー");
       UpdatePositionTable();
       UpdateGUI(); // レベルボタンのラベルを更新
    }
-   
-   // レベル指定Sell
-   else if(buttonName == "btnLevelSell")
-   {
-      // 現在のゴーストカウント+1をレベルとして使用
-      int entryLevel = ghost_position_count(OP_SELL) + 1;
-      Print("レベル指定Sellボタンがクリックされました: レベル", entryLevel);
-      ExecuteEntryFromLevel(OP_SELL, entryLevel);
-      UpdatePositionTable();
-      UpdateGUI(); // レベルボタンのラベルを更新
-   }
-   
+}
+
+// ===== レベル指定エントリーボタン =====
+
+// レベル指定Buy
+else if(buttonName == "btnLevelBuy")
+{
+   // 現在のゴーストカウント+1をレベルとして使用
+   int entryLevel = ghost_position_count(OP_BUY) + 1;
+   Print("レベル指定Buyボタンがクリックされました: レベル", entryLevel);
+   ExecuteEntryFromLevel(OP_BUY, entryLevel);
+   UpdatePositionTable();
+   UpdateGUI(); // レベルボタンのラベルを更新
+}
+
+// レベル指定Sell
+else if(buttonName == "btnLevelSell")
+{
+   // 現在のゴーストカウント+1をレベルとして使用
+   int entryLevel = ghost_position_count(OP_SELL) + 1;
+   Print("レベル指定Sellボタンがクリックされました: レベル", entryLevel);
+   ExecuteEntryFromLevel(OP_SELL, entryLevel);
+   UpdatePositionTable();
+   UpdateGUI(); // レベルボタンのラベルを更新
+}
+
 // ロットテーブル表示ボタン
 else if(buttonName == "btnShowLotTable")
 {
@@ -528,7 +594,7 @@ else if(buttonName == "btnShowLotTable")
 else if(buttonName == "btnShowSettings")
 {
    Print("設定情報表示ボタンがクリックされました");
-   //ShowSettingsDialog();
+   ShowSettingsDialog();
 }
 
 // 未知のボタンの場合
@@ -536,6 +602,43 @@ else
 {
    Print("未知のボタンがクリックされました: ", buttonName);
 }
+}
+
+//+------------------------------------------------------------------+
+//| 設定情報ダイアログを表示                                         |
+//+------------------------------------------------------------------+
+void ShowSettingsDialog()
+{
+   // ダイアログタイトル
+   string title = "Hosopi 3 - 設定情報";
+   
+   // ダイアログ内容を構築
+   string message = "【基本設定】\n";
+   message += "エントリーモード: " + GetEntryModeString(EntryMode) + "\n";
+   message += "ゴーストモード: " + (g_GhostMode ? "ON" : "OFF") + "\n";
+   message += "ナンピンスキップレベル: " + IntegerToString((int)NanpinSkipLevel) + "\n\n";
+   
+   message += "【ナンピン設定】\n";
+   message += "ナンピン機能: " + (EnableNanpin ? "有効" : "無効") + "\n";
+   message += "ナンピンインターバル: " + IntegerToString(NanpinInterval) + "分\n";
+   message += "最大スプレッド: " + IntegerToString(MaxSpreadPoints) + "ポイント\n\n";
+   
+   message += "【利確設定】\n";
+   message += "利確モード: ";
+   switch(TakeProfitMode) {
+      case TP_OFF: message += "無効"; break;
+      case TP_LIMIT: message += "指値"; break;
+      case TP_MARKET: message += "成行"; break;
+      default: message += "不明";
+   }
+   message += "\n";
+   message += "利確ポイント: " + IntegerToString(TakeProfitPoints) + "\n\n";
+   
+   message += "【トレーリングストップ】\n";
+   message += "トレーリングストップ: " + (EnableTrailingStop ? "有効" : "無効") + "\n";
+   
+   // メッセージボックスを表示
+   MessageBox(message, title, MB_ICONINFORMATION);
 }
 
 //+------------------------------------------------------------------+
