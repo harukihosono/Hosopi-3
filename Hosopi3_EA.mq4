@@ -35,6 +35,20 @@ input int PanelY = 50;    // パネルY座標
 // 基本設定セクションに追加するパラメーター
 input ENTRY_MODE EntryMode = MODE_BOTH;   // エントリー方向
 
+//+------------------------------------------------------------------+
+//| ポジション保護機能の定義                                         |
+//+------------------------------------------------------------------+
+enum POSITION_PROTECTION_MODE
+{
+   PROTECTION_OFF = 0,        // 両建て許可
+   PROTECTION_ON = 1          // 単方向のみ許可
+};
+
+// ======== ポジション保護設定 ========
+sinput string Comment_Protection = ""; //+--- 両建て設定 ---+
+input POSITION_PROTECTION_MODE PositionProtection = PROTECTION_OFF; // 両建て設定モード
+
+
 // ======== スプレッド設定 ========
 sinput string Comment_Spread = ""; //+--- スプレッド設定 ---+
 input int MaxSpreadPoints = 2000;    // 最大スプレッド（Point）

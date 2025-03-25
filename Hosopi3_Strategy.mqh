@@ -1463,14 +1463,20 @@ bool CheckIndicatorSignals(int side)
         (EvenOdd_Entry_Strategy != EVEN_ODD_DISABLED && CheckEvenOddStrategy(side));
 }
 
+
+
+
 //+------------------------------------------------------------------+
-//| GetStrategyDetails関数 - 更新版                                   |
+//| GetStrategyDetails関数 - ポジション保護対応                        |
 //+------------------------------------------------------------------+
 string GetStrategyDetails(int side)
 {
 // side: 0 = Buy, 1 = Sell
    string typeStr = (side == 0) ? "Buy" : "Sell";
    string strategyDetails = "【" + typeStr + " 戦略シグナル詳細】\n";
+
+// 【セクション: ポジション保護】- 新規追加
+   strategyDetails += "【ポジション保護】: " + GetProtectionModeText() + "\n";
 
 // 【セクション: MAクロス】
    if(MA_Entry_Strategy == MA_ENTRY_ENABLED)
@@ -1582,33 +1588,35 @@ string GetStrategyDetails(int side)
       double minus_di = iADX(Symbol(), ADX_Timeframe, ADX_Period, PRICE_CLOSE, MODE_MINUSDI, ADX_Signal_Shift);
 
       strategyDetails += "【ADX/DMI】: " + (adxSignal ? "シグナルあり" : "シグナルなし") +
-                       " (ADX=" + DoubleToString(adx, 2) +
-                       ", +DI=" + DoubleToString(plus_di, 2) +
-                       ", -DI=" + DoubleToString(minus_di, 2) +
-                       ", しきい値=" + IntegerToString(ADX_Threshold) + ")\n";
-   }
-
-// 【セクション: 偶数/奇数時間】
-   if(EvenOdd_Entry_Strategy != EVEN_ODD_DISABLED)
-   {
-      bool evenOddSignal = CheckEvenOddStrategy(side);
-      
-      // 現在の時間情報を取得
-      datetime current_time = EvenOdd_UseJPTime ? calculate_time() : TimeCurrent();
-      int current_hour = TimeHour(current_time);
-      bool is_even_hour = (current_hour % 2 == 0);
-      
-      strategyDetails += "【偶数/奇数時間】: " + (evenOddSignal ? "シグナルあり" : "シグナルなし") +
-                       " (現在時間=" + IntegerToString(current_hour) + "時" +
-                       ", " + (is_even_hour ? "偶数時間" : "奇数時間") + 
-                       ", モード=" + GetEvenOddStrategyState() + ")\n";
-   }
-
-   return strategyDetails;
+      " (ADX=" + DoubleToString(adx, 2) +
+      ", +DI=" + DoubleToString(plus_di, 2) +
+      ", -DI=" + DoubleToString(minus_di, 2) +
+      ", しきい値=" + IntegerToString(ADX_Threshold) + ")\n";
 }
 
+// 【セクション: 偶数/奇数時間】
+if(EvenOdd_Entry_Strategy != EVEN_ODD_DISABLED)
+{
+bool evenOddSignal = CheckEvenOddStrategy(side);
+
+// 現在の時間情報を取得
+datetime current_time = EvenOdd_UseJPTime ? calculate_time() : TimeCurrent();
+int current_hour = TimeHour(current_time);
+bool is_even_hour = (current_hour % 2 == 0);
+
+strategyDetails += "【偶数/奇数時間】: " + (evenOddSignal ? "シグナルあり" : "シグナルなし") +
+      " (現在時間=" + IntegerToString(current_hour) + "時" +
+      ", " + (is_even_hour ? "偶数時間" : "奇数時間") + 
+      ", モード=" + GetEvenOddStrategyState() + ")\n";
+}
+
+return strategyDetails;
+}
+
+
+
 //+------------------------------------------------------------------+
-//| ProcessStrategyLogic関数 - 戦略ロジックのメイン処理（更新版）      |
+//| ProcessStrategyLogic関数 - ポジション保護対応                     |
 //+------------------------------------------------------------------+
 void ProcessStrategyLogic()
 {
@@ -1656,6 +1664,9 @@ void ProcessStrategyLogic()
       Print("【エントリーモード】: 現在のエントリーモード=",
             (EntryMode == MODE_BUY_ONLY) ? "BUYのみ" :
             (EntryMode == MODE_SELL_ONLY) ? "SELLのみ" : "両方");
+            
+      // 【セクション: ポジション保護モード表示】- 新規追加
+      Print("【ポジション保護モード】: 現在の設定=", GetProtectionModeText());
 
       // 【セクション: 偶数/奇数時間戦略チェック】
       if(EvenOdd_Entry_Strategy != EVEN_ODD_DISABLED)
@@ -1728,25 +1739,86 @@ void ProcessStrategyLogic()
    }
 }
 
+
+
+
+
+
+
+
+
+
+
+
 //+------------------------------------------------------------------+
-//| ProcessRealEntries関数 - リアルエントリー処理                      |
+//| IsEntryAllowedByProtectionMode - ポジションの保護モードをチェック  |
+//+------------------------------------------------------------------+
+bool IsEntryAllowedByProtectionMode(int side)
+{
+   // 保護モードが無効の場合は常に許可
+   if(PositionProtection == PROTECTION_OFF)
+      return true;
+      
+   // 保護モードが有効の場合
+   int buyCount = position_count(OP_BUY);
+   int sellCount = position_count(OP_SELL);
+   
+   // BUYエントリーの場合：SELLポジションがあれば拒否
+   if(side == 0 && sellCount > 0)
+   {
+      Print("【ポジション保護】: SELLポジションが存在するため、BUYエントリーを禁止します");
+      return false;
+   }
+   
+   // SELLエントリーの場合：BUYポジションがあれば拒否
+   if(side == 1 && buyCount > 0)
+   {
+      Print("【ポジション保護】: BUYポジションが存在するため、SELLエントリーを禁止します");
+      return false;
+   }
+   
+   return true;
+}
+
+//+------------------------------------------------------------------+
+//| GetProtectionModeText - 保護モードの状態をテキストで取得          |
+//+------------------------------------------------------------------+
+string GetProtectionModeText()
+{
+   if(PositionProtection == PROTECTION_OFF)
+      return "両建て許可";
+   else
+      return "単方向のみ";
+}
+
+
+
+//+------------------------------------------------------------------+
+//| ProcessRealEntries関数 - ポジション保護対応                       |
 //+------------------------------------------------------------------+
 void ProcessRealEntries(int side)
-  {
+{
    string direction = (side == 0) ? "Buy" : "Sell";
    Print("ProcessRealEntries: ", direction, " 処理開始");
 
-// リアルポジションがある場合はスキップ
+   // リアルポジションがある場合はスキップ
    int operationType = (side == 0) ? OP_BUY : OP_SELL;
    int existingCount = position_count(operationType);
 
    if(existingCount > 0)
-     {
+   {
       Print("既に", direction, "リアルポジションが存在するため、リアルエントリーはスキップされました: ", existingCount, "ポジション");
       return;
-     }
+   }
 
-// エントリーモードに基づくチェック
+   // ポジション保護モードのチェック - 新規追加
+   if(!IsEntryAllowedByProtectionMode(side))
+   {
+      Print("ProcessRealEntries: ポジション保護モードにより", direction, "側はスキップします");
+      return;
+   }
+
+   // エントリーモードに基づくチェック
    bool modeAllowed = false;
    if(side == 0) // Buy
       modeAllowed = (EntryMode == MODE_BUY_ONLY || EntryMode == MODE_BOTH);
@@ -1754,40 +1826,38 @@ void ProcessRealEntries(int side)
       modeAllowed = (EntryMode == MODE_SELL_ONLY || EntryMode == MODE_BOTH);
 
    if(!modeAllowed)
-     {
+   {
       Print("ProcessRealEntries: エントリーモードにより", direction, "側はスキップします");
       return;
-     }
+   }
 
    Print("ProcessRealEntries: ", direction, " エントリーモードチェック通過");
 
-// 戦略評価
+   // 戦略評価
    bool shouldEnter = EvaluateStrategyForEntry(side);
 
    Print("ProcessRealEntries: 最終エントリー判断: ", shouldEnter ? "エントリー実行" : "エントリーなし");
 
-// エントリー条件を満たしていれば新規エントリー
+   // エントリー条件を満たしていれば新規エントリー
    if(shouldEnter)
-     {
+   {
       // スプレッドチェック
       double spreadPoints = (GetAskPrice() - GetBidPrice()) / Point;
       if(spreadPoints <= MaxSpreadPoints || MaxSpreadPoints <= 0)
-        {
+      {
          Print("ProcessRealEntries: リアル", direction, "エントリー実行");
 
          // リアルエントリー実行
          ExecuteRealEntry(operationType, "戦略シグナル");
-        }
+      }
       else
-        {
+      {
          Print("ProcessRealEntries: スプレッドが大きすぎるため、リアル", direction, "エントリーをスキップしました: ",
                spreadPoints, " > ", MaxSpreadPoints);
-        }
-     }
+      }
+   }
    else
-     {
+   {
       Print("ProcessRealEntries: リアル", direction, "エントリー条件不成立のためスキップします");
-     }
-  }
-
-//+------------------------------------------------------------------+
+   }
+}

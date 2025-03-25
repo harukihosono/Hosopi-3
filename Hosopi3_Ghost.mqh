@@ -202,14 +202,23 @@ void CreateGhostEntryPoint(int type, double price, double lots, int level, datet
    SaveObjectName(lineName, g_EntryNames, g_EntryObjectCount);
 }
 
+
+
 //+------------------------------------------------------------------+
-//| ゴーストポジションの初期化（シンプル版）                          |
+//| InitializeGhostPosition関数 - ポジション保護対応                   |
 //+------------------------------------------------------------------+
 void InitializeGhostPosition(int type, string entryReason = "")
 {
    // リアルポジションがある場合は処理をスキップ（複数チャート対策）
    if(position_count(OP_BUY) > 0 || position_count(OP_SELL) > 0) {
       Print("リアルポジションが存在するため、ゴーストポジション初期化をスキップします");
+      return;
+   }
+
+   // ポジション保護モードのチェック - 新規追加
+   if(!IsEntryAllowedByProtectionMode(type == OP_BUY ? 0 : 1))
+   {
+      Print("InitializeGhostPosition: ポジション保護モードにより", type == OP_BUY ? "Buy" : "Sell", "側はスキップします");
       return;
    }
 
@@ -315,14 +324,23 @@ void InitializeGhostPosition(int type, string entryReason = "")
    // グローバル変数へ保存
    SaveGhostPositionsToGlobal();
 }
-//+------------------------------------------------------------------+
-//| ゴーストナンピンの追加（シンプル版）                               |
-//+------------------------------------------------------------------+
 
+
+
+//+------------------------------------------------------------------+
+//| AddGhostNanpin関数 - ポジション保護対応                           |
+//+------------------------------------------------------------------+
 void AddGhostNanpin(int type)
 {
    if(position_count(OP_BUY) > 0 || position_count(OP_SELL) > 0) {
       Print("リアルポジションが存在するため、ゴーストナンピン追加をスキップします");
+      return;
+   }
+
+   // ポジション保護モードのチェック - 新規追加
+   if(!IsEntryAllowedByProtectionMode(type == OP_BUY ? 0 : 1))
+   {
+      Print("AddGhostNanpin: ポジション保護モードにより", type == OP_BUY ? "Buy" : "Sell", "側はスキップします");
       return;
    }
 
@@ -407,6 +425,8 @@ void AddGhostNanpin(int type)
    // グローバル変数に保存
    SaveGhostPositionsToGlobal();
 }
+
+
 
 
 //| ゴーストエントリーポイントを再作成（シンプル版）                  |
@@ -1668,8 +1688,11 @@ double CalculateCombinedProfit(int type)
    return totalProfit;
 }
 
+
+
+
 //+------------------------------------------------------------------+
-//| ゴーストナンピン条件のチェック - 最適化版                          |
+//| CheckGhostNanpinCondition関数 - ポジション保護対応                |
 //+------------------------------------------------------------------+
 void CheckGhostNanpinCondition(int type)
 {
@@ -1684,6 +1707,13 @@ void CheckGhostNanpinCondition(int type)
    
    // リアルポジションがある場合は処理をスキップ（複数チャート対策）
    if(position_count(OP_BUY) > 0 || position_count(OP_SELL) > 0) {
+      return;
+   }
+
+   // ポジション保護モードのチェック - 新規追加
+   if(!IsEntryAllowedByProtectionMode(type == OP_BUY ? 0 : 1))
+   {
+      // デバッグログは出さない（頻繁にチェックされるため）
       return;
    }
 
@@ -1771,6 +1801,7 @@ void CheckGhostNanpinCondition(int type)
       Print((type == OP_BUY ? "Buy" : "Sell"), " ゴーストナンピン条件成立、ゴーストナンピン追加");
    }
 }
+
 
 
 //+------------------------------------------------------------------+
@@ -1977,7 +2008,7 @@ void CheckLimitTakeProfitExecutions()
 
 
 //+------------------------------------------------------------------+
-//| Hosopi3_Ghost.mqh の ProcessGhostEntries関数 - 修正版             |
+//| ProcessGhostEntries関数 - ポジション保護対応                      |
 //+------------------------------------------------------------------+
 void ProcessGhostEntries(int side)
 {
@@ -1990,6 +2021,13 @@ void ProcessGhostEntries(int side)
    
    if(existingCount > 0) {
       Print("ProcessGhostEntries: 既に", direction, "リアルポジションが存在するためスキップします");
+      return;
+   }
+
+   // ポジション保護モードのチェック - 新規追加
+   if(!IsEntryAllowedByProtectionMode(side))
+   {
+      Print("ProcessGhostEntries: ポジション保護モードにより", direction, "側はスキップします");
       return;
    }
 
@@ -2060,5 +2098,3 @@ void ProcessGhostEntries(int side)
       CheckGhostNanpinCondition(operationType);
    }
 }
-
-
