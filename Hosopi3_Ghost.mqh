@@ -662,6 +662,10 @@ void ResetGhost(int type)
       DeleteAllGhostObjectsByType(0);
       DeleteAllGhostObjectsByType(1);
    }
+
+    // 最後のナンピン時間をリセット
+  g_LastBuyNanpinTime = 0;     // 最後のBuyナンピン時間
+  g_LastSellNanpinTime = 0;    // 最後のSellナンピン時間
 }
 
 
