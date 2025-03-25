@@ -1,4 +1,3 @@
-
 //+------------------------------------------------------------------+
 //|                    Hosopi 3 - 偶数/奇数時間エントリー戦略          |
 //|                           Copyright 2025                          |
@@ -14,7 +13,10 @@ enum EVEN_ODD_STRATEGY_TYPE
 {
    EVEN_ODD_DISABLED = 0,       // 無効
    EVEN_HOUR_BUY_ODD_HOUR_SELL = 1,  // 偶数時間Buy・奇数時間Sell
-   ODD_HOUR_BUY_EVEN_HOUR_SELL = 2   // 奇数時間Buy・偶数時間Sell
+   ODD_HOUR_BUY_EVEN_HOUR_SELL = 2,  // 奇数時間Buy・偶数時間Sell
+   EVEN_HOUR_BOTH = 3,          // 偶数時間のみ両方向
+   ODD_HOUR_BOTH = 4,           // 奇数時間のみ両方向
+   ALL_HOURS_ENABLED = 5        // 全時間両方向
 };
 
 //+------------------------------------------------------------------+
@@ -66,6 +68,18 @@ bool CheckEvenOddStrategy(int side)
    // 現在時間が偶数時間かどうか
    bool is_even_hour = IsEvenHour();
    
+   // 全時間両方向が有効な場合は常にtrue
+   if(EvenOdd_Entry_Strategy == ALL_HOURS_ENABLED)
+      return true;
+      
+   // 偶数時間両方向
+   if(EvenOdd_Entry_Strategy == EVEN_HOUR_BOTH)
+      return is_even_hour;
+      
+   // 奇数時間両方向
+   if(EvenOdd_Entry_Strategy == ODD_HOUR_BOTH)
+      return !is_even_hour;
+   
    // BUYシグナル判定
    if(side == 0)  // Buy
    {
@@ -102,18 +116,18 @@ string GetEvenOddStrategyState()
       state = "偶数時間Buy・奇数時間Sell";
    else if(EvenOdd_Entry_Strategy == ODD_HOUR_BUY_EVEN_HOUR_SELL)
       state = "奇数時間Buy・偶数時間Sell";
+   else if(EvenOdd_Entry_Strategy == EVEN_HOUR_BOTH)
+      state = "偶数時間のみ両方向";
+   else if(EvenOdd_Entry_Strategy == ODD_HOUR_BOTH)
+      state = "奇数時間のみ両方向";
+   else if(EvenOdd_Entry_Strategy == ALL_HOURS_ENABLED)
+      state = "全時間両方向";
       
    return state + " (" + timeBase + ", " + weekendStatus + ")";
 }
 //+------------------------------------------------------------------+
 //| 各テクニカル指標のエントリータイプ定義                            |
 //+------------------------------------------------------------------+
-enum TIME_ENTRY_TYPE
-  {
-   TIME_ENTRY_DISABLED = 0,      // 無効
-   TIME_ENTRY_ENABLED = 1        // 有効
-  };
-
 enum MA_ENTRY_TYPE
   {
    MA_ENTRY_DISABLED = 0,        // 無効
@@ -257,12 +271,6 @@ enum CONDITION_TYPE
    AND_CONDITION = 1          // すべての条件が成立（AND条件）
   };
 
-// 時間エントリー戦略
-sinput string Comment_Time_Entry = ""; //+--- 時間エントリー設定 ---+
-input TIME_ENTRY_TYPE Time_Entry_Strategy = TIME_ENTRY_DISABLED; // 時間条件
-input bool EvenHoursBuy = true;     // 偶数時間に買い
-input bool OddHoursSell = true;     // 奇数時間に売り
-
 // MA戦略パラメータ
 sinput string Comment_MA = ""; //+--- 移動平均線戦略設定 ---+
 input MA_ENTRY_TYPE MA_Entry_Strategy = MA_ENTRY_DISABLED;  // MAクロス戦略
@@ -366,6 +374,9 @@ input STRATEGY_DIRECTION ADX_Sell_Direction = TREND_FOLLOWING; // ADX売り取�
 // インジケーター条件判定タイプ
 sinput string Comment_Condition = ""; //+--- 条件判定設定 ---+
 input CONDITION_TYPE Indicator_Condition_Type = OR_CONDITION; // インジケーター条件判定（OR/AND）
+
+
+
 //+------------------------------------------------------------------+
 //| EvaluateIndicatorsForEntry関数 - インジケーター評価（セクション追加）|
 //+------------------------------------------------------------------+
@@ -509,24 +520,22 @@ bool EvaluateIndicatorsForEntry(int side)
    }
 
 // 条件タイプに基づいて評価
-   if(Indicator_Condition_Type == AND_CONDITION)
-   {
-      // AND条件: すべての有効なインジケーターがシグナルを出した場合のみtrue
-      strategySignals = (validSignals == enabledStrategies);
-      Print("【最終判断】 AND条件で評価: ", strategySignals ? "すべてのシグナルが成立" : "一部のシグナルが不成立");
-   }
-   else
-   {
-      // OR条件: 少なくとも1つのインジケーターがシグナルを出した場合にtrue
-      strategySignals = (validSignals > 0);
-      Print("【最終判断】 OR条件で評価: ", strategySignals ? "1つ以上のシグナルが成立" : "シグナル不成立");
-   }
-
-   Print("【最終判断】 結果: ", strategySignals ? "成立" : "不成立");
-   return strategySignals;
+if(Indicator_Condition_Type == AND_CONDITION)
+{
+   // AND条件: すべての有効なインジケーターがシグナルを出した場合のみtrue
+   strategySignals = (validSignals == enabledStrategies);
+   Print("【最終判断】 AND条件で評価: ", strategySignals ? "すべてのシグナルが成立" : "一部のシグナルが不成立");
+}
+else
+{
+   // OR条件: 少なくとも1つのインジケーターがシグナルを出した場合にtrue
+   strategySignals = (validSignals > 0);
+   Print("【最終判断】 OR条件で評価: ", strategySignals ? "1つ以上のシグナルが成立" : "シグナル不成立");
 }
 
-
+Print("【最終判断】 結果: ", strategySignals ? "成立" : "不成立");
+return strategySignals;
+}
 
 //+------------------------------------------------------------------+
 //| EvaluateStrategyForEntry関数 - 戦略評価修正版                     |
@@ -534,396 +543,335 @@ bool EvaluateIndicatorsForEntry(int side)
 bool EvaluateStrategyForEntry(int side)
 {
 // side: 0 = Buy, 1 = Sell
-   bool entrySignal = false;
-
-// 【セクション: 時間条件チェック】
-   bool timeEntryAllowed = IsTimeEntryAllowed(side);
+bool entrySignal = false;
 
 // 【セクション: インジケーター評価】
-   bool strategySignals = false;
-   int enabledStrategies = 0;
-   int validSignals = 0;
+bool strategySignals = false;
+int enabledStrategies = 0;
+int validSignals = 0;
 
 // 【セクション: 有効な戦略名収集】
-   string activeStrategies = "";
+string activeStrategies = "";
 
 // 各インジケーターのシグナルチェック - タイトル付き
 // 【セクション: MAクロス】
-   if(MA_Entry_Strategy == MA_ENTRY_ENABLED)
+if(MA_Entry_Strategy == MA_ENTRY_ENABLED)
+{
+   enabledStrategies++;
+   if(CheckMASignal(side))
    {
-      enabledStrategies++;
-      if(CheckMASignal(side))
-      {
-         validSignals++;
-         if(activeStrategies != "")
-            activeStrategies += ", ";
-         activeStrategies += "MAクロス";
-      }
+      validSignals++;
+      if(activeStrategies != "")
+         activeStrategies += ", ";
+      activeStrategies += "MAクロス";
    }
+}
 
 // 【セクション: RSI】
-   if(RSI_Entry_Strategy == RSI_ENTRY_ENABLED)
+if(RSI_Entry_Strategy == RSI_ENTRY_ENABLED)
+{
+   enabledStrategies++;
+   if(CheckRSISignal(side))
    {
-      enabledStrategies++;
-      if(CheckRSISignal(side))
-      {
-         validSignals++;
-         if(activeStrategies != "")
-            activeStrategies += ", ";
-         activeStrategies += "RSI";
-      }
+      validSignals++;
+      if(activeStrategies != "")
+         activeStrategies += ", ";
+      activeStrategies += "RSI";
    }
+}
 
 // 【セクション: ボリンジャーバンド】
-   if(BB_Entry_Strategy == BB_ENTRY_ENABLED)
+if(BB_Entry_Strategy == BB_ENTRY_ENABLED)
+{
+   enabledStrategies++;
+   if(CheckBollingerSignal(side))
    {
-      enabledStrategies++;
-      if(CheckBollingerSignal(side))
-      {
-         validSignals++;
-         if(activeStrategies != "")
-            activeStrategies += ", ";
-         activeStrategies += "ボリンジャーバンド";
-      }
+      validSignals++;
+      if(activeStrategies != "")
+         activeStrategies += ", ";
+      activeStrategies += "ボリンジャーバンド";
    }
+}
 
 // 【セクション: RCI】
-   if(RCI_Entry_Strategy == RCI_ENTRY_ENABLED)
+if(RCI_Entry_Strategy == RCI_ENTRY_ENABLED)
+{
+   enabledStrategies++;
+   if(CheckRCISignal(side))
    {
-      enabledStrategies++;
-      if(CheckRCISignal(side))
-      {
-         validSignals++;
-         if(activeStrategies != "")
-            activeStrategies += ", ";
-         activeStrategies += "RCI";
-      }
+      validSignals++;
+      if(activeStrategies != "")
+         activeStrategies += ", ";
+      activeStrategies += "RCI";
    }
+}
 
 // 【セクション: ストキャスティクス】
-   if(Stoch_Entry_Strategy == STOCH_ENTRY_ENABLED)
+if(Stoch_Entry_Strategy == STOCH_ENTRY_ENABLED)
+{
+   enabledStrategies++;
+   if(CheckStochasticSignal(side))
    {
-      enabledStrategies++;
-      if(CheckStochasticSignal(side))
-      {
-         validSignals++;
-         if(activeStrategies != "")
-            activeStrategies += ", ";
-         activeStrategies += "ストキャスティクス";
-      }
+      validSignals++;
+      if(activeStrategies != "")
+         activeStrategies += ", ";
+      activeStrategies += "ストキャスティクス";
    }
+}
 
 // 【セクション: CCI】
-   if(CCI_Entry_Strategy == CCI_ENTRY_ENABLED)
+if(CCI_Entry_Strategy == CCI_ENTRY_ENABLED)
+{
+   enabledStrategies++;
+   if(CheckCCISignal(side))
    {
-      enabledStrategies++;
-      if(CheckCCISignal(side))
-      {
-         validSignals++;
-         if(activeStrategies != "")
-            activeStrategies += ", ";
-         activeStrategies += "CCI";
-      }
+      validSignals++;
+      if(activeStrategies != "")
+         activeStrategies += ", ";
+      activeStrategies += "CCI";
    }
+}
 
 // 【セクション: ADX/DMI】
-   if(ADX_Entry_Strategy == ADX_ENTRY_ENABLED)
+if(ADX_Entry_Strategy == ADX_ENTRY_ENABLED)
+{
+   enabledStrategies++;
+   if(CheckADXSignal(side))
    {
-      enabledStrategies++;
-      if(CheckADXSignal(side))
-      {
-         validSignals++;
-         if(activeStrategies != "")
-            activeStrategies += ", ";
-         activeStrategies += "ADX/DMI";
-      }
+      validSignals++;
+      if(activeStrategies != "")
+         activeStrategies += ", ";
+      activeStrategies += "ADX/DMI";
    }
+}
 
 // 【セクション: 偶数/奇数時間】
-   if(EvenOdd_Entry_Strategy != EVEN_ODD_DISABLED)
+if(EvenOdd_Entry_Strategy != EVEN_ODD_DISABLED)
+{
+   enabledStrategies++;
+   if(CheckEvenOddStrategy(side))
    {
-      enabledStrategies++;
-      if(CheckEvenOddStrategy(side))
-      {
-         validSignals++;
-         if(activeStrategies != "")
-            activeStrategies += ", ";
-         activeStrategies += "偶数/奇数時間";
-      }
+      validSignals++;
+      if(activeStrategies != "")
+         activeStrategies += ", ";
+      activeStrategies += "偶数/奇数時間";
    }
+}
 
 // 【セクション: インジケーター条件評価】
-   bool indicatorSignalsValid = false;
+bool indicatorSignalsValid = false;
 
-   if(enabledStrategies > 0)
+if(enabledStrategies > 0)
+{
+   if(Indicator_Condition_Type == AND_CONDITION)
    {
-      if(Indicator_Condition_Type == AND_CONDITION)
-      {
-         // AND条件: すべての有効なインジケーターがシグナルを出した場合のみtrue
-         indicatorSignalsValid = (validSignals == enabledStrategies);
-      }
-      else
-      {
-         // OR条件: 少なくとも1つのインジケーターがシグナルを出した場合にtrue
-         indicatorSignalsValid = (validSignals > 0);
-      }
+      // AND条件: すべての有効なインジケーターがシグナルを出した場合のみtrue
+      indicatorSignalsValid = (validSignals == enabledStrategies);
    }
-
-// 【セクション: 最終判断】
-// 時間条件が許可され、かつインジケーター条件もOKかチェック
-   bool needTime = (Time_Entry_Strategy == TIME_ENTRY_ENABLED);
-   bool needIndicators = (enabledStrategies > 0);
-
-// 時間条件のみが設定されている場合
-   if(needTime && !needIndicators)
-   {
-      entrySignal = timeEntryAllowed;
-   }
-// インジケーター条件のみが設定されている場合
-   else if(!needTime && needIndicators)
-   {
-      entrySignal = indicatorSignalsValid;
-   }
-// 両方の条件が設定されている場合
-   else if(needTime && needIndicators)
-   {
-      // 両方の条件を満たすか
-      entrySignal = timeEntryAllowed && indicatorSignalsValid;
-   }
-// 両方設定されていない場合はエントリーしない
    else
    {
-      entrySignal = false;
+      // OR条件: 少なくとも1つのインジケーターがシグナルを出した場合にtrue
+      indicatorSignalsValid = (validSignals > 0);
    }
+}
+
+// 【セクション: 最終判断】
+// インジケーター条件がOKかチェック
+bool needIndicators = (enabledStrategies > 0);
+
+// インジケーター条件のみが設定されている場合
+if(needIndicators)
+{
+   entrySignal = indicatorSignalsValid;
+}
+// 両方設定されていない場合はエントリーしない
+else
+{
+   entrySignal = false;
+}
 
 // 【セクション: エントリー理由記録】
 // エントリーシグナルがある場合、理由を記録
-   if(entrySignal)
+if(entrySignal)
+{
+   string typeStr = (side == 0) ? "Buy" : "Sell";
+   string reason;
+   string conditionType = (Indicator_Condition_Type == AND_CONDITION) ? "AND条件" : "OR条件";
+
+   if(needIndicators)
    {
-      string typeStr = (side == 0) ? "Buy" : "Sell";
-      string reason;
-      string conditionType = (Indicator_Condition_Type == AND_CONDITION) ? "AND条件" : "OR条件";
-
-      if(needTime && needIndicators)
-      {
-         reason = "時間条件 + " + conditionType + "(" + (activeStrategies != "" ? activeStrategies : "なし") + ")";
-      }
-      else if(needTime)
-      {
-         reason = "時間条件のみ";
-      }
-      else if(needIndicators)
-      {
-         reason = conditionType + "(" + activeStrategies + ")";
-      }
-
-      // 詳細情報を取得
-      string details = GetStrategyDetails(side);
-
-      // エントリー理由をログに記録
-      LogEntryReason(side == 0 ? OP_BUY : OP_SELL, "戦略シグナル", reason);
-
-      // 詳細情報もログに出力
-      Print(details);
+      reason = conditionType + "(" + activeStrategies + ")";
    }
 
-   return entrySignal;
+   // 詳細情報を取得
+   string details = GetStrategyDetails(side);
+
+   // エントリー理由をログに記録
+   LogEntryReason(side == 0 ? OP_BUY : OP_SELL, "戦略シグナル", reason);
+
+   // 詳細情報もログに出力
+   Print(details);
+}
+
+return entrySignal;
 }
 
 
-  //+------------------------------------------------------------------+
+//+------------------------------------------------------------------+
 //| 指定された時間足でインジケーター値を取得する関数                   |
 //+------------------------------------------------------------------+
 double GetIndicatorValueOnTimeframe(string symbol, ENUM_TIMEFRAMES timeframe, int indicator_type,
-                                    int period, double deviation, ENUM_APPLIED_PRICE price_type,
-                                    int shift, int mode = 0)
-  {
+                                 int period, double deviation, ENUM_APPLIED_PRICE price_type,
+                                 int shift, int mode = 0)
+{
 // 指定された時間足でインジケーター値を取得
-   double value = 0;
+double value = 0;
 
-   switch(indicator_type)
-     {
-      // 移動平均
-      case INDICATOR_MA:
-         value = iMA(symbol, timeframe, period, 0, MODE_SMA, price_type, shift);
-         break;
-
-      // RSI
-      case INDICATOR_RSI:
-         value = iRSI(symbol, timeframe, period, price_type, shift);
-         break;
-
-      // ボリンジャーバンド
-      case INDICATOR_BOLLINGER:
-         value = iBands(symbol, timeframe, period, deviation, 0, price_type, mode, shift);
-         break;
-
-      // ストキャスティクス
-      case INDICATOR_STOCHASTIC:
-         value = iStochastic(symbol, timeframe, period, 3, 3, MODE_SMA, 0, mode, shift);
-         break;
-
-      // CCI
-      case INDICATOR_CCI:
-         value = iCCI(symbol, timeframe, period, price_type, shift);
-         break;
-
-      // ADX
-      case INDICATOR_ADX:
-         value = iADX(symbol, timeframe, period, price_type, mode, shift);
-         break;
-     }
-
-   return value;
-  }
-
-//+------------------------------------------------------------------+
-//| 時間戦略のシグナル判断                                           |
-//+------------------------------------------------------------------+
-bool IsTimeEntryAllowed(int side)
+switch(indicator_type)
   {
-   if(Time_Entry_Strategy == TIME_ENTRY_DISABLED)
-      return false;
+   // 移動平均
+   case INDICATOR_MA:
+      value = iMA(symbol, timeframe, period, 0, MODE_SMA, price_type, shift);
+      break;
 
-// 現在の時間を取得
-   datetime current_time = TimeCurrent();
-   int current_hour = TimeHour(current_time);
+   // RSI
+   case INDICATOR_RSI:
+      value = iRSI(symbol, timeframe, period, price_type, shift);
+      break;
 
-// 偶数時間かどうか判定
-   bool is_even_hour = (current_hour % 2 == 0);
+   // ボリンジャーバンド
+   case INDICATOR_BOLLINGER:
+      value = iBands(symbol, timeframe, period, deviation, 0, price_type, mode, shift);
+      break;
 
-   if(side == 0) // Buy
-     {
-      // 偶数時間にBuyを許可する設定の場合
-      if(EvenHoursBuy && is_even_hour)
-         return true;
+   // ストキャスティクス
+   case INDICATOR_STOCHASTIC:
+      value = iStochastic(symbol, timeframe, period, 3, 3, MODE_SMA, 0, mode, shift);
+      break;
 
-      // 奇数時間にBuyを許可する設定の場合
-      if(!EvenHoursBuy && !is_even_hour)
-         return true;
-     }
-   else // Sell
-     {
-      // 奇数時間にSellを許可する設定の場合
-      if(OddHoursSell && !is_even_hour)
-         return true;
+   // CCI
+   case INDICATOR_CCI:
+      value = iCCI(symbol, timeframe, period, price_type, shift);
+      break;
 
-      // 偶数時間にSellを許可する設定の場合
-      if(!OddHoursSell && is_even_hour)
-         return true;
-     }
-
-   return false;
+   // ADX
+   case INDICATOR_ADX:
+      value = iADX(symbol, timeframe, period, price_type, mode, shift);
+      break;
   }
+
+return value;
+}
 
 //+------------------------------------------------------------------+
 //| MAクロス戦略のシグナル判断                                        |
 //+------------------------------------------------------------------+
 bool CheckMASignal(int side)
-  {
-   if(MA_Entry_Strategy == MA_ENTRY_DISABLED)
-      return false;
+{
+if(MA_Entry_Strategy == MA_ENTRY_DISABLED)
+   return false;
 
 // MA値の取得 - 時間足を考慮
-   double fastMA_current, slowMA_current, fastMA_prev, slowMA_prev;
+double fastMA_current, slowMA_current, fastMA_prev, slowMA_prev;
 
-   if(side == 0) // Buy
+if(side == 0) // Buy
+  {
+   if(MA_Buy_Signal == 0)
+      return false;
+
+   fastMA_current = iMA(Symbol(), MA_Timeframe, MA_Buy_Fast_Period, 0, MA_Method, MA_Price, MA_Cross_Shift);
+   slowMA_current = iMA(Symbol(), MA_Timeframe, MA_Buy_Slow_Period, 0, MA_Method, MA_Price, MA_Cross_Shift);
+   fastMA_prev = iMA(Symbol(), MA_Timeframe, MA_Buy_Fast_Period, 0, MA_Method, MA_Price, MA_Cross_Shift + 1);
+   slowMA_prev = iMA(Symbol(), MA_Timeframe, MA_Buy_Slow_Period, 0, MA_Method, MA_Price, MA_Cross_Shift + 1);
+
+   // 価格データの取得
+   double price_current = iClose(Symbol(), MA_Timeframe, MA_Cross_Shift);
+   double price_prev = iClose(Symbol(), MA_Timeframe, MA_Cross_Shift + 1);
+
+   // 順張り/逆張りの方向に基づいて判断
+   bool signal = false;
+
+   switch(MA_Buy_Signal)
      {
-      if(MA_Buy_Signal == 0)
-         return false;
+      case MA_GOLDEN_CROSS: // ゴールデンクロス
+         signal = (fastMA_prev < slowMA_prev && fastMA_current > slowMA_current);
+         break;
 
-      fastMA_current = iMA(Symbol(), MA_Timeframe, MA_Buy_Fast_Period, 0, MA_Method, MA_Price, MA_Cross_Shift);
-      slowMA_current = iMA(Symbol(), MA_Timeframe, MA_Buy_Slow_Period, 0, MA_Method, MA_Price, MA_Cross_Shift);
-      fastMA_prev = iMA(Symbol(), MA_Timeframe, MA_Buy_Fast_Period, 0, MA_Method, MA_Price, MA_Cross_Shift + 1);
-      slowMA_prev = iMA(Symbol(), MA_Timeframe, MA_Buy_Slow_Period, 0, MA_Method, MA_Price, MA_Cross_Shift + 1);
+      case MA_PRICE_ABOVE_MA: // 価格がMA上
+         signal = (price_current > fastMA_current);
+         break;
 
-      // 価格データの取得
-      double price_current = iClose(Symbol(), MA_Timeframe, MA_Cross_Shift);
-      double price_prev = iClose(Symbol(), MA_Timeframe, MA_Cross_Shift + 1);
+      case MA_FAST_ABOVE_SLOW: // 短期MAが長期MA上
+         signal = (fastMA_current > slowMA_current);
+         break;
 
-      // 順張り/逆張りの方向に基づいて判断
-      bool signal = false;
+      case MA_DEAD_CROSS: // デッドクロス
+         signal = (fastMA_prev > slowMA_prev && fastMA_current < slowMA_current);
+         break;
 
-      switch(MA_Buy_Signal)
-        {
-         case MA_GOLDEN_CROSS: // ゴールデンクロス
-            signal = (fastMA_prev < slowMA_prev && fastMA_current > slowMA_current);
-            break;
+      case MA_PRICE_BELOW_MA: // 価格がMA下
+         signal = (price_current < fastMA_current);
+         break;
 
-         case MA_PRICE_ABOVE_MA: // 価格がMA上
-            signal = (price_current > fastMA_current);
-            break;
-
-         case MA_FAST_ABOVE_SLOW: // 短期MAが長期MA上
-            signal = (fastMA_current > slowMA_current);
-            break;
-
-         case MA_DEAD_CROSS: // デッドクロス
-            signal = (fastMA_prev > slowMA_prev && fastMA_current < slowMA_current);
-            break;
-
-         case MA_PRICE_BELOW_MA: // 価格がMA下
-            signal = (price_current < fastMA_current);
-            break;
-
-         case MA_FAST_BELOW_SLOW: // 短期MAが長期MA下
-            signal = (fastMA_current < slowMA_current);
-            break;
-        }
-
-      // 取引方向に基づいて判断
-      return (MA_Buy_Direction == TREND_FOLLOWING) ? signal : !signal;
-     }
-   else // Sell
-     {
-      if(MA_Sell_Signal == 0)
-         return false;
-
-      fastMA_current = iMA(Symbol(), MA_Timeframe, MA_Sell_Fast_Period, 0, MA_Method, MA_Price, MA_Cross_Shift);
-      slowMA_current = iMA(Symbol(), MA_Timeframe, MA_Sell_Slow_Period, 0, MA_Method, MA_Price, MA_Cross_Shift);
-      fastMA_prev = iMA(Symbol(), MA_Timeframe, MA_Sell_Fast_Period, 0, MA_Method, MA_Price, MA_Cross_Shift + 1);
-      slowMA_prev = iMA(Symbol(), MA_Timeframe, MA_Sell_Slow_Period, 0, MA_Method, MA_Price, MA_Cross_Shift + 1);
-
-      // 価格データの取得
-      double price_current = iClose(Symbol(), MA_Timeframe, MA_Cross_Shift);
-      double price_prev = iClose(Symbol(), MA_Timeframe, MA_Cross_Shift + 1);
-
-      // 順張り/逆張りの方向に基づいて判断
-      bool signal = false;
-
-      switch(MA_Sell_Signal)
-        {
-         case MA_DEAD_CROSS: // デッドクロス
-            signal = (fastMA_prev > slowMA_prev && fastMA_current < slowMA_current);
-            break;
-
-         case MA_PRICE_BELOW_MA: // 価格がMA下
-            signal = (price_current < fastMA_current);
-            break;
-
-         case MA_FAST_BELOW_SLOW: // 短期MAが長期MA下
-            signal = (fastMA_current < slowMA_current);
-            break;
-
-         case MA_GOLDEN_CROSS: // ゴールデンクロス
-            signal = (fastMA_prev < slowMA_prev && fastMA_current > slowMA_current);
-            break;
-
-         case MA_PRICE_ABOVE_MA: // 価格がMA上
-            signal = (price_current > fastMA_current);
-            break;
-
-         case MA_FAST_ABOVE_SLOW: // 短期MAが長期MA上
-            signal = (fastMA_current > slowMA_current);
-            break;
-        }
-
-      // 取引方向に基づいて判断
-      return (MA_Sell_Direction == TREND_FOLLOWING) ? signal : !signal;
+      case MA_FAST_BELOW_SLOW: // 短期MAが長期MA下
+         signal = (fastMA_current < slowMA_current);
+         break;
      }
 
-   return false;
+   // 取引方向に基づいて判断
+   return (MA_Buy_Direction == TREND_FOLLOWING) ? signal : !signal;
   }
+else // Sell
+  {
+   if(MA_Sell_Signal == 0)
+      return false;
+
+   fastMA_current = iMA(Symbol(), MA_Timeframe, MA_Sell_Fast_Period, 0, MA_Method, MA_Price, MA_Cross_Shift);
+   slowMA_current = iMA(Symbol(), MA_Timeframe, MA_Sell_Slow_Period, 0, MA_Method, MA_Price, MA_Cross_Shift);
+   fastMA_prev = iMA(Symbol(), MA_Timeframe, MA_Sell_Fast_Period, 0, MA_Method, MA_Price, MA_Cross_Shift + 1);
+   slowMA_prev = iMA(Symbol(), MA_Timeframe, MA_Sell_Slow_Period, 0, MA_Method, MA_Price, MA_Cross_Shift + 1);
+
+   // 価格データの取得
+   double price_current = iClose(Symbol(), MA_Timeframe, MA_Cross_Shift);
+   double price_prev = iClose(Symbol(), MA_Timeframe, MA_Cross_Shift + 1);
+
+   // 順張り/逆張りの方向に基づいて判断
+   bool signal = false;
+
+   switch(MA_Sell_Signal)
+     {
+      case MA_DEAD_CROSS: // デッドクロス
+         signal = (fastMA_prev > slowMA_prev && fastMA_current < slowMA_current);
+         break;
+
+      case MA_PRICE_BELOW_MA: // 価格がMA下
+         signal = (price_current < fastMA_current);
+         break;
+
+      case MA_FAST_BELOW_SLOW: // 短期MAが長期MA下
+         signal = (fastMA_current < slowMA_current);
+         break;
+
+      case MA_GOLDEN_CROSS: // ゴールデンクロス
+         signal = (fastMA_prev < slowMA_prev && fastMA_current > slowMA_current);
+         break;
+
+      case MA_PRICE_ABOVE_MA: // 価格がMA上
+         signal = (price_current > fastMA_current);
+         break;
+
+      case MA_FAST_ABOVE_SLOW: // 短期MAが長期MA上
+         signal = (fastMA_current > slowMA_current);
+         break;
+     }
+
+   // 取引方向に基づいて判断
+   return (MA_Sell_Direction == TREND_FOLLOWING) ? signal : !signal;
+  }
+
+return false;
+}
+
 
 //+------------------------------------------------------------------+
 //| RSI戦略のシグナル判断                                           |
@@ -1481,33 +1429,23 @@ bool CheckADXSignal(int side)
    return false;
   }
 
-//+------------------------------------------------------------------+
+  //+------------------------------------------------------------------+
 //| 戦略評価 - ProcessGhostEntries関数用のインターフェース            |
 //+------------------------------------------------------------------+
 bool ShouldProcessGhostEntry(int side)
-  {
+{
 // ProcessGhostEntries関数から呼び出されるエントリー評価関数
-   return EvaluateStrategyForEntry(side);
-  }
+ return EvaluateStrategyForEntry(side);
+}
 
 //+------------------------------------------------------------------+
 //| 戦略評価 - ProcessRealEntries関数用のインターフェース             |
 //+------------------------------------------------------------------+
 bool ShouldProcessRealEntry(int side)
-  {
+{
 // ProcessRealEntries関数から呼び出されるエントリー評価関数
-   return EvaluateStrategyForEntry(side);
-  }
-
-
-
-
-
-
-
-
-
-
+ return EvaluateStrategyForEntry(side);
+}
 
 //+------------------------------------------------------------------+
 //| CheckIndicatorSignals関数 - 更新版                               |
@@ -1515,22 +1453,15 @@ bool ShouldProcessRealEntry(int side)
 bool CheckIndicatorSignals(int side)
 {
 // どれか1つでもシグナルがあればtrue
-   return (MA_Entry_Strategy == MA_ENTRY_ENABLED && CheckMASignal(side)) ||
-          (RSI_Entry_Strategy == RSI_ENTRY_ENABLED && CheckRSISignal(side)) ||
-          (BB_Entry_Strategy == BB_ENTRY_ENABLED && CheckBollingerSignal(side)) ||
-          (RCI_Entry_Strategy == RCI_ENTRY_ENABLED && CheckRCISignal(side)) ||
-          (Stoch_Entry_Strategy == STOCH_ENTRY_ENABLED && CheckStochasticSignal(side)) ||
-          (CCI_Entry_Strategy == CCI_ENTRY_ENABLED && CheckCCISignal(side)) ||
-          (ADX_Entry_Strategy == ADX_ENTRY_ENABLED && CheckADXSignal(side)) ||
-          (EvenOdd_Entry_Strategy != EVEN_ODD_DISABLED && CheckEvenOddStrategy(side));
+ return (MA_Entry_Strategy == MA_ENTRY_ENABLED && CheckMASignal(side)) ||
+        (RSI_Entry_Strategy == RSI_ENTRY_ENABLED && CheckRSISignal(side)) ||
+        (BB_Entry_Strategy == BB_ENTRY_ENABLED && CheckBollingerSignal(side)) ||
+        (RCI_Entry_Strategy == RCI_ENTRY_ENABLED && CheckRCISignal(side)) ||
+        (Stoch_Entry_Strategy == STOCH_ENTRY_ENABLED && CheckStochasticSignal(side)) ||
+        (CCI_Entry_Strategy == CCI_ENTRY_ENABLED && CheckCCISignal(side)) ||
+        (ADX_Entry_Strategy == ADX_ENTRY_ENABLED && CheckADXSignal(side)) ||
+        (EvenOdd_Entry_Strategy != EVEN_ODD_DISABLED && CheckEvenOddStrategy(side));
 }
-
-
-
-
-
-
-
 
 //+------------------------------------------------------------------+
 //| GetStrategyDetails関数 - 更新版                                   |
@@ -1540,10 +1471,6 @@ string GetStrategyDetails(int side)
 // side: 0 = Buy, 1 = Sell
    string typeStr = (side == 0) ? "Buy" : "Sell";
    string strategyDetails = "【" + typeStr + " 戦略シグナル詳細】\n";
-
-// 【セクション: 時間戦略】
-   bool timeEntryAllowed = IsTimeEntryAllowed(side);
-   strategyDetails += "【時間条件】: " + (timeEntryAllowed ? "許可" : "不許可") + "\n";
 
 // 【セクション: MAクロス】
    if(MA_Entry_Strategy == MA_ENTRY_ENABLED)
@@ -1680,13 +1607,6 @@ string GetStrategyDetails(int side)
    return strategyDetails;
 }
 
-
-
-
-
-
-
-
 //+------------------------------------------------------------------+
 //| ProcessStrategyLogic関数 - 戦略ロジックのメイン処理（更新版）      |
 //+------------------------------------------------------------------+
@@ -1744,9 +1664,25 @@ void ProcessStrategyLogic()
          int current_hour = TimeHour(current_time);
          bool is_even_hour = (current_hour % 2 == 0);
          
-         string strategyType = (EvenOdd_Entry_Strategy == EVEN_HOUR_BUY_ODD_HOUR_SELL) ? 
-                             "偶数時間Buy・奇数時間Sell" : 
-                             "奇数時間Buy・偶数時間Sell";
+         string strategyType = "";
+         switch(EvenOdd_Entry_Strategy)
+         {
+            case EVEN_HOUR_BUY_ODD_HOUR_SELL:
+               strategyType = "偶数時間Buy・奇数時間Sell";
+               break;
+            case ODD_HOUR_BUY_EVEN_HOUR_SELL:
+               strategyType = "奇数時間Buy・偶数時間Sell";
+               break;
+            case EVEN_HOUR_BOTH:
+               strategyType = "偶数時間のみ両方向";
+               break;
+            case ODD_HOUR_BOTH:
+               strategyType = "奇数時間のみ両方向";
+               break;
+            case ALL_HOURS_ENABLED:
+               strategyType = "全時間両方向";
+               break;
+         }
          
          Print("【偶数/奇数時間戦略】: 現在時間=", current_hour, "時", 
                ", 時間タイプ=", is_even_hour ? "偶数時間" : "奇数時間", 
@@ -1791,7 +1727,6 @@ void ProcessStrategyLogic()
       }
    }
 }
-
 
 //+------------------------------------------------------------------+
 //| ProcessRealEntries関数 - リアルエントリー処理                      |
@@ -1854,6 +1789,5 @@ void ProcessRealEntries(int side)
       Print("ProcessRealEntries: リアル", direction, "エントリー条件不成立のためスキップします");
      }
   }
-
 
 //+------------------------------------------------------------------+
