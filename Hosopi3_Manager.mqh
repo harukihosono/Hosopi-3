@@ -389,7 +389,6 @@ void ExecuteEntryFromLevel(int type, int level)
 
 
 
-
 //+------------------------------------------------------------------+
 //| OnTickManager関数 - トレーリングストップ対応版                    |
 //+------------------------------------------------------------------+
@@ -499,18 +498,15 @@ void OnTickManager()
       CheckGhostTrailingStopConditions(1); // Sell側
    }
 
+   // ポジション数に応じた建値決済機能を実行
+   CheckBreakEvenByPositions();
+
    // リアルポジション数の変化をチェック
    CheckPositionChanges();
 
    // 指値決済の検出とゴーストリセット処理
    CheckLimitTakeProfitExecutions();
 }
-
-
-
-
-
-
 
 
 

@@ -524,3 +524,98 @@ void ManageTakeProfit(int side)
                      (side == 0 ? "+" : "-") + IntegerToString(tpPoints) + "pt)";
    CreatePriceLabel(g_ObjectPrefix + labelName, labelText, tpPrice, TakeProfitLineColor, side == 0);
 }
+
+
+//+------------------------------------------------------------------+
+//| ポジション数に応じた建値決済の実行チェック                         |
+//+------------------------------------------------------------------+
+void CheckBreakEvenByPositions()
+{
+   // 機能が無効な場合はスキップ
+   if(!EnableBreakEvenByPositions)
+      return;
+      
+   // 最低ポジション数が0以下なら機能を無効とみなす
+   if(BreakEvenMinPositions <= 0)
+      return;
+      
+   // Buy側のチェック
+   int buyPositions = position_count(OP_BUY);
+   
+   // 指定したポジション数以上あるか確認
+   if(buyPositions >= BreakEvenMinPositions)
+   {
+      // 現在の総損益を計算
+      double totalBuyProfit = 0;
+      
+      // すべてのBuyポジションの損益を合計
+      for(int i = OrdersTotal() - 1; i >= 0; i--)
+      {
+         if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+         {
+            if(OrderType() == OP_BUY && OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
+            {
+               // 損益 + スワップ + 手数料を合計
+               totalBuyProfit += OrderProfit() + OrderSwap() + OrderCommission();
+            }
+         }
+      }
+      
+      // 設定した建値以上なら決済
+      if(totalBuyProfit >= BreakEvenProfit)
+      {
+         Print("Buy側建値決済条件成立: ポジション数=", buyPositions, 
+               ", 総利益=", DoubleToString(totalBuyProfit, 2),
+               ", 設定建値=", DoubleToString(BreakEvenProfit, 2));
+               
+         // Buy側のポジションをすべて決済
+         position_close(OP_BUY);
+         
+         // 関連するゴーストもリセット
+         ResetSpecificGhost(OP_BUY);
+         
+         // 関連するラインを削除
+         CleanupLinesOnClose(0);
+      }
+   }
+   
+   // Sell側のチェック
+   int sellPositions = position_count(OP_SELL);
+   
+   // 指定したポジション数以上あるか確認
+   if(sellPositions >= BreakEvenMinPositions)
+   {
+      // 現在の総損益を計算
+      double totalSellProfit = 0;
+      
+      // すべてのSellポジションの損益を合計
+      for(int i = OrdersTotal() - 1; i >= 0; i--)
+      {
+         if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+         {
+            if(OrderType() == OP_SELL && OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
+            {
+               // 損益 + スワップ + 手数料を合計
+               totalSellProfit += OrderProfit() + OrderSwap() + OrderCommission();
+            }
+         }
+      }
+      
+      // 設定した建値以上なら決済
+      if(totalSellProfit >= BreakEvenProfit)
+      {
+         Print("Sell側建値決済条件成立: ポジション数=", sellPositions, 
+               ", 総利益=", DoubleToString(totalSellProfit, 2),
+               ", 設定建値=", DoubleToString(BreakEvenProfit, 2));
+               
+         // Sell側のポジションをすべて決済
+         position_close(OP_SELL);
+         
+         // 関連するゴーストもリセット
+         ResetSpecificGhost(OP_SELL);
+         
+         // 関連するラインを削除
+         CleanupLinesOnClose(1);
+      }
+   }
+}

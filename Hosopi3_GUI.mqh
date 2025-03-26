@@ -604,6 +604,9 @@ else
 }
 }
 
+
+
+
 //+------------------------------------------------------------------+
 //| 設定情報ダイアログを表示                                         |
 //+------------------------------------------------------------------+
@@ -637,9 +640,19 @@ void ShowSettingsDialog()
    message += "【トレーリングストップ】\n";
    message += "トレーリングストップ: " + (EnableTrailingStop ? "有効" : "無効") + "\n";
    
+   // 建値決済機能の情報を追加
+   message += "\n【建値決済機能】\n";
+   message += "ポジション数建値決済: " + (EnableBreakEvenByPositions ? "有効" : "無効") + "\n";
+   if(EnableBreakEvenByPositions) {
+      message += "最低ポジション数: " + IntegerToString(BreakEvenMinPositions) + "\n";
+      message += "建値利益: " + DoubleToString(BreakEvenProfit, 2) + "\n";
+   }
+   
    // メッセージボックスを表示
    MessageBox(message, title, MB_ICONINFORMATION);
 }
+
+
 
 //+------------------------------------------------------------------+
 //| 平均取得単価表示/非表示切替                                       |
