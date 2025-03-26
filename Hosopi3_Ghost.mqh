@@ -205,7 +205,7 @@ void CreateGhostEntryPoint(int type, double price, double lots, int level, datet
 
 
 //+------------------------------------------------------------------+
-//| InitializeGhostPosition関数 - ポジション保護対応                   |
+//| InitializeGhostPosition関数 - リアルエントリー移行部分の修正       |
 //+------------------------------------------------------------------+
 void InitializeGhostPosition(int type, string entryReason = "")
 {
@@ -215,116 +215,116 @@ void InitializeGhostPosition(int type, string entryReason = "")
       return;
    }
 
-   // ポジション保護モードのチェック - 新規追加
+   // ポジション保護モードのチェック
    if(!IsEntryAllowedByProtectionMode(type == OP_BUY ? 0 : 1))
    {
       Print("InitializeGhostPosition: ポジション保護モードにより", type == OP_BUY ? "Buy" : "Sell", "側はスキップします");
       return;
    }
 
-   // ナンピンスキップレベルがSKIP_NONEの場合は、ゴーストポジションを発動させない
-   if(NanpinSkipLevel == SKIP_NONE)
+// ナンピンスキップレベルがSKIP_NONEの場合は、ゴーストポジションを発動させない
+if(NanpinSkipLevel == SKIP_NONE)
+{
+   Print("ナンピンスキップレベルがSKIP_NONEのため、ゴーストポジションは発動しません。直接リアルエントリーします。");
+   // 直接リアルエントリーを実行
+   ExecuteRealEntry(type, entryReason);
+   return;
+}
+
+// ゴーストポジションの最大数はナンピンスキップレベルの値までに制限
+int maxGhostPositions = (int)NanpinSkipLevel;
+int currentGhostCount = ghost_position_count(type);
+
+// 既にゴーストポジション数が最大数に達している場合
+if(currentGhostCount >= maxGhostPositions)
+{
+   Print("ゴーストポジション数が最大数(", maxGhostPositions, ")に達しているため、新規ゴーストエントリーをスキップします");
+   return;
+}
+
+// スプレッドチェック
+double spreadPoints = (GetAskPrice() - GetBidPrice()) / Point;
+if(spreadPoints > MaxSpreadPoints && MaxSpreadPoints > 0)
+{
+   Print("スプレッドが大きすぎるため、ゴーストエントリーをスキップします: ", spreadPoints, " > ", MaxSpreadPoints);
+   return;
+}
+   
+// 現在の時間を取得
+datetime currentTime = TimeCurrent();
+
+// ポジション情報の作成 - 重要：level は 0 から開始（配列インデックス）
+PositionInfo newPosition;
+newPosition.type = type;
+newPosition.lots = g_LotTable[0];  // 最初のポジションは g_LotTable[0]
+newPosition.symbol = Symbol();
+newPosition.price = (type == OP_BUY) ? GetAskPrice() : GetBidPrice();
+newPosition.profit = 0;
+newPosition.ticket = 0; // ゴーストはチケット番号なし
+newPosition.openTime = currentTime; // 現在の時間を保存
+newPosition.isGhost = true;
+newPosition.level = 0;  // 最初のポジションはレベル0（配列インデックス）
+
+if(type == OP_BUY)
+{
+   // Buyゴーストポジションの追加
+   g_GhostBuyPositions[g_GhostBuyCount] = newPosition;
+   g_GhostBuyCount++;
+   
+   // 実際のエントリー時間で矢印とゴースト水平線を描画
+   CreateGhostEntryPoint(type, newPosition.price, newPosition.lots, newPosition.level, currentTime);
+   
+   // 決済済みフラグをリセット
+   g_BuyGhostClosed = false;
+   
+   // ナンピンスキップレベルに達したらリアルエントリー
+   if(g_GhostBuyCount >= (int)NanpinSkipLevel)
    {
-      Print("ナンピンスキップレベルがSKIP_NONEのため、ゴーストポジションは発動しません。直接リアルエントリーします。");
-      // 直接リアルエントリーを実行
-      ExecuteRealEntry(type, entryReason);
-      return;
-   }
-   
-   // ゴーストポジションの最大数はナンピンスキップレベルの値までに制限
-   int maxGhostPositions = (int)NanpinSkipLevel;
-   int currentGhostCount = ghost_position_count(type);
-   
-   // 既にゴーストポジション数が最大数に達している場合
-   if(currentGhostCount >= maxGhostPositions)
-   {
-      Print("ゴーストポジション数が最大数(", maxGhostPositions, ")に達しているため、新規ゴーストエントリーをスキップします");
-      return;
-   }
-   
-   // スプレッドチェック
-   double spreadPoints = (GetAskPrice() - GetBidPrice()) / Point;
-   if(spreadPoints > MaxSpreadPoints && MaxSpreadPoints > 0)
-   {
-      Print("スプレッドが大きすぎるため、ゴーストエントリーをスキップします: ", spreadPoints, " > ", MaxSpreadPoints);
-      return;
-   }
-      
-   // 現在の時間を取得
-   datetime currentTime = TimeCurrent();
-   
-   // ポジション情報の作成 - 重要：level は 0 から開始（配列インデックス）
-   PositionInfo newPosition;
-   newPosition.type = type;
-   newPosition.lots = g_LotTable[0];  // 最初のポジションは g_LotTable[0]
-   newPosition.symbol = Symbol();
-   newPosition.price = (type == OP_BUY) ? GetAskPrice() : GetBidPrice();
-   newPosition.profit = 0;
-   newPosition.ticket = 0; // ゴーストはチケット番号なし
-   newPosition.openTime = currentTime; // 現在の時間を保存
-   newPosition.isGhost = true;
-   newPosition.level = 0;  // 最初のポジションはレベル0（配列インデックス）
-   
-   if(type == OP_BUY)
-   {
-      // Buyゴーストポジションの追加
-      g_GhostBuyPositions[g_GhostBuyCount] = newPosition;
-      g_GhostBuyCount++;
-      
-      
-      // 実際のエントリー時間で矢印とゴースト水平線を描画
-      CreateGhostEntryPoint(type, newPosition.price, newPosition.lots, newPosition.level, currentTime);
-      
-      // 決済済みフラグをリセット
-      g_BuyGhostClosed = false;
-      
-      // ナンピンスキップレベルに達したらリアルエントリー
-      if(g_GhostBuyCount >= (int)NanpinSkipLevel)
-      {
-         Print("初回エントリーでナンピンスキップレベル条件達成: Level=", NanpinSkipLevel, ", ゴーストカウント=", g_GhostBuyCount);
-         ExecuteRealEntry(OP_BUY, entryReason); // リアルエントリー実行
-      }
-      else
-      {
-         Print("初回エントリー: ゴーストBuyカウント=", g_GhostBuyCount, ", スキップレベル=", (int)NanpinSkipLevel, "のためまだリアルエントリーしません");
-      }
+      Print("初回エントリーでナンピンスキップレベル条件達成: Level=", NanpinSkipLevel, ", ゴーストカウント=", g_GhostBuyCount);
+      ExecuteRealEntry(OP_BUY, entryReason); // リアルエントリー実行
    }
    else
    {
-      // Sellゴーストポジションの追加
-      g_GhostSellPositions[g_GhostSellCount] = newPosition;
-      g_GhostSellCount++;
-     
-      
-      // 実際のエントリー時間で矢印とゴースト水平線を描画
-      CreateGhostEntryPoint(type, newPosition.price, newPosition.lots, newPosition.level, currentTime);
-      
-      // 決済済みフラグをリセット
-      g_SellGhostClosed = false;
-      
-      // ナンピンスキップレベルに達したらリアルエントリー
-      if(g_GhostSellCount >= (int)NanpinSkipLevel)
-      {
-         Print("初回エントリーでナンピンスキップレベル条件達成: Level=", NanpinSkipLevel, ", ゴーストカウント=", g_GhostSellCount);
-         ExecuteRealEntry(OP_SELL, entryReason);
-      }
-      else
-      {
-         Print("初回エントリー: ゴーストSellカウント=", g_GhostSellCount, ", スキップレベル=", (int)NanpinSkipLevel, "のためまだリアルエントリーしません");
-      }
+      Print("初回エントリー: ゴーストBuyカウント=", g_GhostBuyCount, ", スキップレベル=", (int)NanpinSkipLevel, "のためまだリアルエントリーしません");
    }
+}
+else
+{
+   // Sellゴーストポジションの追加
+   g_GhostSellPositions[g_GhostSellCount] = newPosition;
+   g_GhostSellCount++;
    
-   // ユーザー表示用にはレベル+1を表示（1-indexed）
-   Print("ゴーストポジション作成: ", type == OP_BUY ? "Buy" : "Sell", ", レベル: 1, 価格: ", DoubleToString(newPosition.price, 5));
+   // 実際のエントリー時間で矢印とゴースト水平線を描画
+   CreateGhostEntryPoint(type, newPosition.price, newPosition.lots, newPosition.level, currentTime);
    
-   // グローバル変数へ保存
-   SaveGhostPositionsToGlobal();
+   // 決済済みフラグをリセット
+   g_SellGhostClosed = false;
+   
+   // ナンピンスキップレベルに達したらリアルエントリー
+   if(g_GhostSellCount >= (int)NanpinSkipLevel)
+   {
+      Print("初回エントリーでナンピンスキップレベル条件達成: Level=", NanpinSkipLevel, ", ゴーストカウント=", g_GhostSellCount);
+      ExecuteRealEntry(OP_SELL, entryReason);
+   }
+   else
+   {
+      Print("初回エントリー: ゴーストSellカウント=", g_GhostSellCount, ", スキップレベル=", (int)NanpinSkipLevel, "のためまだリアルエントリーしません");
+   }
+}
+
+// ユーザー表示用にはレベル+1を表示（1-indexed）
+Print("ゴーストポジション作成: ", type == OP_BUY ? "Buy" : "Sell", ", レベル: 1, 価格: ", DoubleToString(newPosition.price, 5));
+
+// グローバル変数へ保存
+SaveGhostPositionsToGlobal();
 }
 
 
 
+
+
 //+------------------------------------------------------------------+
-//| AddGhostNanpin関数 - ナンピンタイム変数廃止対応                   |
+//| AddGhostNanpin関数 - ゴーストからリアル移行時のロット計算修正      |
 //+------------------------------------------------------------------+
 void AddGhostNanpin(int type)
 {
@@ -348,31 +348,60 @@ void AddGhostNanpin(int type)
    }
       
    int maxGhostPositions = (int)NanpinSkipLevel;
-   int currentLevel = ghost_position_count(type);
+   int currentGhostCount = ghost_position_count(type);
    
-   if(currentLevel >= maxGhostPositions)
+   if(currentGhostCount >= maxGhostPositions)
    {
       Print("ゴーストポジション数が最大数(", maxGhostPositions, ")に達しているため、ゴーストナンピンをスキップします");
       return;
    }
    
-   // 重要：ここで実際のレベル (0-indexed) を設定
-   int level = currentLevel;  // 現在のカウントがレベル（0から始まる）
-   
    // 現在の時間を取得
    datetime currentTime = TimeCurrent();
    
+   // 現在のゴーストレベルに基づいたロットサイズを計算（0から始まるインデックス）
+   double lotSize;
+   
+   // 個別指定モードの場合
+   if(IndividualLotEnabled == ON_MODE) {
+      // 次のレベルのロットを使用
+      if(currentGhostCount < ArraySize(g_LotTable)) {
+         lotSize = g_LotTable[currentGhostCount];
+         Print("個別指定ロットモード: ナンピンレベル", currentGhostCount + 1, "のロット", DoubleToString(lotSize, 2), "を使用");
+      } else {
+         // 範囲外の場合は最後のロットを使用
+         lotSize = g_LotTable[ArraySize(g_LotTable) - 1];
+         Print("警告: ナンピンレベルが範囲外のため最大レベルのロット", DoubleToString(lotSize, 2), "を使用");
+      }
+   }
+   // マーチンゲールモードの場合
+   else {
+      // 前のレベルのロットを基準に計算
+      if(currentGhostCount > 0) {
+         if(type == OP_BUY) {
+            lotSize = g_GhostBuyPositions[currentGhostCount - 1].lots * LotMultiplier;
+         } else {
+            lotSize = g_GhostSellPositions[currentGhostCount - 1].lots * LotMultiplier;
+         }
+         lotSize = MathCeil(lotSize * 1000) / 1000; // 小数点以下3桁で切り上げ
+         Print("マーチンゲール計算: 前回ロット×倍率=", DoubleToString(lotSize, 2));
+      } else {
+         lotSize = g_LotTable[0]; // 最初のロットを使用
+         Print("マーチンゲール初期ロット: ", DoubleToString(lotSize, 2));
+      }
+   }
+   
+   // ポジション情報の作成
    PositionInfo newPosition;
    newPosition.type = type;
-   // g_LotTableのインデックスとしてレベル（0から始まる）を使用
-   newPosition.lots = g_LotTable[level];
+   newPosition.lots = lotSize;
    newPosition.symbol = Symbol();
    newPosition.price = (type == OP_BUY) ? GetAskPrice() : GetBidPrice();
    newPosition.profit = 0;
    newPosition.ticket = 0;
    newPosition.openTime = currentTime; // 現在の時間を設定
    newPosition.isGhost = true;
-   newPosition.level = level;  // 0-indexedのレベルを設定
+   newPosition.level = currentGhostCount;  // 現在のゴーストカウントをレベルとして設定
    
    if(type == OP_BUY)
    {
@@ -412,11 +441,13 @@ void AddGhostNanpin(int type)
    }
    
    // ここでは表示用に1-indexedのレベルを使用（ユーザーには1始まりで表示）
-   Print("ゴーストナンピン追加: ", type == OP_BUY ? "Buy" : "Sell", ", レベル: ", level + 1, ", 価格: ", DoubleToString(newPosition.price, 5));
+   Print("ゴーストナンピン追加: ", type == OP_BUY ? "Buy" : "Sell", ", レベル: ", newPosition.level + 1, ", 価格: ", DoubleToString(newPosition.price, 5));
    
    // グローバル変数に保存
    SaveGhostPositionsToGlobal();
 }
+
+
 
 
 
@@ -2027,7 +2058,7 @@ void CheckLimitTakeProfitExecutions()
 
 
 //+------------------------------------------------------------------+
-//| ProcessGhostEntries関数 - ポジション保護対応                      |
+//| ProcessGhostEntries関数 - ゴーストからリアルへの移行修正          |
 //+------------------------------------------------------------------+
 void ProcessGhostEntries(int side)
 {
@@ -2043,7 +2074,7 @@ void ProcessGhostEntries(int side)
       return;
    }
 
-   // ポジション保護モードのチェック - 新規追加
+   // ポジション保護モードのチェック
    if(!IsEntryAllowedByProtectionMode(side))
    {
       Print("ProcessGhostEntries: ポジション保護モードにより", direction, "側はスキップします");
@@ -2110,6 +2141,11 @@ void ProcessGhostEntries(int side)
       } else {
          Print("ProcessGhostEntries: ", direction, " エントリー条件を満たさないためスキップします");
       }
+   }
+   // ゴーストカウントがスキップレベルに達したらリアルエントリー
+   else if(ghostCount >= maxGhostPositions) {
+      Print("ProcessGhostEntries: ゴーストカウント(", ghostCount, ")がスキップレベル(", maxGhostPositions, ")に達したため、リアルエントリーを実行");
+      ExecuteRealEntry(operationType, "スキップレベル到達");
    }
    // ナンピン条件チェック
    else if(ghostCount > 0 && ghostCount < maxGhostPositions && EnableNanpin) {

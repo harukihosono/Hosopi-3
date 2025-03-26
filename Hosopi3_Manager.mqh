@@ -121,18 +121,41 @@ void ExecuteRealEntry(int type, string entryReason)
       lots = g_LotTable[0]; // 常に最初のロットを使用
       Print("ナンピンスキップなし: 初期ロット", DoubleToString(lots, 2), "を使用");
    } 
-   else {
-      // マーチンゲールモードの場合、スキップレベルに応じて計算されたロットを使用
-      lots = g_LotTable[0]; // 初期ロットから始める
-      
-      // スキップレベルに応じてマーチンゲール計算を行う
-      for(int i = 1; i < (int)NanpinSkipLevel; i++) {
-         lots = lots * LotMultiplier;
-         lots = MathCeil(lots * 1000) / 1000; // 小数点以下3桁で切り上げ
+   // ゴーストポジションがある場合（通常はナンピンスキップレベル到達時）
+   else if(ghostCount > 0) {
+      if(IndividualLotEnabled == ON_MODE) {
+         // 個別指定モードの場合、ゴーストレベルに対応したロットを使用
+         // ゴーストカウントは0から始まるため、レベルとして使用する場合は適切に調整
+         int lotIndex = ghostCount - 1; // 最後のゴーストポジションのレベルを使用
+         
+         // 配列の範囲をチェック
+         if(lotIndex >= 0 && lotIndex < ArraySize(g_LotTable)) {
+            lots = g_LotTable[lotIndex];
+            Print("個別指定ロットモード: ゴーストレベル", ghostCount, 
+                 "に対応するロット", DoubleToString(lots, 2), "を使用");
+         } else {
+            // 範囲外の場合は最初のロットを使用
+            lots = g_LotTable[0];
+            Print("警告: ゴーストレベルが範囲外のため初期ロット", DoubleToString(lots, 2), "を使用");
+         }
+      } else {
+         // マーチンゲールモードの場合
+         lots = g_LotTable[0]; // 初期ロットから始める
+         
+         // ゴーストレベルに応じてマーチンゲール計算
+         for(int i = 1; i <= ghostCount; i++) {
+            lots = lots * LotMultiplier;
+            lots = MathCeil(lots * 1000) / 1000; // 小数点以下3桁で切り上げ
+         }
+         
+         Print("マーチンゲール計算: ゴーストレベル", ghostCount, 
+              "に対応するロット", DoubleToString(lots, 2), "を使用");
       }
-      
-      Print("マーチンゲール計算: スキップレベル", (int)NanpinSkipLevel, 
-           "に対応するロット", DoubleToString(lots, 2), "を使用");
+   }
+   else {
+      // ゴーストポジションなし、通常の初期エントリーの場合
+      lots = g_LotTable[0]; // 初期ロットを使用
+      Print("通常エントリー: 初期ロット", DoubleToString(lots, 2), "を使用");
    }
    
    Print("リアルエントリー実行: ", type == OP_BUY ? "Buy" : "Sell", 
@@ -157,7 +180,6 @@ void ExecuteRealEntry(int type, string entryReason)
       Print("リアル", type == OP_BUY ? "Buy" : "Sell", "エントリーエラー: ", GetLastError());
    }
 }
-
 
 
 
