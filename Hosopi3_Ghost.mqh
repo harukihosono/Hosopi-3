@@ -1575,15 +1575,27 @@ double CalculateGhostAveragePrice(int type)
 
 
 //+------------------------------------------------------------------+
-//| CalculateCombinedAveragePrice関数の修正 - ゴーストも含める
+//| 平均取得価格計算関数 - 計算モード対応版                           |
 //+------------------------------------------------------------------+
 double CalculateCombinedAveragePrice(int type)
 {
+   // リアルポジションがある場合
+   int realPositionCount = position_count(type);
+   if(realPositionCount > 0)
+   {
+      // 計算モードに基づいて処理
+      if(AvgPriceCalculationMode == REAL_POSITIONS_ONLY)
+      {
+         // リアルポジションのみの平均価格を計算
+         return CalculateRealAveragePrice(type);
+      }
+   }
+
+   // 以下は元の実装と同じ（ゴーストも含めた計算）
    double totalLots = 0;
    double weightedPrice = 0;
 
    // リアルポジションの合計
-   int realPositionCount = 0;
    for(int i = OrdersTotal() - 1; i >= 0; i--)
    {
       if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
@@ -1592,7 +1604,6 @@ double CalculateCombinedAveragePrice(int type)
          {
             totalLots += OrderLots();
             weightedPrice += OrderOpenPrice() * OrderLots();
-            realPositionCount++;
          }
       }
    }
@@ -1601,6 +1612,32 @@ double CalculateCombinedAveragePrice(int type)
    if(realPositionCount == 0)
    {
       // ゴーストポジションの合計 (有効なゴーストのみ)
+      if(type == OP_BUY)
+      {
+         for(int i = 0; i < g_GhostBuyCount; i++)
+         {
+            if(g_GhostBuyPositions[i].isGhost) // 有効なゴーストのみ
+            {
+               totalLots += g_GhostBuyPositions[i].lots;
+               weightedPrice += g_GhostBuyPositions[i].price * g_GhostBuyPositions[i].lots;
+            }
+         }
+      }
+      else // OP_SELL
+      {
+         for(int i = 0; i < g_GhostSellCount; i++)
+         {
+            if(g_GhostSellPositions[i].isGhost) // 有効なゴーストのみ
+            {
+               totalLots += g_GhostSellPositions[i].lots;
+               weightedPrice += g_GhostSellPositions[i].price * g_GhostSellPositions[i].lots;
+            }
+         }
+      }
+   }
+   // リアルポジションがあり、かつREAL_AND_GHOSTモードの場合はゴーストも含める
+   else if(AvgPriceCalculationMode == REAL_AND_GHOST)
+   {
       if(type == OP_BUY)
       {
          for(int i = 0; i < g_GhostBuyCount; i++)

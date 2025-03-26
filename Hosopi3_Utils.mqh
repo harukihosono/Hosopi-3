@@ -514,3 +514,31 @@ datetime GetLastEntryTime(int type)
    
    return lastTime;
 }
+
+//+------------------------------------------------------------------+
+//| リアルポジションの平均取得価格を計算                               |
+//+------------------------------------------------------------------+
+double CalculateRealAveragePrice(int type)
+{
+   double totalLots = 0;
+   double weightedPrice = 0;
+
+   // リアルポジションの合計
+   for(int i = OrdersTotal() - 1; i >= 0; i--)
+   {
+      if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+      {
+         if(OrderType() == type && OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
+         {
+            totalLots += OrderLots();
+            weightedPrice += OrderOpenPrice() * OrderLots();
+         }
+      }
+   }
+
+   // 平均取得価格を計算
+   if(totalLots > 0)
+      return weightedPrice / totalLots;
+   else
+      return 0;
+}

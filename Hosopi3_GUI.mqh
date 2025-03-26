@@ -606,6 +606,18 @@ else
 
 
 
+//+------------------------------------------------------------------+
+//| 平均取得単価計算方式を文字列に変換                                 |
+//+------------------------------------------------------------------+
+string GetAvgPriceCalcModeString(int mode)
+{
+   switch(mode)
+   {
+      case REAL_POSITIONS_ONLY: return "リアルポジションのみ";
+      case REAL_AND_GHOST: return "リアル＋ゴースト";
+      default: return "不明";
+   }
+}
 
 //+------------------------------------------------------------------+
 //| 設定情報ダイアログを表示                                         |
@@ -625,6 +637,10 @@ void ShowSettingsDialog()
    message += "ナンピン機能: " + (EnableNanpin ? "有効" : "無効") + "\n";
    message += "ナンピンインターバル: " + IntegerToString(NanpinInterval) + "分\n";
    message += "最大スプレッド: " + IntegerToString(MaxSpreadPoints) + "ポイント\n\n";
+   
+   message += "【表示設定】\n";
+   message += "平均取得単価表示: " + (g_AvgPriceVisible ? "表示" : "非表示") + "\n";
+   message += "平均取得単価計算: " + GetAvgPriceCalcModeString(AvgPriceCalculationMode) + "\n\n";
    
    message += "【利確設定】\n";
    message += "利確モード: ";
@@ -651,6 +667,7 @@ void ShowSettingsDialog()
    // メッセージボックスを表示
    MessageBox(message, title, MB_ICONINFORMATION);
 }
+
 
 
 

@@ -235,6 +235,22 @@ input ON_OFF AveragePriceLine = ON_MODE;    // 平均取得価格ライン表示
 input color AveragePriceLineColor = clrPaleTurquoise; // 平均取得価格ライン色
 input color TakeProfitLineColor = clrYellow; // 利確ラインの色
 
+
+
+//+------------------------------------------------------------------+
+//| 平均取得単価計算方法の列挙型を追加                                |
+//+------------------------------------------------------------------+
+enum AVG_PRICE_CALCULATION_MODE
+{
+   REAL_POSITIONS_ONLY = 0,    // リアルポジションのみ
+   REAL_AND_GHOST = 1          // リアルとゴースト両方
+};
+
+// ======== 平均取得単価計算設定 ========
+sinput string Comment_AvgPriceCalc = ""; //+--- 平均取得単価計算設定 ---+
+input AVG_PRICE_CALCULATION_MODE AvgPriceCalculationMode = REAL_AND_GHOST; // 平均取得単価計算方法
+
+
 // ポジションテーブル設定
 input string TableSettingsTitle = ""; //+--- ポジションテーブル設定 ---+
 input string GhostTableTitle = "Ghost Position Table"; // ゴーストテーブルタイトル
