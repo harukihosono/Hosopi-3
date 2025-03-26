@@ -620,7 +620,7 @@ string GetAvgPriceCalcModeString(int mode)
 }
 
 //+------------------------------------------------------------------+
-//| 設定情報ダイアログを表示                                         |
+//| 設定情報ダイアログを表示 - 常時エントリー戦略対応版                 |
 //+------------------------------------------------------------------+
 void ShowSettingsDialog()
 {
@@ -632,6 +632,10 @@ void ShowSettingsDialog()
    message += "エントリーモード: " + GetEntryModeString(EntryMode) + "\n";
    message += "ゴーストモード: " + (g_GhostMode ? "ON" : "OFF") + "\n";
    message += "ナンピンスキップレベル: " + IntegerToString((int)NanpinSkipLevel) + "\n\n";
+   
+   message += "【エントリー戦略設定】\n";
+   message += "常時エントリー戦略: " + GetConstantEntryStrategyState() + "\n";
+   message += "偶数/奇数時間戦略: " + GetEvenOddStrategyState() + "\n\n";
    
    message += "【ナンピン設定】\n";
    message += "ナンピン機能: " + (EnableNanpin ? "有効" : "無効") + "\n";
@@ -667,9 +671,6 @@ void ShowSettingsDialog()
    // メッセージボックスを表示
    MessageBox(message, title, MB_ICONINFORMATION);
 }
-
-
-
 
 //+------------------------------------------------------------------+
 //| 平均取得単価表示/非表示切替                                       |

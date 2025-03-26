@@ -537,184 +537,217 @@ Print("【最終判断】 結果: ", strategySignals ? "成立" : "不成立");
 return strategySignals;
 }
 
+
 //+------------------------------------------------------------------+
-//| EvaluateStrategyForEntry関数 - 戦略評価修正版                     |
+//| EvaluateStrategyForEntry関数 - 常時エントリー戦略追加版            |
 //+------------------------------------------------------------------+
 bool EvaluateStrategyForEntry(int side)
 {
-// side: 0 = Buy, 1 = Sell
-bool entrySignal = false;
+   // side: 0 = Buy, 1 = Sell
+   bool entrySignal = false;
 
-// 【セクション: インジケーター評価】
-bool strategySignals = false;
-int enabledStrategies = 0;
-int validSignals = 0;
+   // 【セクション: インジケーター評価】
+   bool strategySignals = false;
+   int enabledStrategies = 0;
+   int validSignals = 0;
 
-// 【セクション: 有効な戦略名収集】
-string activeStrategies = "";
+   // 【セクション: 有効な戦略名収集】
+   string activeStrategies = "";
 
-// 各インジケーターのシグナルチェック - タイトル付き
-// 【セクション: MAクロス】
-if(MA_Entry_Strategy == MA_ENTRY_ENABLED)
-{
-   enabledStrategies++;
-   if(CheckMASignal(side))
+   // 【セクション: 常時エントリー戦略チェック】
+   bool constantEntrySignal = false;
+   if(ConstantEntryStrategy != CONSTANT_ENTRY_DISABLED)
    {
-      validSignals++;
-      if(activeStrategies != "")
-         activeStrategies += ", ";
-      activeStrategies += "MAクロス";
+      enabledStrategies++;
+      if(CheckConstantEntryStrategy(side))
+      {
+         validSignals++;
+         constantEntrySignal = true;
+         if(activeStrategies != "")
+            activeStrategies += ", ";
+         activeStrategies += "常時エントリー";
+      }
    }
-}
 
-// 【セクション: RSI】
-if(RSI_Entry_Strategy == RSI_ENTRY_ENABLED)
-{
-   enabledStrategies++;
-   if(CheckRSISignal(side))
+   // 各インジケーターのシグナルチェック - タイトル付き
+   // 【セクション: MAクロス】
+   if(MA_Entry_Strategy == MA_ENTRY_ENABLED)
    {
-      validSignals++;
-      if(activeStrategies != "")
-         activeStrategies += ", ";
-      activeStrategies += "RSI";
+      enabledStrategies++;
+      if(CheckMASignal(side))
+      {
+         validSignals++;
+         if(activeStrategies != "")
+            activeStrategies += ", ";
+         activeStrategies += "MAクロス";
+      }
    }
-}
 
-// 【セクション: ボリンジャーバンド】
-if(BB_Entry_Strategy == BB_ENTRY_ENABLED)
-{
-   enabledStrategies++;
-   if(CheckBollingerSignal(side))
+   // 【セクション: RSI】
+   if(RSI_Entry_Strategy == RSI_ENTRY_ENABLED)
    {
-      validSignals++;
-      if(activeStrategies != "")
-         activeStrategies += ", ";
-      activeStrategies += "ボリンジャーバンド";
+      enabledStrategies++;
+      if(CheckRSISignal(side))
+      {
+         validSignals++;
+         if(activeStrategies != "")
+            activeStrategies += ", ";
+         activeStrategies += "RSI";
+      }
    }
-}
 
-// 【セクション: RCI】
-if(RCI_Entry_Strategy == RCI_ENTRY_ENABLED)
-{
-   enabledStrategies++;
-   if(CheckRCISignal(side))
+   // 【セクション: ボリンジャーバンド】
+   if(BB_Entry_Strategy == BB_ENTRY_ENABLED)
    {
-      validSignals++;
-      if(activeStrategies != "")
-         activeStrategies += ", ";
-      activeStrategies += "RCI";
+      enabledStrategies++;
+      if(CheckBollingerSignal(side))
+      {
+         validSignals++;
+         if(activeStrategies != "")
+            activeStrategies += ", ";
+         activeStrategies += "ボリンジャーバンド";
+      }
    }
-}
 
-// 【セクション: ストキャスティクス】
-if(Stoch_Entry_Strategy == STOCH_ENTRY_ENABLED)
-{
-   enabledStrategies++;
-   if(CheckStochasticSignal(side))
+   // 【セクション: RCI】
+   if(RCI_Entry_Strategy == RCI_ENTRY_ENABLED)
    {
-      validSignals++;
-      if(activeStrategies != "")
-         activeStrategies += ", ";
-      activeStrategies += "ストキャスティクス";
+      enabledStrategies++;
+      if(CheckRCISignal(side))
+      {
+         validSignals++;
+         if(activeStrategies != "")
+            activeStrategies += ", ";
+         activeStrategies += "RCI";
+      }
    }
-}
 
-// 【セクション: CCI】
-if(CCI_Entry_Strategy == CCI_ENTRY_ENABLED)
-{
-   enabledStrategies++;
-   if(CheckCCISignal(side))
+   // 【セクション: ストキャスティクス】
+   if(Stoch_Entry_Strategy == STOCH_ENTRY_ENABLED)
    {
-      validSignals++;
-      if(activeStrategies != "")
-         activeStrategies += ", ";
-      activeStrategies += "CCI";
+      enabledStrategies++;
+      if(CheckStochasticSignal(side))
+      {
+         validSignals++;
+         if(activeStrategies != "")
+            activeStrategies += ", ";
+         activeStrategies += "ストキャスティクス";
+      }
    }
-}
 
-// 【セクション: ADX/DMI】
-if(ADX_Entry_Strategy == ADX_ENTRY_ENABLED)
-{
-   enabledStrategies++;
-   if(CheckADXSignal(side))
+   // 【セクション: CCI】
+   if(CCI_Entry_Strategy == CCI_ENTRY_ENABLED)
    {
-      validSignals++;
-      if(activeStrategies != "")
-         activeStrategies += ", ";
-      activeStrategies += "ADX/DMI";
+      enabledStrategies++;
+      if(CheckCCISignal(side))
+      {
+         validSignals++;
+         if(activeStrategies != "")
+            activeStrategies += ", ";
+         activeStrategies += "CCI";
+      }
    }
-}
 
-// 【セクション: 偶数/奇数時間】
-if(EvenOdd_Entry_Strategy != EVEN_ODD_DISABLED)
-{
-   enabledStrategies++;
-   if(CheckEvenOddStrategy(side))
+   // 【セクション: ADX/DMI】
+   if(ADX_Entry_Strategy == ADX_ENTRY_ENABLED)
    {
-      validSignals++;
-      if(activeStrategies != "")
-         activeStrategies += ", ";
-      activeStrategies += "偶数/奇数時間";
+      enabledStrategies++;
+      if(CheckADXSignal(side))
+      {
+         validSignals++;
+         if(activeStrategies != "")
+            activeStrategies += ", ";
+         activeStrategies += "ADX/DMI";
+      }
    }
-}
 
-// 【セクション: インジケーター条件評価】
-bool indicatorSignalsValid = false;
-
-if(enabledStrategies > 0)
-{
-   if(Indicator_Condition_Type == AND_CONDITION)
+   // 【セクション: 偶数/奇数時間】
+   if(EvenOdd_Entry_Strategy != EVEN_ODD_DISABLED)
    {
-      // AND条件: すべての有効なインジケーターがシグナルを出した場合のみtrue
-      indicatorSignalsValid = (validSignals == enabledStrategies);
+      enabledStrategies++;
+      if(CheckEvenOddStrategy(side))
+      {
+         validSignals++;
+         if(activeStrategies != "")
+            activeStrategies += ", ";
+         activeStrategies += "偶数/奇数時間";
+      }
    }
-   else
+
+   // 【セクション: インジケーター条件評価】
+   bool indicatorSignalsValid = false;
+
+   // 常時エントリー戦略が有効で条件が成立している場合は、他のインジケーターに関係なくtrueを返す
+   if(constantEntrySignal)
    {
-      // OR条件: 少なくとも1つのインジケーターがシグナルを出した場合にtrue
-      indicatorSignalsValid = (validSignals > 0);
+      indicatorSignalsValid = true;
    }
-}
+   // 常時エントリー以外のインジケーターがある場合
+   else if(enabledStrategies > (ConstantEntryStrategy != CONSTANT_ENTRY_DISABLED ? 1 : 0))
+   {
+      if(Indicator_Condition_Type == AND_CONDITION)
+      {
+         // AND条件: 常時エントリーを除くすべての有効なインジケーターがシグナルを出した場合のみtrue
+         int requiredSignals = enabledStrategies;
+         if(ConstantEntryStrategy != CONSTANT_ENTRY_DISABLED) requiredSignals--;
+         
+         indicatorSignalsValid = (validSignals >= requiredSignals);
+      }
+      else
+      {
+         // OR条件: 少なくとも1つのインジケーターがシグナルを出した場合にtrue
+         indicatorSignalsValid = (validSignals > 0);
+      }
+   }
 
-// 【セクション: 最終判断】
-// インジケーター条件がOKかチェック
-bool needIndicators = (enabledStrategies > 0);
+   // 【セクション: 最終判断】
+   // インジケーター条件がOKかチェック
+   bool needIndicators = (enabledStrategies > 0);
 
-// インジケーター条件のみが設定されている場合
-if(needIndicators)
-{
-   entrySignal = indicatorSignalsValid;
-}
-// 両方設定されていない場合はエントリーしない
-else
-{
-   entrySignal = false;
-}
-
-// 【セクション: エントリー理由記録】
-// エントリーシグナルがある場合、理由を記録
-if(entrySignal)
-{
-   string typeStr = (side == 0) ? "Buy" : "Sell";
-   string reason;
-   string conditionType = (Indicator_Condition_Type == AND_CONDITION) ? "AND条件" : "OR条件";
-
+   // インジケーター条件が設定されている場合
    if(needIndicators)
    {
-      reason = conditionType + "(" + activeStrategies + ")";
+      entrySignal = indicatorSignalsValid;
+   }
+   // 両方設定されていない場合はエントリーしない
+   else
+   {
+      entrySignal = false;
    }
 
-   // 詳細情報を取得
-   string details = GetStrategyDetails(side);
+   // 【セクション: エントリー理由記録】
+   // エントリーシグナルがある場合、理由を記録
+   if(entrySignal)
+   {
+      string typeStr = (side == 0) ? "Buy" : "Sell";
+      string reason;
+      
+      // 常時エントリーが成立した場合
+      if(constantEntrySignal)
+      {
+         reason = "常時エントリー戦略";
+      }
+      // その他のインジケーターによるエントリーの場合
+      else
+      {
+         string conditionType = (Indicator_Condition_Type == AND_CONDITION) ? "AND条件" : "OR条件";
+         reason = conditionType + "(" + activeStrategies + ")";
+      }
 
-   // エントリー理由をログに記録
-   LogEntryReason(side == 0 ? OP_BUY : OP_SELL, "戦略シグナル", reason);
+      // 詳細情報を取得
+      string details = GetStrategyDetails(side);
 
-   // 詳細情報もログに出力
-   Print(details);
+      // エントリー理由をログに記録
+      LogEntryReason(side == 0 ? OP_BUY : OP_SELL, "戦略シグナル", reason);
+
+      // 詳細情報もログに出力
+      Print(details);
+   }
+
+   return entrySignal;
 }
 
-return entrySignal;
-}
+
 
 
 //+------------------------------------------------------------------+
@@ -1448,150 +1481,173 @@ bool ShouldProcessRealEntry(int side)
 }
 
 //+------------------------------------------------------------------+
-//| CheckIndicatorSignals関数 - 更新版                               |
+//| CheckIndicatorSignals関数 - 常時エントリー戦略対応版               |
 //+------------------------------------------------------------------+
 bool CheckIndicatorSignals(int side)
 {
-// どれか1つでもシグナルがあればtrue
- return (MA_Entry_Strategy == MA_ENTRY_ENABLED && CheckMASignal(side)) ||
-        (RSI_Entry_Strategy == RSI_ENTRY_ENABLED && CheckRSISignal(side)) ||
-        (BB_Entry_Strategy == BB_ENTRY_ENABLED && CheckBollingerSignal(side)) ||
-        (RCI_Entry_Strategy == RCI_ENTRY_ENABLED && CheckRCISignal(side)) ||
-        (Stoch_Entry_Strategy == STOCH_ENTRY_ENABLED && CheckStochasticSignal(side)) ||
-        (CCI_Entry_Strategy == CCI_ENTRY_ENABLED && CheckCCISignal(side)) ||
-        (ADX_Entry_Strategy == ADX_ENTRY_ENABLED && CheckADXSignal(side)) ||
-        (EvenOdd_Entry_Strategy != EVEN_ODD_DISABLED && CheckEvenOddStrategy(side));
+   // どれか1つでもシグナルがあればtrue
+   return (ConstantEntryStrategy != CONSTANT_ENTRY_DISABLED && CheckConstantEntryStrategy(side)) ||
+          (MA_Entry_Strategy == MA_ENTRY_ENABLED && CheckMASignal(side)) ||
+          (RSI_Entry_Strategy == RSI_ENTRY_ENABLED && CheckRSISignal(side)) ||
+          (BB_Entry_Strategy == BB_ENTRY_ENABLED && CheckBollingerSignal(side)) ||
+          (RCI_Entry_Strategy == RCI_ENTRY_ENABLED && CheckRCISignal(side)) ||
+          (Stoch_Entry_Strategy == STOCH_ENTRY_ENABLED && CheckStochasticSignal(side)) ||
+          (CCI_Entry_Strategy == CCI_ENTRY_ENABLED && CheckCCISignal(side)) ||
+          (ADX_Entry_Strategy == ADX_ENTRY_ENABLED && CheckADXSignal(side)) ||
+          (EvenOdd_Entry_Strategy != EVEN_ODD_DISABLED && CheckEvenOddStrategy(side));
 }
 
 
-
-
 //+------------------------------------------------------------------+
-//| GetStrategyDetails関数 - ポジション保護対応                        |
+//| GetStrategyDetails関数 - 常時エントリー戦略対応                    |
 //+------------------------------------------------------------------+
 string GetStrategyDetails(int side)
 {
-// side: 0 = Buy, 1 = Sell
+   // side: 0 = Buy, 1 = Sell
    string typeStr = (side == 0) ? "Buy" : "Sell";
    string strategyDetails = "【" + typeStr + " 戦略シグナル詳細】\n";
 
-// 【セクション: ポジション保護】- 新規追加
+   // 【セクション: ポジション保護】
    strategyDetails += "【ポジション保護】: " + GetProtectionModeText() + "\n";
 
-// 【セクション: MAクロス】
-   if(MA_Entry_Strategy == MA_ENTRY_ENABLED)
+   // 【セクション: 常時エントリー】 - 新規追加
+   if(ConstantEntryStrategy != CONSTANT_ENTRY_DISABLED)
    {
-      bool maSignal = CheckMASignal(side);
+      bool constantSignal = CheckConstantEntryStrategy(side);
+      
+      // 前回のエントリー時間を取得
+      datetime lastEntryTime = (side == 0) ? g_LastConstantLongEntryTime : g_LastConstantShortEntryTime;
+      string lastEntryTimeStr = (lastEntryTime > 0) ? 
+                               TimeToString(lastEntryTime, TIME_DATE|TIME_MINUTES) : 
+                               "なし";
+      
+// インターバル情報
+string intervalInfo = "";
+if(ConstantEntryInterval > 0)
+{
+   datetime nextEntryTime = lastEntryTime + ConstantEntryInterval * 60;
+   intervalInfo = ", 次回可能時間: " + TimeToString(nextEntryTime, TIME_DATE|TIME_MINUTES);
+}
 
-      // MA値の取得
-      double fastMA_current, slowMA_current;
-      if(side == 0)
-      {
-         fastMA_current = iMA(Symbol(), MA_Timeframe, MA_Buy_Fast_Period, 0, MA_Method, MA_Price, MA_Cross_Shift);
-         slowMA_current = iMA(Symbol(), MA_Timeframe, MA_Buy_Slow_Period, 0, MA_Method, MA_Price, MA_Cross_Shift);
-      }
-      else
-      {
-         fastMA_current = iMA(Symbol(), MA_Timeframe, MA_Sell_Fast_Period, 0, MA_Method, MA_Price, MA_Cross_Shift);
-         slowMA_current = iMA(Symbol(), MA_Timeframe, MA_Sell_Slow_Period, 0, MA_Method, MA_Price, MA_Cross_Shift);
-      }
+strategyDetails += "【常時エントリー】: " + (constantSignal ? "シグナルあり" : "シグナルなし") +
+                 " (モード: " + GetConstantEntryStrategyState() + 
+                 ", 前回: " + lastEntryTimeStr + intervalInfo + ")\n";
+}
 
-      strategyDetails += "【MAクロス】: " + (maSignal ? "シグナルあり" : "シグナルなし") +
-                       " (短期MA=" + DoubleToString(fastMA_current, Digits) +
-                       ", 長期MA=" + DoubleToString(slowMA_current, Digits) + ")\n";
-   }
+// 【セクション: MAクロス】
+if(MA_Entry_Strategy == MA_ENTRY_ENABLED)
+{
+bool maSignal = CheckMASignal(side);
+
+// MA値の取得
+double fastMA_current, slowMA_current;
+if(side == 0)
+{
+   fastMA_current = iMA(Symbol(), MA_Timeframe, MA_Buy_Fast_Period, 0, MA_Method, MA_Price, MA_Cross_Shift);
+   slowMA_current = iMA(Symbol(), MA_Timeframe, MA_Buy_Slow_Period, 0, MA_Method, MA_Price, MA_Cross_Shift);
+}
+else
+{
+   fastMA_current = iMA(Symbol(), MA_Timeframe, MA_Sell_Fast_Period, 0, MA_Method, MA_Price, MA_Cross_Shift);
+   slowMA_current = iMA(Symbol(), MA_Timeframe, MA_Sell_Slow_Period, 0, MA_Method, MA_Price, MA_Cross_Shift);
+}
+
+strategyDetails += "【MAクロス】: " + (maSignal ? "シグナルあり" : "シグナルなし") +
+                 " (短期MA=" + DoubleToString(fastMA_current, Digits) +
+                 ", 長期MA=" + DoubleToString(slowMA_current, Digits) + ")\n";
+}
 
 // 【セクション: RSI】
-   if(RSI_Entry_Strategy == RSI_ENTRY_ENABLED)
-   {
-      bool rsiSignal = CheckRSISignal(side);
+if(RSI_Entry_Strategy == RSI_ENTRY_ENABLED)
+{
+bool rsiSignal = CheckRSISignal(side);
 
-      // RSI値の取得
-      double rsi_current = iRSI(Symbol(), RSI_Timeframe, RSI_Period, RSI_Price, RSI_Signal_Shift);
-      strategyDetails += "【RSI】: " + (rsiSignal ? "シグナルあり" : "シグナルなし") +
-                       " (値=" + DoubleToString(rsi_current, 2) +
-                       ", 買われすぎ=" + IntegerToString(RSI_Overbought) +
-                       ", 売られすぎ=" + IntegerToString(RSI_Oversold) + ")\n";
-   }
+// RSI値の取得
+double rsi_current = iRSI(Symbol(), RSI_Timeframe, RSI_Period, RSI_Price, RSI_Signal_Shift);
+strategyDetails += "【RSI】: " + (rsiSignal ? "シグナルあり" : "シグナルなし") +
+                 " (値=" + DoubleToString(rsi_current, 2) +
+                 ", 買われすぎ=" + IntegerToString(RSI_Overbought) +
+                 ", 売られすぎ=" + IntegerToString(RSI_Oversold) + ")\n";
+}
 
 // 【セクション: ボリンジャーバンド】
-   if(BB_Entry_Strategy == BB_ENTRY_ENABLED)
-   {
-      bool bbSignal = CheckBollingerSignal(side);
+if(BB_Entry_Strategy == BB_ENTRY_ENABLED)
+{
+bool bbSignal = CheckBollingerSignal(side);
 
-      // ボリンジャーバンド値の取得
-      double middle = iBands(Symbol(), BB_Timeframe, BB_Period, BB_Deviation, 0, BB_Price, MODE_MAIN, BB_Signal_Shift);
-      double upper = iBands(Symbol(), BB_Timeframe, BB_Period, BB_Deviation, 0, BB_Price, MODE_UPPER, BB_Signal_Shift);
-      double lower = iBands(Symbol(), BB_Timeframe, BB_Period, BB_Deviation, 0, BB_Price, MODE_LOWER, BB_Signal_Shift);
-      double close = iClose(Symbol(), BB_Timeframe, BB_Signal_Shift);
+// ボリンジャーバンド値の取得
+double middle = iBands(Symbol(), BB_Timeframe, BB_Period, BB_Deviation, 0, BB_Price, MODE_MAIN, BB_Signal_Shift);
+double upper = iBands(Symbol(), BB_Timeframe, BB_Period, BB_Deviation, 0, BB_Price, MODE_UPPER, BB_Signal_Shift);
+double lower = iBands(Symbol(), BB_Timeframe, BB_Period, BB_Deviation, 0, BB_Price, MODE_LOWER, BB_Signal_Shift);
+double close = iClose(Symbol(), BB_Timeframe, BB_Signal_Shift);
 
-      strategyDetails += "【ボリンジャーバンド】: " + (bbSignal ? "シグナルあり" : "シグナルなし") +
-                       " (上=" + DoubleToString(upper, Digits) +
-                       ", 中=" + DoubleToString(middle, Digits) +
-                       ", 下=" + DoubleToString(lower, Digits) +
-                       ", 終値=" + DoubleToString(close, Digits) + ")\n";
-   }
+strategyDetails += "【ボリンジャーバンド】: " + (bbSignal ? "シグナルあり" : "シグナルなし") +
+                 " (上=" + DoubleToString(upper, Digits) +
+                 ", 中=" + DoubleToString(middle, Digits) +
+                 ", 下=" + DoubleToString(lower, Digits) +
+                 ", 終値=" + DoubleToString(close, Digits) + ")\n";
+}
 
 // 【セクション: RCI】
-   if(RCI_Entry_Strategy == RCI_ENTRY_ENABLED)
-   {
-      bool rciSignal = CheckRCISignal(side);
+if(RCI_Entry_Strategy == RCI_ENTRY_ENABLED)
+{
+bool rciSignal = CheckRCISignal(side);
 
-      // RCI値の取得
-      double rci_current = CalculateRCI(RCI_Period, RCI_Signal_Shift, RCI_Timeframe);
-      strategyDetails += "【RCI】: " + (rciSignal ? "シグナルあり" : "シグナルなし") +
-                       " (値=" + DoubleToString(rci_current, 2) +
-                       ", しきい値=" + IntegerToString(RCI_Threshold) + ")\n";
-   }
+// RCI値の取得
+double rci_current = CalculateRCI(RCI_Period, RCI_Signal_Shift, RCI_Timeframe);
+strategyDetails += "【RCI】: " + (rciSignal ? "シグナルあり" : "シグナルなし") +
+                 " (値=" + DoubleToString(rci_current, 2) +
+                 ", しきい値=" + IntegerToString(RCI_Threshold) + ")\n";
+}
 
 // 【セクション: ストキャスティクス】
-   if(Stoch_Entry_Strategy == STOCH_ENTRY_ENABLED)
-   {
-      bool stochSignal = CheckStochasticSignal(side);
+if(Stoch_Entry_Strategy == STOCH_ENTRY_ENABLED)
+{
+bool stochSignal = CheckStochasticSignal(side);
 
-      // ストキャスティクス値の取得
-      double k_current = iStochastic(Symbol(), Stoch_Timeframe, Stoch_K_Period, Stoch_D_Period,
-                                   Stoch_Slowing, Stoch_Method, Stoch_Price_Field,
-                                   MODE_MAIN, Stoch_Signal_Shift);
-      double d_current = iStochastic(Symbol(), Stoch_Timeframe, Stoch_K_Period, Stoch_D_Period,
-                                   Stoch_Slowing, Stoch_Method, Stoch_Price_Field,
-                                   MODE_SIGNAL, Stoch_Signal_Shift);
+// ストキャスティクス値の取得
+double k_current = iStochastic(Symbol(), Stoch_Timeframe, Stoch_K_Period, Stoch_D_Period,
+                             Stoch_Slowing, Stoch_Method, Stoch_Price_Field,
+                             MODE_MAIN, Stoch_Signal_Shift);
+double d_current = iStochastic(Symbol(), Stoch_Timeframe, Stoch_K_Period, Stoch_D_Period,
+                             Stoch_Slowing, Stoch_Method, Stoch_Price_Field,
+                             MODE_SIGNAL, Stoch_Signal_Shift);
 
-      strategyDetails += "【ストキャスティクス】: " + (stochSignal ? "シグナルあり" : "シグナルなし") +
-                       " (K=" + DoubleToString(k_current, 2) +
-                       ", D=" + DoubleToString(d_current, 2) +
-                       ", 買われすぎ=" + IntegerToString(Stoch_Overbought) +
-                       ", 売られすぎ=" + IntegerToString(Stoch_Oversold) + ")\n";
-   }
+strategyDetails += "【ストキャスティクス】: " + (stochSignal ? "シグナルあり" : "シグナルなし") +
+                 " (K=" + DoubleToString(k_current, 2) +
+                 ", D=" + DoubleToString(d_current, 2) +
+                 ", 買われすぎ=" + IntegerToString(Stoch_Overbought) +
+                 ", 売られすぎ=" + IntegerToString(Stoch_Oversold) + ")\n";
+}
 
 // 【セクション: CCI】
-   if(CCI_Entry_Strategy == CCI_ENTRY_ENABLED)
-   {
-      bool cciSignal = CheckCCISignal(side);
+if(CCI_Entry_Strategy == CCI_ENTRY_ENABLED)
+{
+bool cciSignal = CheckCCISignal(side);
 
-      // CCI値の取得
-      double cci_current = iCCI(Symbol(), CCI_Timeframe, CCI_Period, CCI_Price, CCI_Signal_Shift);
-      strategyDetails += "【CCI】: " + (cciSignal ? "シグナルあり" : "シグナルなし") +
-                       " (値=" + DoubleToString(cci_current, 2) +
-                       ", 買われすぎ=" + IntegerToString(CCI_Overbought) +
-                       ", 売られすぎ=" + IntegerToString(CCI_Oversold) + ")\n";
-   }
+// CCI値の取得
+double cci_current = iCCI(Symbol(), CCI_Timeframe, CCI_Period, CCI_Price, CCI_Signal_Shift);
+strategyDetails += "【CCI】: " + (cciSignal ? "シグナルあり" : "シグナルなし") +
+                 " (値=" + DoubleToString(cci_current, 2) +
+                 ", 買われすぎ=" + IntegerToString(CCI_Overbought) +
+                 ", 売られすぎ=" + IntegerToString(CCI_Oversold) + ")\n";
+}
 
 // 【セクション: ADX/DMI】
-   if(ADX_Entry_Strategy == ADX_ENTRY_ENABLED)
-   {
-      bool adxSignal = CheckADXSignal(side);
+if(ADX_Entry_Strategy == ADX_ENTRY_ENABLED)
+{
+bool adxSignal = CheckADXSignal(side);
 
-      // ADX値の取得
-      double adx = iADX(Symbol(), ADX_Timeframe, ADX_Period, PRICE_CLOSE, MODE_MAIN, ADX_Signal_Shift);
-      double plus_di = iADX(Symbol(), ADX_Timeframe, ADX_Period, PRICE_CLOSE, MODE_PLUSDI, ADX_Signal_Shift);
-      double minus_di = iADX(Symbol(), ADX_Timeframe, ADX_Period, PRICE_CLOSE, MODE_MINUSDI, ADX_Signal_Shift);
+// ADX値の取得
+double adx = iADX(Symbol(), ADX_Timeframe, ADX_Period, PRICE_CLOSE, MODE_MAIN, ADX_Signal_Shift);
+double plus_di = iADX(Symbol(), ADX_Timeframe, ADX_Period, PRICE_CLOSE, MODE_PLUSDI, ADX_Signal_Shift);
+double minus_di = iADX(Symbol(), ADX_Timeframe, ADX_Period, PRICE_CLOSE, MODE_MINUSDI, ADX_Signal_Shift);
 
-      strategyDetails += "【ADX/DMI】: " + (adxSignal ? "シグナルあり" : "シグナルなし") +
-      " (ADX=" + DoubleToString(adx, 2) +
-      ", +DI=" + DoubleToString(plus_di, 2) +
-      ", -DI=" + DoubleToString(minus_di, 2) +
-      ", しきい値=" + IntegerToString(ADX_Threshold) + ")\n";
+strategyDetails += "【ADX/DMI】: " + (adxSignal ? "シグナルあり" : "シグナルなし") +
+" (ADX=" + DoubleToString(adx, 2) +
+", +DI=" + DoubleToString(plus_di, 2) +
+", -DI=" + DoubleToString(minus_di, 2) +
+", しきい値=" + IntegerToString(ADX_Threshold) + ")\n";
 }
 
 // 【セクション: 偶数/奇数時間】
@@ -1612,7 +1668,6 @@ strategyDetails += "【偶数/奇数時間】: " + (evenOddSignal ? "シグナ�
 
 return strategyDetails;
 }
-
 
 
 //+------------------------------------------------------------------+
@@ -1860,4 +1915,112 @@ void ProcessRealEntries(int side)
    {
       Print("ProcessRealEntries: リアル", direction, "エントリー条件不成立のためスキップします");
    }
+}
+
+
+
+//+------------------------------------------------------------------+
+//| 常時エントリー戦略のタイプ定義                                    |
+//+------------------------------------------------------------------+
+enum CONSTANT_ENTRY_STRATEGY_TYPE
+{
+   CONSTANT_ENTRY_DISABLED = 0,     // 無効
+   CONSTANT_ENTRY_LONG = 1,         // 常時ロングエントリー
+   CONSTANT_ENTRY_SHORT = 2,        // 常時ショートエントリー
+   CONSTANT_ENTRY_BOTH = 3          // 常時ロング＆ショート両方
+};
+
+//+------------------------------------------------------------------+
+//| 常時エントリー戦略パラメータ                                      |
+//+------------------------------------------------------------------+
+// ======== 常時エントリー戦略設定 ========
+sinput string Comment_ConstantEntry = ""; //+--- 常時エントリー設定 ---+
+input CONSTANT_ENTRY_STRATEGY_TYPE ConstantEntryStrategy = CONSTANT_ENTRY_DISABLED; // 常時エントリー戦略
+input int ConstantEntryInterval = 0;        // 常時エントリー間隔（分）
+
+//+------------------------------------------------------------------+
+//| 常時エントリー戦略の状態を保持するグローバル変数                   |
+//+------------------------------------------------------------------+
+datetime g_LastConstantLongEntryTime = 0;    // 最後のロングエントリー時間
+datetime g_LastConstantShortEntryTime = 0;   // 最後のショートエントリー時間
+
+//+------------------------------------------------------------------+
+//| 常時エントリー戦略の判定                                         |
+//+------------------------------------------------------------------+
+bool CheckConstantEntryStrategy(int side)
+{
+   // 戦略が無効の場合はすぐに false を返す
+   if(ConstantEntryStrategy == CONSTANT_ENTRY_DISABLED)
+      return false;
+
+   // 現在時刻の取得
+   datetime currentTime = TimeCurrent();
+
+   // 前回エントリー時間の取得
+   datetime lastEntryTime = (side == 0) ? g_LastConstantLongEntryTime : g_LastConstantShortEntryTime;
+
+   // エントリー間隔チェック
+   if(ConstantEntryInterval > 0)
+   {
+      // 指定された間隔が経過していなければfalse
+      if(currentTime - lastEntryTime < ConstantEntryInterval * 60)
+      {
+         return false;
+      }
+   }
+
+   // 戦略タイプに基づいてエントリー判断
+   if(side == 0)  // ロング（Buy）
+   {
+      if(ConstantEntryStrategy == CONSTANT_ENTRY_LONG || ConstantEntryStrategy == CONSTANT_ENTRY_BOTH)
+      {
+         // エントリー時間更新
+         g_LastConstantLongEntryTime = currentTime;
+         return true;
+      }
+   }
+   else  // ショート（Sell）
+   {
+      if(ConstantEntryStrategy == CONSTANT_ENTRY_SHORT || ConstantEntryStrategy == CONSTANT_ENTRY_BOTH)
+      {
+         // エントリー時間更新
+         g_LastConstantShortEntryTime = currentTime;
+         return true;
+      }
+   }
+
+   return false;
+}
+
+//+------------------------------------------------------------------+
+//| 常時エントリー戦略の状態をテキストで取得                          |
+//+------------------------------------------------------------------+
+string GetConstantEntryStrategyState()
+{
+   if(ConstantEntryStrategy == CONSTANT_ENTRY_DISABLED)
+      return "無効";
+
+   string state = "";
+   
+   switch(ConstantEntryStrategy)
+   {
+      case CONSTANT_ENTRY_LONG:
+         state = "常時ロングエントリー";
+         break;
+      case CONSTANT_ENTRY_SHORT:
+         state = "常時ショートエントリー";
+         break;
+      case CONSTANT_ENTRY_BOTH:
+         state = "常時ロング＆ショート両方";
+         break;
+      default:
+         state = "不明";
+   }
+   
+   if(ConstantEntryInterval > 0)
+      state += " (間隔: " + IntegerToString(ConstantEntryInterval) + "分)";
+   else
+      state += " (間隔制限なし)";
+      
+   return state;
 }
