@@ -271,8 +271,6 @@ void InitializeGhostPosition(int type, string entryReason = "")
       g_GhostBuyPositions[g_GhostBuyCount] = newPosition;
       g_GhostBuyCount++;
       
-      // ナンピン時間を初期化
-      g_LastBuyNanpinTime = currentTime;
       
       // 実際のエントリー時間で矢印とゴースト水平線を描画
       CreateGhostEntryPoint(type, newPosition.price, newPosition.lots, newPosition.level, currentTime);
@@ -296,9 +294,7 @@ void InitializeGhostPosition(int type, string entryReason = "")
       // Sellゴーストポジションの追加
       g_GhostSellPositions[g_GhostSellCount] = newPosition;
       g_GhostSellCount++;
-      
-      // ナンピン時間を初期化
-      g_LastSellNanpinTime = currentTime;
+     
       
       // 実際のエントリー時間で矢印とゴースト水平線を描画
       CreateGhostEntryPoint(type, newPosition.price, newPosition.lots, newPosition.level, currentTime);
@@ -328,7 +324,7 @@ void InitializeGhostPosition(int type, string entryReason = "")
 
 
 //+------------------------------------------------------------------+
-//| AddGhostNanpin関数 - ポジション保護対応                           |
+//| AddGhostNanpin関数 - ナンピンタイム変数廃止対応                   |
 //+------------------------------------------------------------------+
 void AddGhostNanpin(int type)
 {
@@ -337,7 +333,7 @@ void AddGhostNanpin(int type)
       return;
    }
 
-   // ポジション保護モードのチェック - 新規追加
+   // ポジション保護モードのチェック
    if(!IsEntryAllowedByProtectionMode(type == OP_BUY ? 0 : 1))
    {
       Print("AddGhostNanpin: ポジション保護モードにより", type == OP_BUY ? "Buy" : "Sell", "側はスキップします");
@@ -390,12 +386,10 @@ void AddGhostNanpin(int type)
       {
          Print("ナンピンスキップレベル条件達成: Level=", NanpinSkipLevel, ", 現在のゴーストカウント=", g_GhostBuyCount);
          ExecuteRealEntry(OP_BUY, "スキップからのリアル"); // リアルエントリー実行
-         g_LastBuyNanpinTime = currentTime;
       }
       else
       {
          Print("ゴーストBuyカウント=", g_GhostBuyCount, ", スキップレベル=", (int)NanpinSkipLevel, "のためまだリアルエントリーしません");
-         g_LastBuyNanpinTime = currentTime;
       }
    }
    else
@@ -410,12 +404,10 @@ void AddGhostNanpin(int type)
       {
          Print("ナンピンスキップレベル条件達成: Level=", NanpinSkipLevel, ", 現在のゴーストカウント=", g_GhostSellCount);
          ExecuteRealEntry(OP_SELL, "スキップからのリアル"); // リアルエントリー実行
-         g_LastSellNanpinTime = currentTime;
       }
       else
       {
          Print("ゴーストSellカウント=", g_GhostSellCount, ", スキップレベル=", (int)NanpinSkipLevel, "のためまだリアルエントリーしません");
-         g_LastSellNanpinTime = currentTime;
       }
    }
    
@@ -425,7 +417,6 @@ void AddGhostNanpin(int type)
    // グローバル変数に保存
    SaveGhostPositionsToGlobal();
 }
-
 
 
 
@@ -545,7 +536,7 @@ void ResetSpecificGhost(int type)
 }
 
 //+------------------------------------------------------------------+
-//| ゴーストポジションをリセットする - トレーリングストップ対応版      |
+//| ResetGhost関数 - ナンピンタイム変数廃止対応                      |
 //+------------------------------------------------------------------+
 void ResetGhost(int type)
 {
@@ -564,7 +555,7 @@ void ResetGhost(int type)
       // 特に点線に関連するオブジェクトを明示的に削除
       DeleteGhostLinesByType(OP_BUY, LINE_TYPE_GHOST);
       
-      // トレーリングストップラインを削除 - 新規追加
+      // トレーリングストップラインを削除
       string stopLineName = g_ObjectPrefix + "GhostStopLineBuy";
       string stopLabelName = g_ObjectPrefix + "GhostStopLabelBuy";
       
@@ -589,7 +580,7 @@ void ResetGhost(int type)
          g_GhostBuyPositions[i].openTime = 0;
          g_GhostBuyPositions[i].isGhost = false;
          g_GhostBuyPositions[i].level = 0;
-         g_GhostBuyPositions[i].stopLoss = 0; // stopLossもリセット - 新規追加
+         g_GhostBuyPositions[i].stopLoss = 0; // stopLossもリセット
       }
       
       // フラグをリセット
@@ -611,7 +602,7 @@ void ResetGhost(int type)
       // 特に点線に関連するオブジェクトを明示的に削除
       DeleteGhostLinesByType(OP_SELL, LINE_TYPE_GHOST);
       
-      // トレーリングストップラインを削除 - 新規追加
+      // トレーリングストップラインを削除
       string stopLineName = g_ObjectPrefix + "GhostStopLineSell";
       string stopLabelName = g_ObjectPrefix + "GhostStopLabelSell";
       
@@ -633,7 +624,7 @@ void ResetGhost(int type)
          g_GhostSellPositions[i].openTime = 0;
          g_GhostSellPositions[i].isGhost = false;
          g_GhostSellPositions[i].level = 0;
-         g_GhostSellPositions[i].stopLoss = 0; // stopLossもリセット - 新規追加
+         g_GhostSellPositions[i].stopLoss = 0; // stopLossもリセット
       }
       
       // フラグをリセット
@@ -683,10 +674,9 @@ void ResetGhost(int type)
       DeleteAllGhostObjectsByType(1);
    }
 
-    // 最後のナンピン時間をリセット
-  g_LastBuyNanpinTime = 0;     // 最後のBuyナンピン時間
-  g_LastSellNanpinTime = 0;    // 最後のSellナンピン時間
+   // 最後のナンピン時間変数はもう使用しない（廃止）
 }
+
 
 
 //+------------------------------------------------------------------+
@@ -1333,8 +1323,9 @@ void ClearGhostPositionsFromGlobal()
    Print("グローバル変数からゴーストポジション情報を削除しました - ", deletedCount, "個の変数を削除");
 }
 
+
 //+------------------------------------------------------------------+
-//| グローバル変数からゴーストポジション情報を読み込み - トレーリングストップ対応版 |
+//| グローバル変数からゴーストポジション情報を読み込み - ナンピンタイム参照廃止版 |
 //+------------------------------------------------------------------+
 bool LoadGhostPositionsFromGlobal()
 {
@@ -1357,9 +1348,7 @@ bool LoadGhostPositionsFromGlobal()
    int buyCount = (int)GlobalVariableGet(g_GlobalVarPrefix + "BuyCount");
    int sellCount = (int)GlobalVariableGet(g_GlobalVarPrefix + "SellCount");
    
-   // 最後のナンピン時間読み込み
-   g_LastBuyNanpinTime = (datetime)GlobalVariableGet(g_GlobalVarPrefix + "LastBuyNanpinTime");
-   g_LastSellNanpinTime = (datetime)GlobalVariableGet(g_GlobalVarPrefix + "LastSellNanpinTime");
+   // ナンピンタイム変数の読み込みを削除（廃止）
    
    // Buy ゴーストポジション読み込み
    for(int i = 0; i < buyCount; i++)
@@ -1378,7 +1367,7 @@ bool LoadGhostPositionsFromGlobal()
          g_GhostBuyPositions[i].isGhost = GlobalVariableGet(posPrefix + "IsGhost") > 0;
          g_GhostBuyPositions[i].level = (int)GlobalVariableGet(posPrefix + "Level");
          
-         // ストップロスの読み込み - 新規追加
+         // ストップロスの読み込み
          if(GlobalVariableCheck(posPrefix + "StopLoss"))
             g_GhostBuyPositions[i].stopLoss = GlobalVariableGet(posPrefix + "StopLoss");
          else
@@ -1404,7 +1393,7 @@ bool LoadGhostPositionsFromGlobal()
          g_GhostSellPositions[i].isGhost = GlobalVariableGet(posPrefix + "IsGhost") > 0;
          g_GhostSellPositions[i].level = (int)GlobalVariableGet(posPrefix + "Level");
          
-         // ストップロスの読み込み - 新規追加
+         // ストップロスの読み込み
          if(GlobalVariableCheck(posPrefix + "StopLoss"))
             g_GhostSellPositions[i].stopLoss = GlobalVariableGet(posPrefix + "StopLoss");
          else
@@ -1419,18 +1408,21 @@ bool LoadGhostPositionsFromGlobal()
    g_BuyGhostClosed = GlobalVariableGet(g_GlobalVarPrefix + "BuyGhostClosed") > 0;
    g_SellGhostClosed = GlobalVariableGet(g_GlobalVarPrefix + "SellGhostClosed") > 0;
    
-   // トレーリングストップ有効フラグの読み込み - 新規追加
+   // トレーリングストップ有効フラグの読み込み
    if(GlobalVariableCheck(g_GlobalVarPrefix + "TrailingStopEnabled"))
       g_EnableTrailingStop = GlobalVariableGet(g_GlobalVarPrefix + "TrailingStopEnabled") > 0;
    
-   Print("グローバル変数からゴーストポジション情報を読み込みました - Buy: ", buyCount, ", Sell: ", sellCount);
+      Print("グローバル変数からゴーストポジション情報を読み込みました - Buy: ", buyCount, ", Sell: ", sellCount);
    
-   // ストップロスラインを再表示 - 新規追加
-   RestoreGhostStopLines();
-   
-   // 読み込み成功
-   return true;
-}
+      // ストップロスラインを再表示
+      RestoreGhostStopLines();
+      
+      // 読み込み成功
+      return true;
+   }
+
+
+
 //+------------------------------------------------------------------+
 //| トレーリングストップラインを復元表示する                           |
 //+------------------------------------------------------------------+
@@ -1485,7 +1477,7 @@ void RestoreGhostStopLines()
 
 
 //+------------------------------------------------------------------+
-//| ゴーストポジション情報をグローバル変数に保存 - トレーリングストップ対応版  |
+//| ゴーストポジション情報をグローバル変数に保存 - ナンピンタイム参照廃止版   |
 //+------------------------------------------------------------------+
 void SaveGhostPositionsToGlobal()
 {
@@ -1495,9 +1487,7 @@ void SaveGhostPositionsToGlobal()
    GlobalVariableSet(g_GlobalVarPrefix + "BuyCount", g_GhostBuyCount);
    GlobalVariableSet(g_GlobalVarPrefix + "SellCount", g_GhostSellCount);
    
-   // 最後のナンピン時間保存
-   GlobalVariableSet(g_GlobalVarPrefix + "LastBuyNanpinTime", g_LastBuyNanpinTime);
-   GlobalVariableSet(g_GlobalVarPrefix + "LastSellNanpinTime", g_LastSellNanpinTime);
+   // ナンピンタイム変数の保存を削除（廃止）
    
    // Buy ゴーストポジション保存
    for(int i = 0; i < g_GhostBuyCount; i++)
@@ -1511,7 +1501,7 @@ void SaveGhostPositionsToGlobal()
       GlobalVariableSet(posPrefix + "OpenTime", g_GhostBuyPositions[i].openTime);
       GlobalVariableSet(posPrefix + "IsGhost", g_GhostBuyPositions[i].isGhost ? 1 : 0);
       GlobalVariableSet(posPrefix + "Level", g_GhostBuyPositions[i].level);
-      GlobalVariableSet(posPrefix + "StopLoss", g_GhostBuyPositions[i].stopLoss); // ストップロスを保存 - 新規追加
+      GlobalVariableSet(posPrefix + "StopLoss", g_GhostBuyPositions[i].stopLoss); // ストップロスを保存
    }
 
    // Sell ゴーストポジション保存
@@ -1526,7 +1516,7 @@ void SaveGhostPositionsToGlobal()
       GlobalVariableSet(posPrefix + "OpenTime", g_GhostSellPositions[i].openTime);
       GlobalVariableSet(posPrefix + "IsGhost", g_GhostSellPositions[i].isGhost ? 1 : 0);
       GlobalVariableSet(posPrefix + "Level", g_GhostSellPositions[i].level);
-      GlobalVariableSet(posPrefix + "StopLoss", g_GhostSellPositions[i].stopLoss); // ストップロスを保存 - 新規追加
+      GlobalVariableSet(posPrefix + "StopLoss", g_GhostSellPositions[i].stopLoss); // ストップロスを保存
    }
 
    // フラグ設定（ゴーストモード状態を保存）
@@ -1534,7 +1524,7 @@ void SaveGhostPositionsToGlobal()
    GlobalVariableSet(g_GlobalVarPrefix + "AvgPriceVisible", g_AvgPriceVisible ? 1 : 0);
    GlobalVariableSet(g_GlobalVarPrefix + "BuyGhostClosed", g_BuyGhostClosed ? 1 : 0);
    GlobalVariableSet(g_GlobalVarPrefix + "SellGhostClosed", g_SellGhostClosed ? 1 : 0);
-   // トレーリングストップ有効フラグも保存 - 新規追加
+   // トレーリングストップ有効フラグも保存
    GlobalVariableSet(g_GlobalVarPrefix + "TrailingStopEnabled", EnableTrailingStop ? 1 : 0);
 
    // 保存時間を記録
@@ -1542,6 +1532,8 @@ void SaveGhostPositionsToGlobal()
 
    Print("ゴーストポジション情報をグローバル変数に保存しました - 有効Buy: ", CountValidGhosts(OP_BUY), ", 有効Sell: ", CountValidGhosts(OP_SELL));
 }
+
+
 
 //+------------------------------------------------------------------+
 //| ゴーストの平均取得価格を計算                                      |
@@ -1692,7 +1684,7 @@ double CalculateCombinedProfit(int type)
 
 
 //+------------------------------------------------------------------+
-//| CheckGhostNanpinCondition関数 - ポジション保護対応                |
+//| CheckGhostNanpinCondition関数 - 改良版（ナンピンタイムグローバル変数廃止） |
 //+------------------------------------------------------------------+
 void CheckGhostNanpinCondition(int type)
 {
@@ -1710,7 +1702,7 @@ void CheckGhostNanpinCondition(int type)
       return;
    }
 
-   // ポジション保護モードのチェック - 新規追加
+   // ポジション保護モードのチェック
    if(!IsEntryAllowedByProtectionMode(type == OP_BUY ? 0 : 1))
    {
       // デバッグログは出さない（頻繁にチェックされるため）
@@ -1740,18 +1732,18 @@ void CheckGhostNanpinCondition(int type)
    int ghostCount = ghost_position_count(type);
    int currentLevel = ghostCount; // レベルは1-indexedだが配列は0-indexed
    
-   // 前回のナンピン時間を取得
-   datetime lastNanpinTime = (type == OP_BUY) ? g_LastBuyNanpinTime : g_LastSellNanpinTime;
+   // 最後のエントリー時間を取得（改良版）
+   datetime lastEntryTime = GetLastEntryTime(type);
    
    // ナンピンインターバルチェック
-   if(TimeCurrent() - lastNanpinTime < NanpinInterval * 60)
+   if(NanpinInterval > 0 && TimeCurrent() - lastEntryTime < NanpinInterval * 60)
    {
       // デバッグログの追加（1分に1回のみ出力）
       static datetime lastIntervalDebugTime[2] = {0, 0};
       if(TimeCurrent() - lastIntervalDebugTime[typeIndex] > 60)
       {
          Print("ナンピンインターバルが経過していません: ", 
-              (TimeCurrent() - lastNanpinTime) / 60, "分 / ", 
+              (TimeCurrent() - lastEntryTime) / 60, "分 / ", 
               NanpinInterval, "分");
          lastIntervalDebugTime[typeIndex] = TimeCurrent();
       }
@@ -1791,19 +1783,9 @@ void CheckGhostNanpinCondition(int type)
    if(nanpinCondition)
    {
       AddGhostNanpin(type);
-      
-      // ナンピン時間を更新
-      if(type == OP_BUY)
-         g_LastBuyNanpinTime = TimeCurrent();
-      else
-         g_LastSellNanpinTime = TimeCurrent();
-         
       Print((type == OP_BUY ? "Buy" : "Sell"), " ゴーストナンピン条件成立、ゴーストナンピン追加");
    }
 }
-
-
-
 //+------------------------------------------------------------------+
 //| 全チャートオブジェクトの整理と再構築                             |
 //+------------------------------------------------------------------+

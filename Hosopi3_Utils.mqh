@@ -24,8 +24,6 @@ void InitializeGlobalVariables()
    g_PanelObjectCount = 0;
    
    // 時間関連初期化
-   g_LastBuyNanpinTime = 0;
-   g_LastSellNanpinTime = 0;
    g_LastUpdateTime = 0;
 }
 
@@ -473,4 +471,46 @@ void InitializeNanpinSpreadTable()
          g_NanpinSpreadTable[i] = NanpinSpread;
       }
    }
+}
+
+
+//+------------------------------------------------------------------+
+//| 最後の有効なエントリー時間を取得する関数                          |
+//+------------------------------------------------------------------+
+datetime GetLastEntryTime(int type)
+{
+   datetime lastTime = 0;
+   
+   // まずリアルポジションの最終エントリー時間を確認
+   for(int i = OrdersTotal() - 1; i >= 0; i--)
+   {
+      if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+      {
+         if(OrderType() == type && OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
+         {
+            if(OrderOpenTime() > lastTime)
+               lastTime = OrderOpenTime();
+         }
+      }
+   }
+   
+   // リアルポジションがない場合や、ゴーストポジションがある場合は、ゴーストポジションの時間も確認
+   if(type == OP_BUY)
+   {
+      for(int i = 0; i < g_GhostBuyCount; i++)
+      {
+         if(g_GhostBuyPositions[i].isGhost && g_GhostBuyPositions[i].openTime > lastTime)
+            lastTime = g_GhostBuyPositions[i].openTime;
+      }
+   }
+   else // OP_SELL
+   {
+      for(int i = 0; i < g_GhostSellCount; i++)
+      {
+         if(g_GhostSellPositions[i].isGhost && g_GhostSellPositions[i].openTime > lastTime)
+            lastTime = g_GhostSellPositions[i].openTime;
+      }
+   }
+   
+   return lastTime;
 }

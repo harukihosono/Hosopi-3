@@ -148,9 +148,6 @@ enum NANPIN_SKIP {
  //--- グローバル変数宣言
 
  
- // 最後のナンピン時間を記録
- datetime g_LastBuyNanpinTime = 0;     // 最後のBuyナンピン時間
- datetime g_LastSellNanpinTime = 0;    // 最後のSellナンピン時間
  
  // ロットおよびナンピン幅のテーブル
  double g_LotTable[20];         // ロットテーブル

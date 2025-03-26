@@ -161,9 +161,8 @@ void ExecuteRealEntry(int type, string entryReason)
 
 
 
-
 //+------------------------------------------------------------------+
-//| リアルナンピンの実行 - 個別指定ロットを正しく反映するよう修正     |
+//| リアルナンピンの実行 - ナンピンタイム変数廃止対応                |
 //+------------------------------------------------------------------+
 void ExecuteRealNanpin(int typeOrder)
 {
@@ -253,7 +252,6 @@ void ExecuteRealNanpin(int typeOrder)
       Print("リアル", typeOrder == OP_BUY ? "Buy" : "Sell", "ナンピンエラー: ", GetLastError());
    }
 }
-
 
 
 
@@ -540,8 +538,12 @@ void DeleteSpecificLine(int side)
    // チャートの再描画
    ChartRedraw();
 }
+
+
+
+
 //+------------------------------------------------------------------+
-//| ナンピン条件のチェック - 修正版                                    |
+//| ナンピン条件のチェック - 改良版（ナンピンタイムグローバル変数廃止） |
 //+------------------------------------------------------------------+
 void CheckNanpinConditions(int side)
 {
@@ -575,20 +577,27 @@ void CheckNanpinConditions(int side)
       return;
    }
    
-   // 最後のナンピン時間を取得
-   datetime lastNanpinTime = (side == 0) ? g_LastBuyNanpinTime : g_LastSellNanpinTime;
+   // 最後のエントリー時間を取得（改良版）
+   datetime lastEntryTime = GetLastEntryTime(operationType);
+   
+   // 最後のエントリーがない場合はスキップ
+   if(lastEntryTime == 0)
+   {
+      Print("CheckNanpinConditions: 最後のエントリー時間が取得できません");
+      return;
+   }
    
    // ナンピンインターバルの有効性をチェック
    bool intervalOK = true; // デフォルトでOK
    
    if(NanpinInterval > 0) // インターバルが設定されている場合のみチェック
    {
-      intervalOK = (TimeCurrent() - lastNanpinTime >= NanpinInterval * 60);
+      intervalOK = (TimeCurrent() - lastEntryTime >= NanpinInterval * 60);
       
       if(!intervalOK)
       {
          Print("ナンピンインターバル待機中: ", 
-               (TimeCurrent() - lastNanpinTime) / 60, "分 / ", 
+               (TimeCurrent() - lastEntryTime) / 60, "分 / ", 
                NanpinInterval, "分");
          return;
       }
@@ -634,12 +643,6 @@ void CheckNanpinConditions(int side)
    {
       Print(direction, " リアルナンピン条件成立、実行を開始します");
       ExecuteRealNanpin(operationType);
-      
-      // ナンピン時間を更新
-      if(side == 0)
-         g_LastBuyNanpinTime = TimeCurrent();
-      else
-         g_LastSellNanpinTime = TimeCurrent();
    }
 }
 
@@ -649,9 +652,8 @@ void CheckNanpinConditions(int side)
 
 
 
-
 //+------------------------------------------------------------------+
-//| InitializeEA関数 - 修正版                                        |
+//| InitializeEA関数 - ナンピンタイムグローバル変数廃止対応           |
 //+------------------------------------------------------------------+
 int InitializeEA()
 {
@@ -691,85 +693,83 @@ int InitializeEA()
       Print("ナンピンスキップレベルが設定されているため、ゴーストモードを有効化しました");
    }
    
-   // エントリーモードの確認と表示
-   string entryModeStr = "";
-   switch(EntryMode) {
-      case MODE_BUY_ONLY:
-         entryModeStr = "Buy Only";
-         break;
-      case MODE_SELL_ONLY:
-         entryModeStr = "Sell Only";
-         break;
-      case MODE_BOTH:
-         entryModeStr = "Buy & Sell Both";
-         break;
-      default:
-         entryModeStr = "Unknown";
-   }
-   Print("現在のエントリーモード: ", entryModeStr);
-   
-   // ロットテーブルの内容をログに出力
-   string lotTableStr = "LOTテーブル: ";
-   for(int i = 0; i < MathMin(10, ArraySize(g_LotTable)); i++)
-   {
-      lotTableStr += DoubleToString(g_LotTable[i], 2) + ", ";
-   }
-   Print(lotTableStr);
-   
-   // リアルポジションがある場合のチェック（複数チャート対策）
-   int buyPositions = position_count(OP_BUY);
-   int sellPositions = position_count(OP_SELL);
-   
-   if(buyPositions > 0 || sellPositions > 0) {
-      Print("既にリアルポジションが存在します - Buy: ", buyPositions, ", Sell: ", sellPositions);
-      
-      // 既存のゴーストポジションをクリア
-      ClearGhostPositionsFromGlobal();
-      ResetGhost(OP_BUY);
-      ResetGhost(OP_SELL);
-      
-      // 平均取得価格ラインは表示
-      if(AveragePriceLine == ON_MODE) {
-         g_AvgPriceVisible = true;
-      }
-   } else {
-      // バックテストでなければグローバル変数からゴーストポジション情報を読み込み
-      if(!IsTesting())
-      {
-         bool loadResult = LoadGhostPositionsFromGlobal();
-         if(!loadResult)
-         {
-            Print("グローバル変数にゴーストポジション情報がないため、新規初期化します");
-         }
-         else
-         {
-            // ゴーストエントリーポイントを再表示
-            RecreateGhostEntryPoints();
-            
-            // 有効なゴーストのみ点線を表示
-            RecreateValidGhostLines();
-         }
-      }
-   }
+// エントリーモードの確認と表示
+string entryModeStr = "";
+switch(EntryMode) {
+   case MODE_BUY_ONLY:
+      entryModeStr = "Buy Only";
+      break;
+   case MODE_SELL_ONLY:
+      entryModeStr = "Sell Only";
+      break;
+   case MODE_BOTH:
+      entryModeStr = "Buy & Sell Both";
+      break;
+   default:
+      entryModeStr = "Unknown";
+}
+Print("現在のエントリーモード: ", entryModeStr);
 
-   // グローバル変数とinputの設定を同期
-   g_EnableNanpin = EnableNanpin;
-   g_EnableGhostEntry = EnableGhostEntry;
-   g_EnableTrailingStop = EnableTrailingStop;
-   g_AutoTrading = EnableAutomaticTrading;
+// ロットテーブルの内容をログに出力
+string lotTableStr = "LOTテーブル: ";
+for(int i = 0; i < MathMin(10, ArraySize(g_LotTable)); i++)
+{
+   lotTableStr += DoubleToString(g_LotTable[i], 2) + ", ";
+}
+Print(lotTableStr);
+
+// リアルポジションがある場合のチェック（複数チャート対策）
+int buyPositions = position_count(OP_BUY);
+int sellPositions = position_count(OP_SELL);
+
+if(buyPositions > 0 || sellPositions > 0) {
+   Print("既にリアルポジションが存在します - Buy: ", buyPositions, ", Sell: ", sellPositions);
    
-   CreateGUI();
+   // 既存のゴーストポジションをクリア
+   ClearGhostPositionsFromGlobal();
+   ResetGhost(OP_BUY);
+   ResetGhost(OP_SELL);
    
-   // ポジションテーブルを作成
-   CreatePositionTable();
-   
-   // ゴーストモード初期状態のログ出力
-   Print("ゴーストモード: ", g_GhostMode ? "ON" : "OFF");
-   
-   return(INIT_SUCCEEDED);
+   // 平均取得価格ラインは表示
+   if(AveragePriceLine == ON_MODE) {
+      g_AvgPriceVisible = true;
+   }
+} else {
+   // バックテストでなければグローバル変数からゴーストポジション情報を読み込み
+   if(!IsTesting())
+   {
+      bool loadResult = LoadGhostPositionsFromGlobal();
+      if(!loadResult)
+      {
+         Print("グローバル変数にゴーストポジション情報がないため、新規初期化します");
+      }
+      else
+      {
+         // ゴーストエントリーポイントを再表示
+         RecreateGhostEntryPoints();
+         
+         // 有効なゴーストのみ点線を表示
+         RecreateValidGhostLines();
+      }
+   }
 }
 
+// グローバル変数とinputの設定を同期
+g_EnableNanpin = EnableNanpin;
+g_EnableGhostEntry = EnableGhostEntry;
+g_EnableTrailingStop = EnableTrailingStop;
+g_AutoTrading = EnableAutomaticTrading;
 
+CreateGUI();
+
+// ポジションテーブルを作成
+CreatePositionTable();
+
+// ゴーストモード初期状態のログ出力
+Print("ゴーストモード: ", g_GhostMode ? "ON" : "OFF");
+
+return(INIT_SUCCEEDED);
+}
 
 
 
