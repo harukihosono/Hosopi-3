@@ -265,8 +265,13 @@ newPosition.openTime = currentTime; // 現在の時間を保存
 newPosition.isGhost = true;
 newPosition.level = 0;  // 最初のポジションはレベル0（配列インデックス）
 
+
+
+
 if(type == OP_BUY)
 {
+
+   if(!IsTimeAllowed(OP_BUY)){return;}
    // Buyゴーストポジションの追加
    g_GhostBuyPositions[g_GhostBuyCount] = newPosition;
    g_GhostBuyCount++;
@@ -290,6 +295,8 @@ if(type == OP_BUY)
 }
 else
 {
+
+   if(!IsTimeAllowed(OP_SELL)){return;}
    // Sellゴーストポジションの追加
    g_GhostSellPositions[g_GhostSellCount] = newPosition;
    g_GhostSellCount++;
