@@ -810,6 +810,11 @@ g_EnableGhostEntry = EnableGhostEntry;
 g_EnableTrailingStop = EnableTrailingStop;
 g_AutoTrading = EnableAutomaticTrading;
 
+g_BuyClosedRecently = false;
+g_SellClosedRecently = false;
+g_BuyClosedTime = 0;
+g_SellClosedTime = 0;
+
 CreateGUI();
 
 // ポジションテーブルを作成
@@ -926,9 +931,8 @@ double GetLastPositionLot(int type)
 
 
 
-// 6. CheckPositionChanges関数の完全版
 //+------------------------------------------------------------------+
-//| リアルポジション数変化を監視する関数 - ナンピンレベル廃止対応版    |
+//| リアルポジション数変化を監視する関数 - 両建て強化対応版            |
 //+------------------------------------------------------------------+
 void CheckPositionChanges()
 {
@@ -948,6 +952,13 @@ void CheckPositionChanges()
       // 完全に決済された場合
       if(currentBuyCount == 0)
       {
+         // 決済時間を記録
+         g_BuyClosedTime = TimeCurrent();
+         // 最近決済されたフラグをON
+         g_BuyClosedRecently = true;
+         
+         Print("Buy側完全決済検出: 時間=", TimeToString(g_BuyClosedTime));
+         
          // 同方向のゴーストをリセット
          ResetSpecificGhost(OP_BUY);
          
@@ -964,6 +975,13 @@ void CheckPositionChanges()
       // 完全に決済された場合
       if(currentSellCount == 0)
       {
+         // 決済時間を記録
+         g_SellClosedTime = TimeCurrent();
+         // 最近決済されたフラグをON
+         g_SellClosedRecently = true;
+         
+         Print("Sell側完全決済検出: 時間=", TimeToString(g_SellClosedTime));
+         
          // 同方向のゴーストをリセット
          ResetSpecificGhost(OP_SELL);
          
@@ -976,7 +994,6 @@ void CheckPositionChanges()
    prevBuyCount = currentBuyCount;
    prevSellCount = currentSellCount;
 }
-
 
 
 //+------------------------------------------------------------------+
@@ -1002,7 +1019,14 @@ void ProcessRealEntries(int side)
       Print("ProcessRealEntries: ポジション保護モードにより", direction, "側はスキップします");
       return;
    }
-   
+      // 決済後インターバルチェック
+      if(!IsCloseIntervalElapsed(side))
+      {
+         Print("ProcessRealEntries: 決済後インターバル中のため", direction, "側はスキップします");
+         return;
+      }
+
+
    // エントリーモードチェック
    bool modeAllowed = false;
    if(side == 0) // Buy

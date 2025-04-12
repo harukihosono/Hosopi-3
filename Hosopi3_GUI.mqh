@@ -641,6 +641,14 @@ void ShowSettingsDialog()
    message += "【ナンピン設定】\n";
    message += "ナンピン機能: " + (EnableNanpin ? "有効" : "無効") + "\n";
    message += "ナンピンインターバル: " + IntegerToString(NanpinInterval) + "分\n";
+
+// 決済後インターバル機能の情報を追加
+message += "\n【決済後インターバル機能】\n";
+message += "決済後インターバル: " + (EnableCloseInterval ? "有効" : "無効") + "\n";
+if(EnableCloseInterval) {
+   message += "インターバル時間: " + IntegerToString(CloseInterval) + "分\n";
+}
+
    message += "最大スプレッド: " + IntegerToString(MaxSpreadPoints) + "ポイント\n\n";
    
    message += "【表示設定】\n";

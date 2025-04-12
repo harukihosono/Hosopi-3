@@ -178,6 +178,12 @@ bool g_EnableTimeEntry = false;      // 時間ベースエントリー有効フ�
 bool g_EnableFixedTP = true;        // 固定利確有効フラグ
 bool g_EnableIndicatorsTP = false;  // テクニカル指標利確有効フラグ
 bool g_EnableTrailingStop = false;  // トレーリングストップ有効フラグ
+
+// 片側決済後の再エントリー制御用フラグと時間記録
+bool g_BuyClosedRecently = false;    // Buy側が最近決済されたフラグ
+bool g_SellClosedRecently = false;   // Sell側が最近決済されたフラグ
+datetime g_BuyClosedTime = 0;        // Buy側の決済時間
+datetime g_SellClosedTime = 0;       // Sell側の決済時間
  
  // オブジェクト関連
  string g_LineNames[10];    // ライン関連のオブジェクト名を保存する配列

@@ -414,7 +414,7 @@ double CalculateRealAveragePrice(int type)
 
 
 //+------------------------------------------------------------------+
-//| ポジション保護モードの確認関数                                     |
+//| ポジション保護モードの確認関数 - 両建て強化対応版                 |
 //+------------------------------------------------------------------+
 bool IsEntryAllowedByProtectionMode(int side)
 {
@@ -442,7 +442,60 @@ bool IsEntryAllowedByProtectionMode(int side)
    
    return true;
 }
-
+//+------------------------------------------------------------------+
+//| 決済後インターバルチェック関数                                    |
+//+------------------------------------------------------------------+
+bool IsCloseIntervalElapsed(int side)
+{
+   // 決済後インターバル機能が無効の場合は常に許可
+   if(!EnableCloseInterval || CloseInterval <= 0)
+      return true;
+      
+   datetime currentTime = TimeCurrent();
+   
+   if(side == 0) // Buy側のチェック
+   {
+      // 最近Buy側が決済されたフラグがONの場合
+      if(g_BuyClosedRecently)
+      {
+         // 経過時間を計算
+         int elapsedMinutes = (int)((currentTime - g_BuyClosedTime) / 60);
+         
+         // インターバル時間が経過していない場合
+         if(elapsedMinutes < CloseInterval)
+         {
+            Print("Buy側決済後インターバル中: 経過時間=", elapsedMinutes, "分, 設定=", CloseInterval, "分");
+            return false;
+         }
+         
+         // インターバル時間が経過したのでフラグをリセット
+         g_BuyClosedRecently = false;
+         Print("Buy側決済後インターバル終了: インターバル=", CloseInterval, "分");
+      }
+   }
+   else // Sell側のチェック
+   {
+      // 最近Sell側が決済されたフラグがONの場合
+      if(g_SellClosedRecently)
+      {
+         // 経過時間を計算
+         int elapsedMinutes = (int)((currentTime - g_SellClosedTime) / 60);
+         
+         // インターバル時間が経過していない場合
+         if(elapsedMinutes < CloseInterval)
+         {
+            Print("Sell側決済後インターバル中: 経過時間=", elapsedMinutes, "分, 設定=", CloseInterval, "分");
+            return false;
+         }
+         
+         // インターバル時間が経過したのでフラグをリセット
+         g_SellClosedRecently = false;
+         Print("Sell側決済後インターバル終了: インターバル=", CloseInterval, "分");
+      }
+   }
+   
+   return true;
+}
 //+------------------------------------------------------------------+
 //| ポジション保護モードのテキスト取得関数                             |
 //+------------------------------------------------------------------+

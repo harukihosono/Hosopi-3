@@ -35,7 +35,10 @@ input double LotMultiplier = 1.8;           // LOT倍率（小数第三位で繰
 sinput string Comment_Interval = ""; //+--- ナンピンインターバル設定 ---+
 input int NanpinInterval = 0;             // ナンピンインターバル(Minutes)
 
-
+// ======== 決済後インターバル設定 ========
+sinput string Comment_CloseInterval = ""; //+--- 決済後インターバル設定 ---+
+input bool EnableCloseInterval = false;     // 決済後インターバル機能を有効化
+input int CloseInterval = 30;               // 決済後インターバル（Minutes）
 
 
 //+------------------------------------------------------------------+

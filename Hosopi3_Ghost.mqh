@@ -1970,7 +1970,12 @@ void ProcessGhostEntries(int side)
       Print("ProcessGhostEntries: ポジション保護モードにより", direction, "側はスキップします");
       return;
    }
-
+  // 決済後インターバルチェック
+  if(!IsCloseIntervalElapsed(side))
+  {
+     Print("ProcessGhostEntries: 決済後インターバル中のため", direction, "側はスキップします");
+     return;
+  }
    // ゴーストモードチェック
    if(!g_GhostMode) {
       Print("ProcessGhostEntries: ゴーストモード無効のためスキップします");
