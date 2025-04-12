@@ -37,13 +37,44 @@ double GetBidPrice()
 }
 #endif
 
+
+
+
+
+//+------------------------------------------------------------------+
+//| 有効証拠金が基準を満たしているかチェック                          |
+//+------------------------------------------------------------------+
+bool IsEquitySufficient()
+{
+   // 有効証拠金チェックが無効の場合は常にtrue
+   if(EquityControl_Active == OFF_MODE) return true;
+   
+   // 現在の有効証拠金を取得
+   double currentEquity = AccountEquity();
+   
+   // 最低有効証拠金チェック
+   if(currentEquity < MinimumEquity)
+   {
+      Print(StringFormat("エントリー停止: 有効証拠金 %.2f が最低基準 %.2f を下回りました", 
+                         currentEquity, MinimumEquity));
+      return false;
+   }
+   
+   return true;
+}
+
 //+------------------------------------------------------------------+
 //| ポジションエントリー関数                                          |
 //+------------------------------------------------------------------+
 bool position_entry(int side, double lot = 0.1, int slippage = 10, int magic = 0, string comment = "")
 {
 
+ 
+   if(!IsEquitySufficient()){return false;}
+
    if(!IsTimeAllowed(side)){return false;}
+
+
 
    if(magic == 0) magic = MagicNumber;
    

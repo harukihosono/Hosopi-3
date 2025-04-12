@@ -47,6 +47,14 @@ enum POSITION_PROTECTION_MODE
    PROTECTION_ON = 1          // 単方向のみ許可
 };
 
+//+------------------------------------------------------------------+
+//| 有効証拠金関連の設定                                              |
+//+------------------------------------------------------------------+
+sinput string Comment_Equity_Control = ""; //+--- 有効証拠金の設定 ---+
+input ON_OFF EquityControl_Active = ON_MODE;   // 有効証拠金チェックを有効にする(ON/OFF)
+input double MinimumEquity = 10000;          // 最低有効証拠金（この金額未満でエントリー停止）
+
+
 // ======== ポジション保護設定 ========
 sinput string Comment_Protection = ""; //+--- 両建て設定 ---+
 input POSITION_PROTECTION_MODE PositionProtection = PROTECTION_OFF; // 両建て設定モード
