@@ -527,8 +527,7 @@ if(Indicator_Condition_Type == AND_CONDITION)
    Print("【最終判断】 AND条件で評価: ", strategySignals ? "すべてのシグナルが成立" : "一部のシグナルが不成立");
 }
 else
-{
-   // OR条件: 少なくとも1つのインジケーターがシグナルを出した場合にtrue
+{// OR条件: 少なくとも1つのインジケーターがシグナルを出した場合にtrue
    strategySignals = (validSignals > 0);
    Print("【最終判断】 OR条件で評価: ", strategySignals ? "1つ以上のシグナルが成立" : "シグナル不成立");
 }
@@ -1276,199 +1275,199 @@ bool CheckStochasticSignal(int side)
       switch(Stoch_Sell_Signal)
         {
          case STOCH_OVERBOUGHT: // 買われすぎ
-            signal = (k_current > Stoch_Overbought);
-            break;
+         signal = (k_current > Stoch_Overbought);
+         break;
 
-         case STOCH_K_CROSS_D_OVERBOUGHT: // %Kが%Dを下抜け（買われすぎ）
-            signal = (k_prev > d_prev && k_current < d_current && k_prev > Stoch_Overbought);
-            break;
+      case STOCH_K_CROSS_D_OVERBOUGHT: // %Kが%Dを下抜け（買われすぎ）
+         signal = (k_prev > d_prev && k_current < d_current && k_prev > Stoch_Overbought);
+         break;
 
-         case STOCH_OVERBOUGHT_EXIT: // 買われすぎから脱出
-            signal = (k_prev > Stoch_Overbought && k_current <= Stoch_Overbought);
-            break;
+      case STOCH_OVERBOUGHT_EXIT: // 買われすぎから脱出
+         signal = (k_prev > Stoch_Overbought && k_current <= Stoch_Overbought);
+         break;
 
-         case STOCH_OVERSOLD: // 売られすぎ
-            signal = (k_current < Stoch_Oversold);
-            break;
+      case STOCH_OVERSOLD: // 売られすぎ
+         signal = (k_current < Stoch_Oversold);
+         break;
 
-         case STOCH_K_CROSS_D_OVERSOLD: // %Kが%Dを上抜け（売られすぎ）
-            signal = (k_prev < d_prev && k_current > d_current && k_prev < Stoch_Oversold);
-            break;
+      case STOCH_K_CROSS_D_OVERSOLD: // %Kが%Dを上抜け（売られすぎ）
+         signal = (k_prev < d_prev && k_current > d_current && k_prev < Stoch_Oversold);
+         break;
 
-         case STOCH_OVERSOLD_EXIT: // 売られすぎから脱出
-            signal = (k_prev < Stoch_Oversold && k_current >= Stoch_Oversold);
-            break;
-        }
-
-      // 取引方向に基づいて判断
-      return (Stoch_Sell_Direction == TREND_FOLLOWING) ? signal : !signal;
+      case STOCH_OVERSOLD_EXIT: // 売られすぎから脱出
+         signal = (k_prev < Stoch_Oversold && k_current >= Stoch_Oversold);
+         break;
      }
 
-   return false;
+   // 取引方向に基づいて判断
+   return (Stoch_Sell_Direction == TREND_FOLLOWING) ? signal : !signal;
   }
+
+return false;
+}
 
 //+------------------------------------------------------------------+
 //| CCI戦略のシグナル判断                                            |
 //+------------------------------------------------------------------+
 bool CheckCCISignal(int side)
-  {
-   if(CCI_Entry_Strategy == CCI_ENTRY_DISABLED)
-      return false;
+{
+if(CCI_Entry_Strategy == CCI_ENTRY_DISABLED)
+   return false;
 
 // 時間足を考慮したCCI値の取得
-   double cci_current = iCCI(Symbol(), CCI_Timeframe, CCI_Period, CCI_Price, CCI_Signal_Shift);
-   double cci_prev = iCCI(Symbol(), CCI_Timeframe, CCI_Period, CCI_Price, CCI_Signal_Shift + 1);
+double cci_current = iCCI(Symbol(), CCI_Timeframe, CCI_Period, CCI_Price, CCI_Signal_Shift);
+double cci_prev = iCCI(Symbol(), CCI_Timeframe, CCI_Period, CCI_Price, CCI_Signal_Shift + 1);
 
 // BUYシグナル
-   if(side == 0)
+if(side == 0)
+  {
+   if(CCI_Buy_Signal == 0)
+      return false;
+
+   bool signal = false;
+
+   switch(CCI_Buy_Signal)
      {
-      if(CCI_Buy_Signal == 0)
-         return false;
+      case CCI_OVERSOLD: // 売られすぎ
+         signal = (cci_current < CCI_Oversold);
+         break;
 
-      bool signal = false;
+      case CCI_OVERSOLD_EXIT: // 売られすぎから回復
+         signal = (cci_prev < CCI_Oversold && cci_current >= CCI_Oversold);
+         break;
 
-      switch(CCI_Buy_Signal)
-        {
-         case CCI_OVERSOLD: // 売られすぎ
-            signal = (cci_current < CCI_Oversold);
-            break;
+      case CCI_OVERBOUGHT: // 買われすぎ
+         signal = (cci_current > CCI_Overbought);
+         break;
 
-         case CCI_OVERSOLD_EXIT: // 売られすぎから回復
-            signal = (cci_prev < CCI_Oversold && cci_current >= CCI_Oversold);
-            break;
-
-         case CCI_OVERBOUGHT: // 買われすぎ
-            signal = (cci_current > CCI_Overbought);
-            break;
-
-         case CCI_OVERBOUGHT_EXIT: // 買われすぎから下落
-            signal = (cci_prev > CCI_Overbought && cci_current <= CCI_Overbought);
-            break;
-        }
-
-      // 取引方向に基づいて判断
-      return (CCI_Buy_Direction == TREND_FOLLOWING) ? signal : !signal;
-     }
-// SELLシグナル
-   else
-     {
-      if(CCI_Sell_Signal == 0)
-         return false;
-
-      bool signal = false;
-
-      switch(CCI_Sell_Signal)
-        {
-         case CCI_OVERBOUGHT: // 買われすぎ
-            signal = (cci_current > CCI_Overbought);
-            break;
-
-         case CCI_OVERBOUGHT_EXIT: // 買われすぎから下落
-            signal = (cci_prev > CCI_Overbought && cci_current <= CCI_Overbought);
-            break;
-
-         case CCI_OVERSOLD: // 売られすぎ
-            signal = (cci_current < CCI_Oversold);
-            break;
-
-         case CCI_OVERSOLD_EXIT: // 売られすぎから回復
-            signal = (cci_prev < CCI_Oversold && cci_current >= CCI_Oversold);
-            break;
-        }
-
-      // 取引方向に基づいて判断
-      return (CCI_Sell_Direction == TREND_FOLLOWING) ? signal : !signal;
+      case CCI_OVERBOUGHT_EXIT: // 買われすぎから下落
+         signal = (cci_prev > CCI_Overbought && cci_current <= CCI_Overbought);
+         break;
      }
 
-   return false;
+   // 取引方向に基づいて判断
+   return (CCI_Buy_Direction == TREND_FOLLOWING) ? signal : !signal;
   }
+// SELLシグナル
+else
+  {
+   if(CCI_Sell_Signal == 0)
+      return false;
+
+   bool signal = false;
+
+   switch(CCI_Sell_Signal)
+     {
+      case CCI_OVERBOUGHT: // 買われすぎ
+         signal = (cci_current > CCI_Overbought);
+         break;
+
+      case CCI_OVERBOUGHT_EXIT: // 買われすぎから下落
+         signal = (cci_prev > CCI_Overbought && cci_current <= CCI_Overbought);
+         break;
+
+      case CCI_OVERSOLD: // 売られすぎ
+         signal = (cci_current < CCI_Oversold);
+         break;
+
+      case CCI_OVERSOLD_EXIT: // 売られすぎから回復
+         signal = (cci_prev < CCI_Oversold && cci_current >= CCI_Oversold);
+         break;
+     }
+
+   // 取引方向に基づいて判断
+   return (CCI_Sell_Direction == TREND_FOLLOWING) ? signal : !signal;
+  }
+
+return false;
+}
 
 //+------------------------------------------------------------------+
 //| ADX/DMI戦略のシグナル判断                                        |
 //+------------------------------------------------------------------+
 bool CheckADXSignal(int side)
-  {
-   if(ADX_Entry_Strategy == ADX_ENTRY_DISABLED)
-      return false;
+{
+if(ADX_Entry_Strategy == ADX_ENTRY_DISABLED)
+   return false;
 
 // 時間足を考慮したADX値の取得
-   double adx = iADX(Symbol(), ADX_Timeframe, ADX_Period, PRICE_CLOSE, MODE_MAIN, ADX_Signal_Shift);
-   double plus_di = iADX(Symbol(), ADX_Timeframe, ADX_Period, PRICE_CLOSE, MODE_PLUSDI, ADX_Signal_Shift);
-   double minus_di = iADX(Symbol(), ADX_Timeframe, ADX_Period, PRICE_CLOSE, MODE_MINUSDI, ADX_Signal_Shift);
-   double plus_di_prev = iADX(Symbol(), ADX_Timeframe, ADX_Period, PRICE_CLOSE, MODE_PLUSDI, ADX_Signal_Shift + 1);
-   double minus_di_prev = iADX(Symbol(), ADX_Timeframe, ADX_Period, PRICE_CLOSE, MODE_MINUSDI, ADX_Signal_Shift + 1);
+double adx = iADX(Symbol(), ADX_Timeframe, ADX_Period, PRICE_CLOSE, MODE_MAIN, ADX_Signal_Shift);
+double plus_di = iADX(Symbol(), ADX_Timeframe, ADX_Period, PRICE_CLOSE, MODE_PLUSDI, ADX_Signal_Shift);
+double minus_di = iADX(Symbol(), ADX_Timeframe, ADX_Period, PRICE_CLOSE, MODE_MINUSDI, ADX_Signal_Shift);
+double plus_di_prev = iADX(Symbol(), ADX_Timeframe, ADX_Period, PRICE_CLOSE, MODE_PLUSDI, ADX_Signal_Shift + 1);
+double minus_di_prev = iADX(Symbol(), ADX_Timeframe, ADX_Period, PRICE_CLOSE, MODE_MINUSDI, ADX_Signal_Shift + 1);
 
 // BUYシグナル
-   if(side == 0)
+if(side == 0)
+  {
+   if(ADX_Buy_Signal == 0)
+      return false;
+
+   bool signal = false;
+
+   switch(ADX_Buy_Signal)
      {
-      if(ADX_Buy_Signal == 0)
-         return false;
+      case ADX_PLUS_DI_CROSS_MINUS_DI: // +DIが-DIを上抜け
+         signal = (plus_di_prev < minus_di_prev && plus_di > minus_di);
+         break;
 
-      bool signal = false;
+      case ADX_STRONG_TREND_PLUS_DI: // 強いトレンドで+DI > -DI
+         signal = (adx > ADX_Threshold && plus_di > minus_di);
+         break;
 
-      switch(ADX_Buy_Signal)
-        {
-         case ADX_PLUS_DI_CROSS_MINUS_DI: // +DIが-DIを上抜け
-            signal = (plus_di_prev < minus_di_prev && plus_di > minus_di);
-            break;
+      case ADX_MINUS_DI_CROSS_PLUS_DI: // -DIが+DIを上抜け
+         signal = (minus_di_prev < plus_di_prev && minus_di > plus_di);
+         break;
 
-         case ADX_STRONG_TREND_PLUS_DI: // 強いトレンドで+DI > -DI
-            signal = (adx > ADX_Threshold && plus_di > minus_di);
-            break;
-
-         case ADX_MINUS_DI_CROSS_PLUS_DI: // -DIが+DIを上抜け
-            signal = (minus_di_prev < plus_di_prev && minus_di > plus_di);
-            break;
-
-         case ADX_STRONG_TREND_MINUS_DI: // 強いトレンドで-DI > +DI
-            signal = (adx > ADX_Threshold && minus_di > plus_di);
-            break;
-        }
-
-      // 取引方向に基づいて判断
-      return (ADX_Buy_Direction == TREND_FOLLOWING) ? signal : !signal;
+      case ADX_STRONG_TREND_MINUS_DI: // 強いトレンドで-DI > +DI
+         signal = (adx > ADX_Threshold && minus_di > plus_di);
+         break;
      }
+
+   // 取引方向に基づいて判断
+   return (ADX_Buy_Direction == TREND_FOLLOWING) ? signal : !signal;
+  }
 // SELLシグナル
-   else
+else
+  {
+   if(ADX_Sell_Signal == 0)
+      return false;
+
+   bool signal = false;
+
+   switch(ADX_Sell_Signal)
      {
-      if(ADX_Sell_Signal == 0)
-         return false;
+      case ADX_MINUS_DI_CROSS_PLUS_DI: // -DIが+DIを上抜け
+         signal = (minus_di_prev < plus_di_prev && minus_di > plus_di);
+         break;
 
-      bool signal = false;
+      case ADX_STRONG_TREND_MINUS_DI: // 強いトレンドで-DI > +DI
+         signal = (adx > ADX_Threshold && minus_di > plus_di);
+         break;
 
-      switch(ADX_Sell_Signal)
-        {
-         case ADX_MINUS_DI_CROSS_PLUS_DI: // -DIが+DIを上抜け
-            signal = (minus_di_prev < plus_di_prev && minus_di > plus_di);
-            break;
+      case ADX_PLUS_DI_CROSS_MINUS_DI: // +DIが-DIを上抜け
+         signal = (plus_di_prev < minus_di_prev && plus_di > minus_di);
+         break;
 
-         case ADX_STRONG_TREND_MINUS_DI: // 強いトレンドで-DI > +DI
-            signal = (adx > ADX_Threshold && minus_di > plus_di);
-            break;
-
-         case ADX_PLUS_DI_CROSS_MINUS_DI: // +DIが-DIを上抜け
-            signal = (plus_di_prev < minus_di_prev && plus_di > minus_di);
-            break;
-
-         case ADX_STRONG_TREND_PLUS_DI: // 強いトレンドで+DI > +DI
-            signal = (adx > ADX_Threshold && plus_di > minus_di);
-            break;
-        }
-
-      // 取引方向に基づいて判断
-      return (ADX_Sell_Direction == TREND_FOLLOWING) ? signal : !signal;
+      case ADX_STRONG_TREND_PLUS_DI: // 強いトレンドで+DI > +DI
+         signal = (adx > ADX_Threshold && plus_di > minus_di);
+         break;
      }
 
-   return false;
+   // 取引方向に基づいて判断
+   return (ADX_Sell_Direction == TREND_FOLLOWING) ? signal : !signal;
   }
 
-  //+------------------------------------------------------------------+
+return false;
+}
+
+//+------------------------------------------------------------------+
 //| 戦略評価 - ProcessGhostEntries関数用のインターフェース            |
 //+------------------------------------------------------------------+
 bool ShouldProcessGhostEntry(int side)
 {
 // ProcessGhostEntries関数から呼び出されるエントリー評価関数
- return EvaluateStrategyForEntry(side);
+return EvaluateStrategyForEntry(side);
 }
 
 //+------------------------------------------------------------------+
@@ -1477,7 +1476,7 @@ bool ShouldProcessGhostEntry(int side)
 bool ShouldProcessRealEntry(int side)
 {
 // ProcessRealEntries関数から呼び出されるエントリー評価関数
- return EvaluateStrategyForEntry(side);
+return EvaluateStrategyForEntry(side);
 }
 
 //+------------------------------------------------------------------+
@@ -1485,16 +1484,16 @@ bool ShouldProcessRealEntry(int side)
 //+------------------------------------------------------------------+
 bool CheckIndicatorSignals(int side)
 {
-   // どれか1つでもシグナルがあればtrue
-   return (ConstantEntryStrategy != CONSTANT_ENTRY_DISABLED && CheckConstantEntryStrategy(side)) ||
-          (MA_Entry_Strategy == MA_ENTRY_ENABLED && CheckMASignal(side)) ||
-          (RSI_Entry_Strategy == RSI_ENTRY_ENABLED && CheckRSISignal(side)) ||
-          (BB_Entry_Strategy == BB_ENTRY_ENABLED && CheckBollingerSignal(side)) ||
-          (RCI_Entry_Strategy == RCI_ENTRY_ENABLED && CheckRCISignal(side)) ||
-          (Stoch_Entry_Strategy == STOCH_ENTRY_ENABLED && CheckStochasticSignal(side)) ||
-          (CCI_Entry_Strategy == CCI_ENTRY_ENABLED && CheckCCISignal(side)) ||
-          (ADX_Entry_Strategy == ADX_ENTRY_ENABLED && CheckADXSignal(side)) ||
-          (EvenOdd_Entry_Strategy != EVEN_ODD_DISABLED && CheckEvenOddStrategy(side));
+// どれか1つでもシグナルがあればtrue
+return (ConstantEntryStrategy != CONSTANT_ENTRY_DISABLED && CheckConstantEntryStrategy(side)) ||
+       (MA_Entry_Strategy == MA_ENTRY_ENABLED && CheckMASignal(side)) ||
+       (RSI_Entry_Strategy == RSI_ENTRY_ENABLED && CheckRSISignal(side)) ||
+       (BB_Entry_Strategy == BB_ENTRY_ENABLED && CheckBollingerSignal(side)) ||
+       (RCI_Entry_Strategy == RCI_ENTRY_ENABLED && CheckRCISignal(side)) ||
+       (Stoch_Entry_Strategy == STOCH_ENTRY_ENABLED && CheckStochasticSignal(side)) ||
+       (CCI_Entry_Strategy == CCI_ENTRY_ENABLED && CheckCCISignal(side)) ||
+       (ADX_Entry_Strategy == ADX_ENTRY_ENABLED && CheckADXSignal(side)) ||
+       (EvenOdd_Entry_Strategy != EVEN_ODD_DISABLED && CheckEvenOddStrategy(side));
 }
 
 
@@ -1503,35 +1502,35 @@ bool CheckIndicatorSignals(int side)
 //+------------------------------------------------------------------+
 string GetStrategyDetails(int side)
 {
-   // side: 0 = Buy, 1 = Sell
-   string typeStr = (side == 0) ? "Buy" : "Sell";
-   string strategyDetails = "【" + typeStr + " 戦略シグナル詳細】\n";
+// side: 0 = Buy, 1 = Sell
+string typeStr = (side == 0) ? "Buy" : "Sell";
+string strategyDetails = "【" + typeStr + " 戦略シグナル詳細】\n";
 
-   // 【セクション: ポジション保護】
-   strategyDetails += "【ポジション保護】: " + GetProtectionModeText() + "\n";
+// 【セクション: ポジション保護】
+strategyDetails += "【ポジション保護】: " + GetProtectionModeText() + "\n";
 
-   // 【セクション: 常時エントリー】 - 新規追加
-   if(ConstantEntryStrategy != CONSTANT_ENTRY_DISABLED)
-   {
-      bool constantSignal = CheckConstantEntryStrategy(side);
-      
-      // 前回のエントリー時間を取得
-      datetime lastEntryTime = (side == 0) ? g_LastConstantLongEntryTime : g_LastConstantShortEntryTime;
-      string lastEntryTimeStr = (lastEntryTime > 0) ? 
-                               TimeToString(lastEntryTime, TIME_DATE|TIME_MINUTES) : 
-                               "なし";
-      
+// 【セクション: 常時エントリー】 - 新規追加
+if(ConstantEntryStrategy != CONSTANT_ENTRY_DISABLED)
+{
+   bool constantSignal = CheckConstantEntryStrategy(side);
+   
+   // 前回のエントリー時間を取得
+   datetime lastEntryTime = (side == 0) ? g_LastConstantLongEntryTime : g_LastConstantShortEntryTime;
+   string lastEntryTimeStr = (lastEntryTime > 0) ? 
+                            TimeToString(lastEntryTime, TIME_DATE|TIME_MINUTES) : 
+                            "なし";
+   
 // インターバル情報
 string intervalInfo = "";
 if(ConstantEntryInterval > 0)
 {
-   datetime nextEntryTime = lastEntryTime + ConstantEntryInterval * 60;
-   intervalInfo = ", 次回可能時間: " + TimeToString(nextEntryTime, TIME_DATE|TIME_MINUTES);
+datetime nextEntryTime = lastEntryTime + ConstantEntryInterval * 60;
+intervalInfo = ", 次回可能時間: " + TimeToString(nextEntryTime, TIME_DATE|TIME_MINUTES);
 }
 
 strategyDetails += "【常時エントリー】: " + (constantSignal ? "シグナルあり" : "シグナルなし") +
-                 " (モード: " + GetConstantEntryStrategyState() + 
-                 ", 前回: " + lastEntryTimeStr + intervalInfo + ")\n";
+              " (モード: " + GetConstantEntryStrategyState() + 
+              ", 前回: " + lastEntryTimeStr + intervalInfo + ")\n";
 }
 
 // 【セクション: MAクロス】
@@ -1543,18 +1542,18 @@ bool maSignal = CheckMASignal(side);
 double fastMA_current, slowMA_current;
 if(side == 0)
 {
-   fastMA_current = iMA(Symbol(), MA_Timeframe, MA_Buy_Fast_Period, 0, MA_Method, MA_Price, MA_Cross_Shift);
-   slowMA_current = iMA(Symbol(), MA_Timeframe, MA_Buy_Slow_Period, 0, MA_Method, MA_Price, MA_Cross_Shift);
+fastMA_current = iMA(Symbol(), MA_Timeframe, MA_Buy_Fast_Period, 0, MA_Method, MA_Price, MA_Cross_Shift);
+slowMA_current = iMA(Symbol(), MA_Timeframe, MA_Buy_Slow_Period, 0, MA_Method, MA_Price, MA_Cross_Shift);
 }
 else
 {
-   fastMA_current = iMA(Symbol(), MA_Timeframe, MA_Sell_Fast_Period, 0, MA_Method, MA_Price, MA_Cross_Shift);
-   slowMA_current = iMA(Symbol(), MA_Timeframe, MA_Sell_Slow_Period, 0, MA_Method, MA_Price, MA_Cross_Shift);
+fastMA_current = iMA(Symbol(), MA_Timeframe, MA_Sell_Fast_Period, 0, MA_Method, MA_Price, MA_Cross_Shift);
+slowMA_current = iMA(Symbol(), MA_Timeframe, MA_Sell_Slow_Period, 0, MA_Method, MA_Price, MA_Cross_Shift);
 }
 
 strategyDetails += "【MAクロス】: " + (maSignal ? "シグナルあり" : "シグナルなし") +
-                 " (短期MA=" + DoubleToString(fastMA_current, Digits) +
-                 ", 長期MA=" + DoubleToString(slowMA_current, Digits) + ")\n";
+              " (短期MA=" + DoubleToString(fastMA_current, Digits) +
+              ", 長期MA=" + DoubleToString(slowMA_current, Digits) + ")\n";
 }
 
 // 【セクション: RSI】
@@ -1565,9 +1564,9 @@ bool rsiSignal = CheckRSISignal(side);
 // RSI値の取得
 double rsi_current = iRSI(Symbol(), RSI_Timeframe, RSI_Period, RSI_Price, RSI_Signal_Shift);
 strategyDetails += "【RSI】: " + (rsiSignal ? "シグナルあり" : "シグナルなし") +
-                 " (値=" + DoubleToString(rsi_current, 2) +
-                 ", 買われすぎ=" + IntegerToString(RSI_Overbought) +
-                 ", 売られすぎ=" + IntegerToString(RSI_Oversold) + ")\n";
+              " (値=" + DoubleToString(rsi_current, 2) +
+              ", 買われすぎ=" + IntegerToString(RSI_Overbought) +
+              ", 売られすぎ=" + IntegerToString(RSI_Oversold) + ")\n";
 }
 
 // 【セクション: ボリンジャーバンド】
@@ -1582,10 +1581,10 @@ double lower = iBands(Symbol(), BB_Timeframe, BB_Period, BB_Deviation, 0, BB_Pri
 double close = iClose(Symbol(), BB_Timeframe, BB_Signal_Shift);
 
 strategyDetails += "【ボリンジャーバンド】: " + (bbSignal ? "シグナルあり" : "シグナルなし") +
-                 " (上=" + DoubleToString(upper, Digits) +
-                 ", 中=" + DoubleToString(middle, Digits) +
-                 ", 下=" + DoubleToString(lower, Digits) +
-                 ", 終値=" + DoubleToString(close, Digits) + ")\n";
+              " (上=" + DoubleToString(upper, Digits) +
+              ", 中=" + DoubleToString(middle, Digits) +
+              ", 下=" + DoubleToString(lower, Digits) +
+              ", 終値=" + DoubleToString(close, Digits) + ")\n";
 }
 
 // 【セクション: RCI】
@@ -1596,8 +1595,8 @@ bool rciSignal = CheckRCISignal(side);
 // RCI値の取得
 double rci_current = CalculateRCI(RCI_Period, RCI_Signal_Shift, RCI_Timeframe);
 strategyDetails += "【RCI】: " + (rciSignal ? "シグナルあり" : "シグナルなし") +
-                 " (値=" + DoubleToString(rci_current, 2) +
-                 ", しきい値=" + IntegerToString(RCI_Threshold) + ")\n";
+              " (値=" + DoubleToString(rci_current, 2) +
+              ", しきい値=" + IntegerToString(RCI_Threshold) + ")\n";
 }
 
 // 【セクション: ストキャスティクス】
@@ -1607,17 +1606,17 @@ bool stochSignal = CheckStochasticSignal(side);
 
 // ストキャスティクス値の取得
 double k_current = iStochastic(Symbol(), Stoch_Timeframe, Stoch_K_Period, Stoch_D_Period,
-                             Stoch_Slowing, Stoch_Method, Stoch_Price_Field,
-                             MODE_MAIN, Stoch_Signal_Shift);
+                          Stoch_Slowing, Stoch_Method, Stoch_Price_Field,
+                          MODE_MAIN, Stoch_Signal_Shift);
 double d_current = iStochastic(Symbol(), Stoch_Timeframe, Stoch_K_Period, Stoch_D_Period,
-                             Stoch_Slowing, Stoch_Method, Stoch_Price_Field,
-                             MODE_SIGNAL, Stoch_Signal_Shift);
+                          Stoch_Slowing, Stoch_Method, Stoch_Price_Field,
+                          MODE_SIGNAL, Stoch_Signal_Shift);
 
 strategyDetails += "【ストキャスティクス】: " + (stochSignal ? "シグナルあり" : "シグナルなし") +
-                 " (K=" + DoubleToString(k_current, 2) +
-                 ", D=" + DoubleToString(d_current, 2) +
-                 ", 買われすぎ=" + IntegerToString(Stoch_Overbought) +
-                 ", 売られすぎ=" + IntegerToString(Stoch_Oversold) + ")\n";
+              " (K=" + DoubleToString(k_current, 2) +
+              ", D=" + DoubleToString(d_current, 2) +
+              ", 買われすぎ=" + IntegerToString(Stoch_Overbought) +
+              ", 売られすぎ=" + IntegerToString(Stoch_Oversold) + ")\n";
 }
 
 // 【セクション: CCI】
@@ -1628,9 +1627,9 @@ bool cciSignal = CheckCCISignal(side);
 // CCI値の取得
 double cci_current = iCCI(Symbol(), CCI_Timeframe, CCI_Period, CCI_Price, CCI_Signal_Shift);
 strategyDetails += "【CCI】: " + (cciSignal ? "シグナルあり" : "シグナルなし") +
-                 " (値=" + DoubleToString(cci_current, 2) +
-                 ", 買われすぎ=" + IntegerToString(CCI_Overbought) +
-                 ", 売られすぎ=" + IntegerToString(CCI_Oversold) + ")\n";
+              " (値=" + DoubleToString(cci_current, 2) +
+              ", 買われすぎ=" + IntegerToString(CCI_Overbought) +
+              ", 売られすぎ=" + IntegerToString(CCI_Oversold) + ")\n";
 }
 
 // 【セクション: ADX/DMI】
@@ -1661,35 +1660,34 @@ int current_hour = TimeHour(current_time);
 bool is_even_hour = (current_hour % 2 == 0);
 
 strategyDetails += "【偶数/奇数時間】: " + (evenOddSignal ? "シグナルあり" : "シグナルなし") +
-      " (現在時間=" + IntegerToString(current_hour) + "時" +
-      ", " + (is_even_hour ? "偶数時間" : "奇数時間") + 
-      ", モード=" + GetEvenOddStrategyState() + ")\n";
+   " (現在時間=" + IntegerToString(current_hour) + "時" +
+   ", " + (is_even_hour ? "偶数時間" : "奇数時間") + 
+   ", モード=" + GetEvenOddStrategyState() + ")\n";
 }
 
 return strategyDetails;
 }
 
 
-//+------------------------------------------------------------------+
-//| ProcessStrategyLogic関数 - ポジション保護対応                     |
-//+------------------------------------------------------------------+
+// 3. ProcessStrategyLogic関数の修正
+
 void ProcessStrategyLogic()
 {
-// 【セクション: 自動売買チェック】
+   // 【セクション: 自動売買チェック】
    if(!EnableAutomaticTrading)
    {
       Print("【自動売買チェック】: 自動売買が無効のためスキップします");
       return;
    }
 
-// 【セクション: ポジション状態確認】
+   // 【セクション: ポジション状態確認】
    bool hasRealBuy = position_count(OP_BUY) > 0;
    bool hasRealSell = position_count(OP_SELL) > 0;
 
-// 【セクション: ゴーストモード設定】
+   // 【セクション: ゴーストモード設定】
    bool useGhostMode = (NanpinSkipLevel != SKIP_NONE) && g_GhostMode;
 
-// ゴーストエントリー機能がOFFの場合はゴーストモードを無効化
+   // ゴーストエントリー機能がOFFの場合はゴーストモードを無効化
    if(!EnableGhostEntry)
    {
       useGhostMode = false;
@@ -1698,7 +1696,7 @@ void ProcessStrategyLogic()
    Print("【ポジション状態】: リアルポジション状況 - Buy=", hasRealBuy, ", Sell=", hasRealSell);
    Print("【ゴーストモード】: 設定=", useGhostMode ? "有効" : "無効", ", NanpinSkipLevel=", EnumToString(NanpinSkipLevel));
 
-// 【セクション: 既存ポジションの管理】
+   // 【セクション: 既存ポジションの管理】
    if(hasRealBuy || hasRealSell)
    {
       // ナンピン機能が有効な場合のみナンピン条件をチェック
@@ -1762,6 +1760,35 @@ void ProcessStrategyLogic()
          g_UseEvenOddHoursEntry = false;
       }
 
+      // ======= 修正: この部分を削除またはコメントアウト =======
+      // Buyゴーストチェック
+      // int buyGhostCount = ghost_position_count(OP_BUY);
+      // if(buyGhostCount >= (int)NanpinSkipLevel && buyGhostCount > 0 && position_count(OP_BUY) == 0)
+      // {
+      //    Print("【ゴースト→リアル切替】: Buyゴーストカウント(", buyGhostCount, ")がスキップレベル(", (int)NanpinSkipLevel, ")に達しました - リアルに切替");
+      //    // エントリーモードをチェック
+      //    if(EntryMode == MODE_BUY_ONLY || EntryMode == MODE_BOTH)
+      //    {
+      //       // リアルエントリーを実行
+      //       ExecuteRealEntry(OP_BUY, "ゴーストスキップレベル到達によるリアルエントリー");
+      //       // 修正: ゴーストをリセットしない
+      //    }
+      // }
+      // 
+      // // Sellゴーストチェック
+      // int sellGhostCount = ghost_position_count(OP_SELL);
+      // if(sellGhostCount >= (int)NanpinSkipLevel && sellGhostCount > 0 && position_count(OP_SELL) == 0)
+      // {
+      //    Print("【ゴースト→リアル切替】: Sellゴーストカウント(", sellGhostCount, ")がスキップレベル(", (int)NanpinSkipLevel, ")に達しました - リアルに切替");
+      //    // エントリーモードをチェック
+      //    if(EntryMode == MODE_SELL_ONLY || EntryMode == MODE_BOTH)
+      //    {
+      //       // リアルエントリーを実行
+      //       ExecuteRealEntry(OP_SELL, "ゴーストスキップレベル到達によるリアルエントリー");
+      //       // 修正: ゴーストをリセットしない
+      //    }
+      // }
+
       // ゴーストモードがONの場合
       if(useGhostMode && EnableGhostEntry)
       {
@@ -1795,139 +1822,15 @@ void ProcessStrategyLogic()
 }
 
 
-
-
-
-
-
-
-
-
-
-
-//+------------------------------------------------------------------+
-//| IsEntryAllowedByProtectionMode - ポジションの保護モードをチェック  |
-//+------------------------------------------------------------------+
-bool IsEntryAllowedByProtectionMode(int side)
-{
-   // 保護モードが無効の場合は常に許可
-   if(PositionProtection == PROTECTION_OFF)
-      return true;
-      
-   // 保護モードが有効の場合
-   int buyCount = position_count(OP_BUY);
-   int sellCount = position_count(OP_SELL);
-   
-   // BUYエントリーの場合：SELLポジションがあれば拒否
-   if(side == 0 && sellCount > 0)
-   {
-      Print("【ポジション保護】: SELLポジションが存在するため、BUYエントリーを禁止します");
-      return false;
-   }
-   
-   // SELLエントリーの場合：BUYポジションがあれば拒否
-   if(side == 1 && buyCount > 0)
-   {
-      Print("【ポジション保護】: BUYポジションが存在するため、SELLエントリーを禁止します");
-      return false;
-   }
-   
-   return true;
-}
-
-//+------------------------------------------------------------------+
-//| GetProtectionModeText - 保護モードの状態をテキストで取得          |
-//+------------------------------------------------------------------+
-string GetProtectionModeText()
-{
-   if(PositionProtection == PROTECTION_OFF)
-      return "両建て許可";
-   else
-      return "単方向のみ";
-}
-
-
-
-//+------------------------------------------------------------------+
-//| ProcessRealEntries関数 - ポジション保護対応                       |
-//+------------------------------------------------------------------+
-void ProcessRealEntries(int side)
-{
-   string direction = (side == 0) ? "Buy" : "Sell";
-   Print("ProcessRealEntries: ", direction, " 処理開始");
-
-   // リアルポジションがある場合はスキップ
-   int operationType = (side == 0) ? OP_BUY : OP_SELL;
-   int existingCount = position_count(operationType);
-
-   if(existingCount > 0)
-   {
-      Print("既に", direction, "リアルポジションが存在するため、リアルエントリーはスキップされました: ", existingCount, "ポジション");
-      return;
-   }
-
-   // ポジション保護モードのチェック - 新規追加
-   if(!IsEntryAllowedByProtectionMode(side))
-   {
-      Print("ProcessRealEntries: ポジション保護モードにより", direction, "側はスキップします");
-      return;
-   }
-
-   // エントリーモードに基づくチェック
-   bool modeAllowed = false;
-   if(side == 0) // Buy
-      modeAllowed = (EntryMode == MODE_BUY_ONLY || EntryMode == MODE_BOTH);
-   else // Sell
-      modeAllowed = (EntryMode == MODE_SELL_ONLY || EntryMode == MODE_BOTH);
-
-   if(!modeAllowed)
-   {
-      Print("ProcessRealEntries: エントリーモードにより", direction, "側はスキップします");
-      return;
-   }
-
-   Print("ProcessRealEntries: ", direction, " エントリーモードチェック通過");
-
-   // 戦略評価
-   bool shouldEnter = EvaluateStrategyForEntry(side);
-
-   Print("ProcessRealEntries: 最終エントリー判断: ", shouldEnter ? "エントリー実行" : "エントリーなし");
-
-   // エントリー条件を満たしていれば新規エントリー
-   if(shouldEnter)
-   {
-      // スプレッドチェック
-      double spreadPoints = (GetAskPrice() - GetBidPrice()) / Point;
-      if(spreadPoints <= MaxSpreadPoints || MaxSpreadPoints <= 0)
-      {
-         Print("ProcessRealEntries: リアル", direction, "エントリー実行");
-
-         // リアルエントリー実行
-         ExecuteRealEntry(operationType, "戦略シグナル");
-      }
-      else
-      {
-         Print("ProcessRealEntries: スプレッドが大きすぎるため、リアル", direction, "エントリーをスキップしました: ",
-               spreadPoints, " > ", MaxSpreadPoints);
-      }
-   }
-   else
-   {
-      Print("ProcessRealEntries: リアル", direction, "エントリー条件不成立のためスキップします");
-   }
-}
-
-
-
 //+------------------------------------------------------------------+
 //| 常時エントリー戦略のタイプ定義                                    |
 //+------------------------------------------------------------------+
 enum CONSTANT_ENTRY_STRATEGY_TYPE
 {
-   CONSTANT_ENTRY_DISABLED = 0,     // 無効
-   CONSTANT_ENTRY_LONG = 1,         // 常時ロングエントリー
-   CONSTANT_ENTRY_SHORT = 2,        // 常時ショートエントリー
-   CONSTANT_ENTRY_BOTH = 3          // 常時ロング＆ショート両方
+CONSTANT_ENTRY_DISABLED = 0,     // 無効
+CONSTANT_ENTRY_LONG = 1,         // 常時ロングエントリー
+CONSTANT_ENTRY_SHORT = 2,        // 常時ショートエントリー
+CONSTANT_ENTRY_BOTH = 3          // 常時ロング＆ショート両方
 };
 
 //+------------------------------------------------------------------+
@@ -1949,47 +1852,47 @@ datetime g_LastConstantShortEntryTime = 0;   // 最後のショートエント�
 //+------------------------------------------------------------------+
 bool CheckConstantEntryStrategy(int side)
 {
-   // 戦略が無効の場合はすぐに false を返す
-   if(ConstantEntryStrategy == CONSTANT_ENTRY_DISABLED)
-      return false;
-
-   // 現在時刻の取得
-   datetime currentTime = TimeCurrent();
-
-   // 前回エントリー時間の取得
-   datetime lastEntryTime = (side == 0) ? g_LastConstantLongEntryTime : g_LastConstantShortEntryTime;
-
-   // エントリー間隔チェック
-   if(ConstantEntryInterval > 0)
-   {
-      // 指定された間隔が経過していなければfalse
-      if(currentTime - lastEntryTime < ConstantEntryInterval * 60)
-      {
-         return false;
-      }
-   }
-
-   // 戦略タイプに基づいてエントリー判断
-   if(side == 0)  // ロング（Buy）
-   {
-      if(ConstantEntryStrategy == CONSTANT_ENTRY_LONG || ConstantEntryStrategy == CONSTANT_ENTRY_BOTH)
-      {
-         // エントリー時間更新
-         g_LastConstantLongEntryTime = currentTime;
-         return true;
-      }
-   }
-   else  // ショート（Sell）
-   {
-      if(ConstantEntryStrategy == CONSTANT_ENTRY_SHORT || ConstantEntryStrategy == CONSTANT_ENTRY_BOTH)
-      {
-         // エントリー時間更新
-         g_LastConstantShortEntryTime = currentTime;
-         return true;
-      }
-   }
-
+// 戦略が無効の場合はすぐに false を返す
+if(ConstantEntryStrategy == CONSTANT_ENTRY_DISABLED)
    return false;
+
+// 現在時刻の取得
+datetime currentTime = TimeCurrent();
+
+// 前回エントリー時間の取得
+datetime lastEntryTime = (side == 0) ? g_LastConstantLongEntryTime : g_LastConstantShortEntryTime;
+
+// エントリー間隔チェック
+if(ConstantEntryInterval > 0)
+{
+   // 指定された間隔が経過していなければfalse
+   if(currentTime - lastEntryTime < ConstantEntryInterval * 60)
+   {
+      return false;
+   }
+}
+
+// 戦略タイプに基づいてエントリー判断
+if(side == 0)  // ロング（Buy）
+{
+   if(ConstantEntryStrategy == CONSTANT_ENTRY_LONG || ConstantEntryStrategy == CONSTANT_ENTRY_BOTH)
+   {
+      // エントリー時間更新
+      g_LastConstantLongEntryTime = currentTime;
+      return true;
+   }
+}
+else  // ショート（Sell）
+{
+   if(ConstantEntryStrategy == CONSTANT_ENTRY_SHORT || ConstantEntryStrategy == CONSTANT_ENTRY_BOTH)
+   {
+      // エントリー時間更新
+      g_LastConstantShortEntryTime = currentTime;
+      return true;
+   }
+}
+
+return false;
 }
 
 //+------------------------------------------------------------------+
@@ -1997,30 +1900,30 @@ bool CheckConstantEntryStrategy(int side)
 //+------------------------------------------------------------------+
 string GetConstantEntryStrategyState()
 {
-   if(ConstantEntryStrategy == CONSTANT_ENTRY_DISABLED)
-      return "無効";
+if(ConstantEntryStrategy== CONSTANT_ENTRY_DISABLED)
+return "無効";
 
-   string state = "";
-   
-   switch(ConstantEntryStrategy)
-   {
-      case CONSTANT_ENTRY_LONG:
-         state = "常時ロングエントリー";
-         break;
-      case CONSTANT_ENTRY_SHORT:
-         state = "常時ショートエントリー";
-         break;
-      case CONSTANT_ENTRY_BOTH:
-         state = "常時ロング＆ショート両方";
-         break;
-      default:
-         state = "不明";
-   }
-   
-   if(ConstantEntryInterval > 0)
-      state += " (間隔: " + IntegerToString(ConstantEntryInterval) + "分)";
-   else
-      state += " (間隔制限なし)";
-      
-   return state;
+string state = "";
+
+switch(ConstantEntryStrategy)
+{
+case CONSTANT_ENTRY_LONG:
+   state = "常時ロングエントリー";
+   break;
+case CONSTANT_ENTRY_SHORT:
+   state = "常時ショートエントリー";
+   break;
+case CONSTANT_ENTRY_BOTH:
+   state = "常時ロング＆ショート両方";
+   break;
+default:
+   state = "不明";
+}
+
+if(ConstantEntryInterval > 0)
+state += " (間隔: " + IntegerToString(ConstantEntryInterval) + "分)";
+else
+state += " (間隔制限なし)";
+
+return state;
 }

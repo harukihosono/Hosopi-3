@@ -362,7 +362,7 @@ datetime GetLastEntryTime(int type)
          }
       }
    }
-   
+
    // リアルポジションがない場合や、ゴーストポジションがある場合は、ゴーストポジションの時間も確認
    if(type == OP_BUY)
    {
@@ -401,6 +401,143 @@ double CalculateRealAveragePrice(int type)
          {
             totalLots += OrderLots();
             weightedPrice += OrderOpenPrice() * OrderLots();
+         }
+      }
+   }
+
+   // 平均取得価格を計算
+   if(totalLots > 0)
+      return weightedPrice / totalLots;
+   else
+      return 0;
+}
+
+
+//+------------------------------------------------------------------+
+//| ポジション保護モードの確認関数                                     |
+//+------------------------------------------------------------------+
+bool IsEntryAllowedByProtectionMode(int side)
+{
+   // 保護モードがOFFの場合は常に許可
+   if(PositionProtection == PROTECTION_OFF)
+      return true;
+
+   // 保護モードがONの場合、反対側のポジションがあれば禁止
+   int oppositeType = (side == 0) ? OP_SELL : OP_BUY;
+   
+   // リアルポジションのチェック
+   int realCount = position_count(oppositeType);
+   
+   // ゴーストポジションのチェック
+   int ghostCount = ghost_position_count(oppositeType);
+   
+   // 反対側にポジションがある場合は禁止
+   if(realCount > 0 || ghostCount > 0)
+   {
+      Print("ポジション保護モード: ", side == 0 ? "Buy" : "Sell", 
+            " エントリーは禁止されています（反対側に", realCount + ghostCount, 
+            "ポジションあり）");
+      return false;
+   }
+   
+   return true;
+}
+
+//+------------------------------------------------------------------+
+//| ポジション保護モードのテキスト取得関数                             |
+//+------------------------------------------------------------------+
+string GetProtectionModeText()
+{
+   if(PositionProtection == PROTECTION_OFF)
+      return "両建て許可";
+   else
+      return "単方向のみ許可";
+}
+
+//+------------------------------------------------------------------+
+//| 平均取得価格計算関数 - ナンピンレベル廃止対応版                    |
+//+------------------------------------------------------------------+
+double CalculateCombinedAveragePrice(int type)
+{
+   // リアルポジションがある場合
+   int realPositionCount = position_count(type);
+   if(realPositionCount > 0)
+   {
+      // 計算モードに基づいて処理
+      if(AvgPriceCalculationMode == REAL_POSITIONS_ONLY)
+      {
+         // リアルポジションのみの平均価格を計算
+         return CalculateRealAveragePrice(type);
+      }
+   }
+
+   // 以下は元の実装と同じ（ゴーストも含めた計算）
+   double totalLots = 0;
+   double weightedPrice = 0;
+
+   // リアルポジションの合計
+   for(int i = OrdersTotal() - 1; i >= 0; i--)
+   {
+      if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+      {
+         if(OrderType() == type && OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
+         {
+            totalLots += OrderLots();
+            weightedPrice += OrderOpenPrice() * OrderLots();
+         }
+      }
+   }
+
+   // リアルポジションがない場合はゴーストポジションのみで計算
+   if(realPositionCount == 0)
+   {
+      // ゴーストポジションの合計 (有効なゴーストのみ)
+      if(type == OP_BUY)
+      {
+         for(int i = 0; i < g_GhostBuyCount; i++)
+         {
+            if(g_GhostBuyPositions[i].isGhost) // 有効なゴーストのみ
+            {
+               totalLots += g_GhostBuyPositions[i].lots;
+               weightedPrice += g_GhostBuyPositions[i].price * g_GhostBuyPositions[i].lots;
+            }
+         }
+      }
+      else // OP_SELL
+      {
+         for(int i = 0; i < g_GhostSellCount; i++)
+         {
+            if(g_GhostSellPositions[i].isGhost) // 有効なゴーストのみ
+            {
+               totalLots += g_GhostSellPositions[i].lots;
+               weightedPrice += g_GhostSellPositions[i].price * g_GhostSellPositions[i].lots;
+            }
+         }
+      }
+   }
+   // リアルポジションがあり、かつREAL_AND_GHOSTモードの場合はゴーストも含める
+   else if(AvgPriceCalculationMode == REAL_AND_GHOST)
+   {
+      if(type == OP_BUY)
+      {
+         for(int i = 0; i < g_GhostBuyCount; i++)
+         {
+            if(g_GhostBuyPositions[i].isGhost) // 有効なゴーストのみ
+            {
+               totalLots += g_GhostBuyPositions[i].lots;
+               weightedPrice += g_GhostBuyPositions[i].price * g_GhostBuyPositions[i].lots;
+            }
+         }
+      }
+      else // OP_SELL
+      {
+         for(int i = 0; i < g_GhostSellCount; i++)
+         {
+            if(g_GhostSellPositions[i].isGhost) // 有効なゴーストのみ
+            {
+               totalLots += g_GhostSellPositions[i].lots;
+               weightedPrice += g_GhostSellPositions[i].price * g_GhostSellPositions[i].lots;
+            }
          }
       }
    }

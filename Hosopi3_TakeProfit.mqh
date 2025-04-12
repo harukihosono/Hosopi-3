@@ -60,7 +60,7 @@ void CheckTrailingStopConditions(int side)
    if(positionCount <= 0)
       return;
 
-   // 平均価格を計算
+   // 平均価格を計算 - ナンピンレベル廃止対応
    double avgPrice = CalculateCombinedAveragePrice(operationType);
    if(avgPrice <= 0)
       return;
@@ -178,7 +178,7 @@ void CheckGhostTrailingStopConditions(int side)
    if(ghostCount <= 0)
       return;
 
-   // 平均価格を計算
+   // 平均価格を計算 - ナンピンレベル廃止対応
    double avgPrice = CalculateGhostAveragePrice(operationType);
    if(avgPrice <= 0)
       return;
@@ -282,7 +282,7 @@ void ManageTakeProfit(int side)
    int oppositeType = (side == 0) ? OP_SELL : OP_BUY;
    string direction = (side == 0) ? "Buy" : "Sell";
 
-   // ポジションとゴーストカウントの取得
+   // ポジションとゴーストカウントの取得 - ナンピンレベル廃止対応
    int positionCount = position_count(operationType);
    int ghostCount = ghost_position_count(operationType);
 
@@ -290,7 +290,7 @@ void ManageTakeProfit(int side)
    if(positionCount <= 0 && ghostCount <= 0)
       return;
 
-   // 平均価格を計算
+   // 平均価格を計算 - ナンピンレベル廃止対応
    double avgPrice = CalculateCombinedAveragePrice(operationType);
    if(avgPrice <= 0)
       return;
@@ -298,8 +298,9 @@ void ManageTakeProfit(int side)
    // 現在価格を取得（BuyならBid、SellならAsk）
    double currentPrice = (side == 0) ? GetBidPrice() : GetAskPrice();
 
-   // ポジション数に応じた利確幅を取得
-   int tpPoints = GetTakeProfitPointsByPositionCount(positionCount + ghostCount);
+   // ポジション数に応じた利確幅を取得 - ナンピンレベル廃止対応
+   int totalPositions = positionCount + ghostCount;
+   int tpPoints = GetTakeProfitPointsByPositionCount(totalPositions);
 
    // TP価格の計算（ロット加重平均の価格から指定ポイント離れた価格）
    double tpPrice = (side == 0) ? 

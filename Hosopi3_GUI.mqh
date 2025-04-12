@@ -1,3 +1,4 @@
+
 //+------------------------------------------------------------------+
 //|                   Hosopi 3 - GUI関連関数                         |
 //|                         Copyright 2025                           |
@@ -327,7 +328,7 @@ void UpdateGUI()
    string levelBuyBtnPrefix = g_ObjectPrefix + "btnLevelBuy";
    string levelSellBtnPrefix = g_ObjectPrefix + "btnLevelSell";
    
-   // レベルボタンのラベルを更新
+   // レベルボタンのラベルを更新 - ナンピンレベル廃止対応
    int buyLevel = ghost_position_count(OP_BUY) + 1;
    int sellLevel = ghost_position_count(OP_SELL) + 1;
    
@@ -564,7 +565,7 @@ else if(buttonName == "btnGhostSell")
 // レベル指定Buy
 else if(buttonName == "btnLevelBuy")
 {
-   // 現在のゴーストカウント+1をレベルとして使用
+   // 現在のゴーストカウント+1をレベルとして使用 - ナンピンレベル廃止対応
    int entryLevel = ghost_position_count(OP_BUY) + 1;
    Print("レベル指定Buyボタンがクリックされました: レベル", entryLevel);
    ExecuteEntryFromLevel(OP_BUY, entryLevel);
@@ -575,7 +576,7 @@ else if(buttonName == "btnLevelBuy")
 // レベル指定Sell
 else if(buttonName == "btnLevelSell")
 {
-   // 現在のゴーストカウント+1をレベルとして使用
+   // 現在のゴーストカウント+1をレベルとして使用 - ナンピンレベル廃止対応
    int entryLevel = ghost_position_count(OP_SELL) + 1;
    Print("レベル指定Sellボタンがクリックされました: レベル", entryLevel);
    ExecuteEntryFromLevel(OP_SELL, entryLevel);
@@ -715,6 +716,8 @@ ObjectSet(objectName, OBJPROP_HIDDEN, true);
 // オブジェクト名を保存
 SaveObjectName(objectName, g_LineNames, g_LineObjectCount);
 }
+
+
 
 //+------------------------------------------------------------------+
 //| 価格ラベルを作成                                                  |

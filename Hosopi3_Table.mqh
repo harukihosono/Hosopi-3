@@ -135,8 +135,11 @@ void DeletePositionTable()
    ChartRedraw(); // チャートを再描画
 }
 
+
+// Hosopi3_Table.mqh ファイルのUpdatePositionTable関数を修正
+
 //+------------------------------------------------------------------+
-//| ポジションテーブルを更新する                                       |
+//| ポジションテーブルを更新する - ロット順・タイプ別表示対応版       |
 //+------------------------------------------------------------------+
 void UpdatePositionTable()
 {
@@ -219,22 +222,193 @@ void UpdatePositionTable()
             pos.ticket = OrderTicket();
             pos.openTime = OrderOpenTime();
             pos.isGhost = false;
-            
-            // レベルを計算（単純にリアル注文の順番）
-            int orderCount = 0;
-            for(int j = OrdersTotal() - 1; j >= 0; j--) {
-               if(OrderSelect(j, SELECT_BY_POS, MODE_TRADES)) {
-                  if(OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber && OrderType() == pos.type) {
-                     if(OrderOpenTime() <= pos.openTime) orderCount++;
-                  }
-               }
-            }
-            pos.level = orderCount - 1;
+            pos.level = 0; // 一時的に0に設定、後で計算
             
             allPositions[nextIndex++] = pos;
          }
       }
    }
+   
+   // 各ポジションのレベルを計算
+   int buyCount = 0;
+   int sellCount = 0;
+   
+   for(int i = 0; i < totalPositions; i++) {
+      if(allPositions[i].type == OP_BUY) {
+         // Buy側ポジションのレベルを時系列の順番で計算
+         int orderRank = 1; // 1から始める（表示用）
+         for(int j = 0; j < totalPositions; j++) {
+            if(allPositions[j].type == OP_BUY) {
+               if(allPositions[j].openTime < allPositions[i].openTime) {
+                  orderRank++;
+               }
+            }
+         }
+         allPositions[i].level = orderRank - 1; // 0ベースに調整（内部用）
+         buyCount++;
+      } else { // OP_SELL
+         // Sell側ポジションのレベルを時系列の順番で計算
+         int orderRank = 1; // 1から始める（表示用）
+         for(int j = 0; j < totalPositions; j++) {
+            if(allPositions[j].type == OP_SELL) {
+               if(allPositions[j].openTime < allPositions[i].openTime) {
+                  orderRank++;
+               }
+            }
+         }
+         allPositions[i].level = orderRank - 1; // 0ベースに調整（内部用）
+         sellCount++;
+      }
+   }
+   
+   // 修正: ポジションを種別ごとにまとめ、ロット数で昇順ソート
+   PositionInfo sortedPositions[];
+   ArrayResize(sortedPositions, totalPositions);
+   int sortedCount = 0;
+   
+   // BUY側のゴーストポジションをロット数の昇順にソート
+   for(int i = 0; i < 100; i++) { // 安全のため十分大きな回数を使用
+      double minLot = 999999.0;
+      int minIndex = -1;
+      
+      for(int j = 0; j < totalPositions; j++) {
+         if(allPositions[j].type == OP_BUY && allPositions[j].isGhost && allPositions[j].lots < minLot) {
+            bool alreadySorted = false;
+            for(int k = 0; k < sortedCount; k++) {
+               if(sortedPositions[k].ticket == allPositions[j].ticket && 
+                  sortedPositions[k].openTime == allPositions[j].openTime &&
+                  sortedPositions[k].price == allPositions[j].price &&
+                  sortedPositions[k].type == allPositions[j].type) {
+                  alreadySorted = true;
+                  break;
+               }
+            }
+            
+            if(!alreadySorted) {
+               minLot = allPositions[j].lots;
+               minIndex = j;
+            }
+         }
+      }
+      
+      if(minIndex >= 0) {
+         sortedPositions[sortedCount++] = allPositions[minIndex];
+      } else {
+         break; // すべてのBUYゴーストをソート完了
+      }
+   }
+   
+   // BUY側のリアルポジションをロット数の昇順にソート
+   for(int i = 0; i < 100; i++) { // 安全のため十分大きな回数を使用
+      double minLot = 999999.0;
+      int minIndex = -1;
+      
+      for(int j = 0; j < totalPositions; j++) {
+         if(allPositions[j].type == OP_BUY && !allPositions[j].isGhost && allPositions[j].lots < minLot) {
+            bool alreadySorted = false;
+            for(int k = 0; k < sortedCount; k++) {
+               if(sortedPositions[k].ticket == allPositions[j].ticket && 
+                  sortedPositions[k].openTime == allPositions[j].openTime &&
+                  sortedPositions[k].price == allPositions[j].price &&
+                  sortedPositions[k].type == allPositions[j].type) {
+                  alreadySorted = true;
+                  break;
+               }
+            }
+            
+            if(!alreadySorted) {
+               minLot = allPositions[j].lots;
+               minIndex = j;
+            }
+         }
+      }
+      
+      if(minIndex >= 0) {
+         sortedPositions[sortedCount++] = allPositions[minIndex];
+      } else {
+         break; // すべてのBUYリアルをソート完了
+      }
+   }
+   
+   // SELL側のゴーストポジションをロット数の昇順にソート
+   for(int i = 0; i < 100; i++) { // 安全のため十分大きな回数を使用
+      double minLot = 999999.0;
+      int minIndex = -1;
+      
+      for(int j = 0; j < totalPositions; j++) {
+         if(allPositions[j].type == OP_SELL && allPositions[j].isGhost && allPositions[j].lots < minLot) {
+            bool alreadySorted = false;
+            for(int k = 0; k < sortedCount; k++) {
+               if(sortedPositions[k].ticket == allPositions[j].ticket && 
+                  sortedPositions[k].openTime == allPositions[j].openTime &&
+                  sortedPositions[k].price == allPositions[j].price &&
+                  sortedPositions[k].type == allPositions[j].type) {
+                  alreadySorted = true;
+                  break;
+               }
+            }
+            
+            if(!alreadySorted) {
+               minLot = allPositions[j].lots;
+               minIndex = j;
+            }
+         }
+      }
+      
+      if(minIndex >= 0) {
+         sortedPositions[sortedCount++] = allPositions[minIndex];
+      } else {
+         break; // すべてのSELLゴーストをソート完了
+      }
+   }
+   
+   // SELL側のリアルポジションをロット数の昇順にソート
+   for(int i = 0; i < 100; i++) { // 安全のため十分大きな回数を使用
+      double minLot = 999999.0;
+      int minIndex = -1;
+      
+      for(int j = 0; j < totalPositions; j++) {
+         if(allPositions[j].type == OP_SELL && !allPositions[j].isGhost && allPositions[j].lots < minLot) {
+            bool alreadySorted = false;
+            for(int k = 0; k < sortedCount; k++) {
+               if(sortedPositions[k].ticket == allPositions[j].ticket && 
+                  sortedPositions[k].openTime == allPositions[j].openTime &&
+                  sortedPositions[k].price == allPositions[j].price &&
+                  sortedPositions[k].type == allPositions[j].type) {
+                  alreadySorted = true;
+                  break;
+               }
+            }
+            
+            if(!alreadySorted) {
+               minLot = allPositions[j].lots;
+               minIndex = j;
+            }
+         }
+      }
+      
+      if(minIndex >= 0) {
+         sortedPositions[sortedCount++] = allPositions[minIndex];
+      } else {
+         break; // すべてのSELLリアルをソート完了
+      }
+   }
+   
+// ArrayCopyの代わりに手動でコピー
+if(sortedCount > 0) {
+   for(int i = 0; i < sortedCount; i++) {
+      allPositions[i].type = sortedPositions[i].type;
+      allPositions[i].lots = sortedPositions[i].lots;
+      allPositions[i].symbol = sortedPositions[i].symbol;
+      allPositions[i].price = sortedPositions[i].price;
+      allPositions[i].profit = sortedPositions[i].profit;
+      allPositions[i].ticket = sortedPositions[i].ticket;
+      allPositions[i].openTime = sortedPositions[i].openTime;
+      allPositions[i].isGhost = sortedPositions[i].isGhost;
+      allPositions[i].level = sortedPositions[i].level;
+      allPositions[i].stopLoss = sortedPositions[i].stopLoss;
+   }
+}
    
    // データがない場合のメッセージ
    if(totalPositions == 0)
@@ -374,7 +548,7 @@ void UpdatePositionTable()
       ObjectSet(timeName, OBJPROP_SELECTABLE, false);
       ObjectSetInteger(0, timeName, OBJPROP_ZORDER, 3);
       
-      // Level
+      // Level - 修正: レベルは1から始まる表示に変更
       string levelName = tablePrefix + "Row_" + IntegerToString(i) + "_Level";
       ObjectCreate(levelName, OBJ_LABEL, 0, 0, 0);
       ObjectSet(levelName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
@@ -463,59 +637,58 @@ void UpdatePositionTable()
    ObjectSet(totalTextName, OBJPROP_XDISTANCE, adjustedGhostTableX + positions[0]);
    ObjectSet(totalTextName, OBJPROP_YDISTANCE, adjustedGhostTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (visibleRows + 1) + 4);
    ObjectSetText(totalTextName, "TOTAL:", 8, "MS Gothic Bold", TABLE_TEXT_COLOR);
-// 合計テキストの続き
-ObjectSet(totalTextName, OBJPROP_SELECTABLE, false);
-ObjectSetInteger(0, totalTextName, OBJPROP_ZORDER, 3);
-
-// Buy合計
-string buyTotalName = tablePrefix + "Row_BuyTotal";
-ObjectCreate(buyTotalName, OBJ_LABEL, 0, 0, 0);
-ObjectSet(buyTotalName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-ObjectSet(buyTotalName, OBJPROP_XDISTANCE, adjustedGhostTableX + positions[2]);
-ObjectSet(buyTotalName, OBJPROP_YDISTANCE, adjustedGhostTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (visibleRows + 1) + 4);
-color buyColor = totalBuyProfit >= 0 ? clrLime : clrRed;
-ObjectSetText(buyTotalName, "BUY: " + DoubleToStr(totalBuyProfit, 2) + "", 8, "MS Gothic", buyColor);
-ObjectSet(buyTotalName, OBJPROP_SELECTABLE, false);
-ObjectSetInteger(0, buyTotalName, OBJPROP_ZORDER, 3);
-
-// Sell合計
-string sellTotalName = tablePrefix + "Row_SellTotal";
-ObjectCreate(sellTotalName, OBJ_LABEL, 0, 0, 0);
-ObjectSet(sellTotalName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-ObjectSet(sellTotalName, OBJPROP_XDISTANCE, adjustedGhostTableX + positions[4]);
-ObjectSet(sellTotalName, OBJPROP_YDISTANCE, adjustedGhostTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (visibleRows + 1) + 4);
-color sellColor = totalSellProfit >= 0 ? clrLime : clrRed;
-ObjectSetText(sellTotalName, "SELL: " +DoubleToStr(totalSellProfit, 2) + "", 8, "MS Gothic", sellColor);
-ObjectSet(sellTotalName, OBJPROP_SELECTABLE, false);
-ObjectSetInteger(0, sellTotalName, OBJPROP_ZORDER, 3);
-
-// 総合計
-string netTotalName = tablePrefix + "Row_NetTotal";
-ObjectCreate(netTotalName, OBJ_LABEL, 0, 0, 0);
-ObjectSet(netTotalName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-ObjectSet(netTotalName, OBJPROP_XDISTANCE, adjustedGhostTableX + positions[7]);
-ObjectSet(netTotalName, OBJPROP_YDISTANCE, adjustedGhostTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (visibleRows + 1) + 4);
-color totalColor = totalProfit >= 0 ? clrLime : clrRed;
-ObjectSetText(netTotalName, "NET: " + DoubleToStr(totalProfit, 2) + "", 8, "MS Gothic Bold", totalColor);
-ObjectSet(netTotalName, OBJPROP_SELECTABLE, false);
-ObjectSetInteger(0, netTotalName, OBJPROP_ZORDER, 3);
-
-// オブジェクト名を保存
-SaveObjectName(totalRowBgName, g_TableNames, g_TableObjectCount);
-SaveObjectName(totalTextName, g_TableNames, g_TableObjectCount);
-SaveObjectName(buyTotalName, g_TableNames, g_TableObjectCount);
-SaveObjectName(sellTotalName, g_TableNames, g_TableObjectCount);
-SaveObjectName(netTotalName, g_TableNames, g_TableObjectCount);
-
-// 背景のサイズを調整
-string bgName = tablePrefix + "BG";
-if(ObjectFind(bgName) >= 0)
-{
-   int bgHeight = TITLE_HEIGHT + TABLE_ROW_HEIGHT * (visibleRows + 2);
-   ObjectSet(bgName, OBJPROP_YSIZE, bgHeight);
-}
-
-ChartRedraw();
+   ObjectSet(totalTextName, OBJPROP_SELECTABLE, false);
+   ObjectSetInteger(0, totalTextName, OBJPROP_ZORDER, 3);
+   
+   // Buy合計
+   string buyTotalName = tablePrefix + "Row_BuyTotal";
+   ObjectCreate(buyTotalName, OBJ_LABEL, 0, 0, 0);
+   ObjectSet(buyTotalName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSet(buyTotalName, OBJPROP_XDISTANCE, adjustedGhostTableX + positions[2]);
+   ObjectSet(buyTotalName, OBJPROP_YDISTANCE, adjustedGhostTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (visibleRows + 1) + 4);
+   color buyColor = totalBuyProfit >= 0 ? clrLime : clrRed;
+   ObjectSetText(buyTotalName, "BUY: " + DoubleToStr(totalBuyProfit, 2) + "", 8, "MS Gothic", buyColor);
+   ObjectSet(buyTotalName, OBJPROP_SELECTABLE, false);
+   ObjectSetInteger(0, buyTotalName, OBJPROP_ZORDER, 3);
+   
+   // Sell合計
+   string sellTotalName = tablePrefix + "Row_SellTotal";
+   ObjectCreate(sellTotalName, OBJ_LABEL, 0, 0, 0);
+   ObjectSet(sellTotalName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSet(sellTotalName, OBJPROP_XDISTANCE, adjustedGhostTableX + positions[4]);
+   ObjectSet(sellTotalName, OBJPROP_YDISTANCE, adjustedGhostTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (visibleRows + 1) + 4);
+   color sellColor = totalSellProfit >= 0 ? clrLime : clrRed;
+   ObjectSetText(sellTotalName, "SELL: " +DoubleToStr(totalSellProfit, 2) + "", 8, "MS Gothic", sellColor);
+   ObjectSet(sellTotalName, OBJPROP_SELECTABLE, false);
+   ObjectSetInteger(0, sellTotalName, OBJPROP_ZORDER, 3);
+   
+   // 総合計
+   string netTotalName = tablePrefix + "Row_NetTotal";
+   ObjectCreate(netTotalName, OBJ_LABEL, 0, 0, 0);
+   ObjectSet(netTotalName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSet(netTotalName, OBJPROP_XDISTANCE, adjustedGhostTableX + positions[7]);
+   ObjectSet(netTotalName, OBJPROP_YDISTANCE, adjustedGhostTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (visibleRows + 1) + 4);
+   color totalColor = totalProfit >= 0 ? clrLime : clrRed;
+   ObjectSetText(netTotalName, "NET: " + DoubleToStr(totalProfit, 2) + "", 8, "MS Gothic Bold", totalColor);
+   ObjectSet(netTotalName, OBJPROP_SELECTABLE, false);
+   ObjectSetInteger(0, netTotalName, OBJPROP_ZORDER, 3);
+   
+   // オブジェクト名を保存
+   SaveObjectName(totalRowBgName, g_TableNames, g_TableObjectCount);
+   SaveObjectName(totalTextName, g_TableNames, g_TableObjectCount);
+   SaveObjectName(buyTotalName, g_TableNames, g_TableObjectCount);
+   SaveObjectName(sellTotalName, g_TableNames, g_TableObjectCount);
+   SaveObjectName(netTotalName, g_TableNames, g_TableObjectCount);
+   
+   // 背景のサイズを調整
+   string bgName = tablePrefix + "BG";
+   if(ObjectFind(bgName) >= 0)
+   {
+      int bgHeight = TITLE_HEIGHT + TABLE_ROW_HEIGHT * (visibleRows + 2);
+      ObjectSet(bgName, OBJPROP_YSIZE, bgHeight);
+   }
+   
+   ChartRedraw();
 }
 
 //+------------------------------------------------------------------+

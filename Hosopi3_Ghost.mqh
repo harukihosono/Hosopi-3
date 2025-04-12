@@ -222,26 +222,6 @@ void InitializeGhostPosition(int type, string entryReason = "")
       return;
    }
 
-// ナンピンスキップレベルがSKIP_NONEの場合は、ゴーストポジションを発動させない
-if(NanpinSkipLevel == SKIP_NONE)
-{
-   Print("ナンピンスキップレベルがSKIP_NONEのため、ゴーストポジションは発動しません。直接リアルエントリーします。");
-   // 直接リアルエントリーを実行
-   ExecuteRealEntry(type, entryReason);
-   return;
-}
-
-// ゴーストポジションの最大数はナンピンスキップレベルの値までに制限
-int maxGhostPositions = (int)NanpinSkipLevel;
-int currentGhostCount = ghost_position_count(type);
-
-// 既にゴーストポジション数が最大数に達している場合
-if(currentGhostCount >= maxGhostPositions)
-{
-   Print("ゴーストポジション数が最大数(", maxGhostPositions, ")に達しているため、新規ゴーストエントリーをスキップします");
-   return;
-}
-
 // スプレッドチェック
 double spreadPoints = (GetAskPrice() - GetBidPrice()) / Point;
 if(spreadPoints > MaxSpreadPoints && MaxSpreadPoints > 0)
@@ -253,7 +233,10 @@ if(spreadPoints > MaxSpreadPoints && MaxSpreadPoints > 0)
 // 現在の時間を取得
 datetime currentTime = TimeCurrent();
 
-// ポジション情報の作成 - 重要：level は 0 から開始（配列インデックス）
+// 合計ポジション数を取得
+int totalPositionCount = combined_position_count(type);
+
+// ポジション情報の作成
 PositionInfo newPosition;
 newPosition.type = type;
 newPosition.lots = g_LotTable[0];  // 最初のポジションは g_LotTable[0]
@@ -264,6 +247,7 @@ newPosition.ticket = 0; // ゴーストはチケット番号なし
 newPosition.openTime = currentTime; // 現在の時間を保存
 newPosition.isGhost = true;
 newPosition.level = 0;  // 最初のポジションはレベル0（配列インデックス）
+newPosition.stopLoss = 0; // stopLossは0で初期化
 
 
 
@@ -281,17 +265,6 @@ if(type == OP_BUY)
    
    // 決済済みフラグをリセット
    g_BuyGhostClosed = false;
-   
-   // ナンピンスキップレベルに達したらリアルエントリー
-   if(g_GhostBuyCount >= (int)NanpinSkipLevel)
-   {
-      Print("初回エントリーでナンピンスキップレベル条件達成: Level=", NanpinSkipLevel, ", ゴーストカウント=", g_GhostBuyCount);
-      ExecuteRealEntry(OP_BUY, entryReason); // リアルエントリー実行
-   }
-   else
-   {
-      Print("初回エントリー: ゴーストBuyカウント=", g_GhostBuyCount, ", スキップレベル=", (int)NanpinSkipLevel, "のためまだリアルエントリーしません");
-   }
 }
 else
 {
@@ -306,17 +279,6 @@ else
    
    // 決済済みフラグをリセット
    g_SellGhostClosed = false;
-   
-   // ナンピンスキップレベルに達したらリアルエントリー
-   if(g_GhostSellCount >= (int)NanpinSkipLevel)
-   {
-      Print("初回エントリーでナンピンスキップレベル条件達成: Level=", NanpinSkipLevel, ", ゴーストカウント=", g_GhostSellCount);
-      ExecuteRealEntry(OP_SELL, entryReason);
-   }
-   else
-   {
-      Print("初回エントリー: ゴーストSellカウント=", g_GhostSellCount, ", スキップレベル=", (int)NanpinSkipLevel, "のためまだリアルエントリーしません");
-   }
 }
 
 // ユーザー表示用にはレベル+1を表示（1-indexed）
@@ -331,7 +293,7 @@ SaveGhostPositionsToGlobal();
 
 
 //+------------------------------------------------------------------+
-//| AddGhostNanpin関数 - ゴーストからリアル移行時のロット計算修正      |
+//| AddGhostNanpin関数 - ナンピンレベル廃止版                        |
 //+------------------------------------------------------------------+
 void AddGhostNanpin(int type)
 {
@@ -353,28 +315,31 @@ void AddGhostNanpin(int type)
             (GetAskPrice() - GetBidPrice()) / Point, " > ", MaxSpreadPoints);
       return;
    }
-      
-   int maxGhostPositions = (int)NanpinSkipLevel;
-   int currentGhostCount = ghost_position_count(type);
    
-   if(currentGhostCount >= maxGhostPositions)
+   // 最大ポジション数チェック
+   int totalPositionCount = combined_position_count(type);
+   if(totalPositionCount >= (int)MaxPositions)
    {
-      Print("ゴーストポジション数が最大数(", maxGhostPositions, ")に達しているため、ゴーストナンピンをスキップします");
+      Print("合計ポジション数が最大数(", (int)MaxPositions, ")に達しているため、ゴーストナンピンをスキップします");
       return;
    }
    
    // 現在の時間を取得
    datetime currentTime = TimeCurrent();
    
-   // 現在のゴーストレベルに基づいたロットサイズを計算（0から始まるインデックス）
+   // ロットサイズを計算
    double lotSize;
+   
+   // 最後のポジションのロットを取得
+   double lastLotSize = GetLastCombinedPositionLot(type);
    
    // 個別指定モードの場合
    if(IndividualLotEnabled == ON_MODE) {
       // 次のレベルのロットを使用
-      if(currentGhostCount < ArraySize(g_LotTable)) {
-         lotSize = g_LotTable[currentGhostCount];
-         Print("個別指定ロットモード: ナンピンレベル", currentGhostCount + 1, "のロット", DoubleToString(lotSize, 2), "を使用");
+      int nextLevel = totalPositionCount; // 次のレベル
+      if(nextLevel < ArraySize(g_LotTable)) {
+         lotSize = g_LotTable[nextLevel];
+         Print("個別指定ロットモード: ナンピンレベル", nextLevel + 1, "のロット", DoubleToString(lotSize, 2), "を使用");
       } else {
          // 範囲外の場合は最後のロットを使用
          lotSize = g_LotTable[ArraySize(g_LotTable) - 1];
@@ -383,18 +348,20 @@ void AddGhostNanpin(int type)
    }
    // マーチンゲールモードの場合
    else {
-      // 前のレベルのロットを基準に計算
-      if(currentGhostCount > 0) {
-         if(type == OP_BUY) {
-            lotSize = g_GhostBuyPositions[currentGhostCount - 1].lots * LotMultiplier;
-         } else {
-            lotSize = g_GhostSellPositions[currentGhostCount - 1].lots * LotMultiplier;
-         }
-         lotSize = MathCeil(lotSize * 1000) / 1000; // 小数点以下3桁で切り上げ
-         Print("マーチンゲール計算: 前回ロット×倍率=", DoubleToString(lotSize, 2));
+      // 前回のロットに倍率を掛ける
+      if(lastLotSize <= 0) {
+         lotSize = g_LotTable[0]; // ロットが取得できなければ初期ロットを使用
+         Print("警告: 最後のポジションのロットサイズを取得できませんでした。初期ロット", DoubleToString(lotSize, 2), "を使用");
       } else {
-         lotSize = g_LotTable[0]; // 最初のロットを使用
-         Print("マーチンゲール初期ロット: ", DoubleToString(lotSize, 2));
+         // 0.01ロットの場合のみ、かつマーチン倍率が1.3より大きい場合の特別処理
+         if(MathAbs(lastLotSize - 0.01) < 0.001 && LotMultiplier > 1.3) {
+            lotSize = 0.02;
+            Print("0.01ロット検出 + マーチン倍率>1.3: 次のロットを0.02に固定します");
+         } else {
+            lotSize = lastLotSize * LotMultiplier;
+            lotSize = MathCeil(lotSize * 1000) / 1000; // 小数点以下3桁で切り上げ
+            Print("通常マーチンゲール計算: 前回ロット×倍率=", DoubleToString(lotSize, 2));
+         }
       }
    }
    
@@ -408,7 +375,8 @@ void AddGhostNanpin(int type)
    newPosition.ticket = 0;
    newPosition.openTime = currentTime; // 現在の時間を設定
    newPosition.isGhost = true;
-   newPosition.level = currentGhostCount;  // 現在のゴーストカウントをレベルとして設定
+   newPosition.level = totalPositionCount;  // 現在の合計ポジション数をレベルとして設定
+   newPosition.stopLoss = 0; // stopLossは0で初期化
    
    if(type == OP_BUY)
    {
@@ -417,16 +385,6 @@ void AddGhostNanpin(int type)
       
       // 実際のナンピン時間で矢印とゴースト水平線を描画
       CreateGhostEntryPoint(type, newPosition.price, newPosition.lots, newPosition.level, currentTime);
-      
-      if(g_GhostBuyCount >= (int)NanpinSkipLevel)
-      {
-         Print("ナンピンスキップレベル条件達成: Level=", NanpinSkipLevel, ", 現在のゴーストカウント=", g_GhostBuyCount);
-         ExecuteRealEntry(OP_BUY, "スキップからのリアル"); // リアルエントリー実行
-      }
-      else
-      {
-         Print("ゴーストBuyカウント=", g_GhostBuyCount, ", スキップレベル=", (int)NanpinSkipLevel, "のためまだリアルエントリーしません");
-      }
    }
    else
    {
@@ -435,16 +393,6 @@ void AddGhostNanpin(int type)
       
       // 実際のナンピン時間で矢印とゴースト水平線を描画
       CreateGhostEntryPoint(type, newPosition.price, newPosition.lots, newPosition.level, currentTime);
-      
-      if(g_GhostSellCount >= (int)NanpinSkipLevel)
-      {
-         Print("ナンピンスキップレベル条件達成: Level=", NanpinSkipLevel, ", 現在のゴーストカウント=", g_GhostSellCount);
-         ExecuteRealEntry(OP_SELL, "スキップからのリアル"); // リアルエントリー実行
-      }
-      else
-      {
-         Print("ゴーストSellカウント=", g_GhostSellCount, ", スキップレベル=", (int)NanpinSkipLevel, "のためまだリアルエントリーしません");
-      }
    }
    
    // ここでは表示用に1-indexedのレベルを使用（ユーザーには1始まりで表示）
@@ -574,7 +522,7 @@ void ResetSpecificGhost(int type)
 }
 
 //+------------------------------------------------------------------+
-//| ResetGhost関数 - ナンピンタイム変数廃止対応                      |
+//| ResetGhost関数 - ナンピンレベル廃止対応                        |
 //+------------------------------------------------------------------+
 void ResetGhost(int type)
 {
@@ -633,7 +581,7 @@ void ResetGhost(int type)
       
       // 重要: 先にオブジェクトを削除（強化版）
       Print("Sell関連のゴーストオブジェクト削除開始");
-      
+
       // 全てのゴーストSellオブジェクトを削除
       DeleteAllGhostObjectsByType(OP_SELL);
       
@@ -711,14 +659,11 @@ void ResetGhost(int type)
       DeleteAllGhostObjectsByType(0);
       DeleteAllGhostObjectsByType(1);
    }
-
-   // 最後のナンピン時間変数はもう使用しない（廃止）
 }
 
 
-
 //+------------------------------------------------------------------+
-//| OnTimerHandler関数 - 最適化版                                     |
+//| OnTimerHandler関数の修正 - RebuildAllGhostObjectsの代替           |
 //+------------------------------------------------------------------+
 void OnTimerHandler()
 {
@@ -758,7 +703,6 @@ void OnTimerHandler()
       lastGhostCheckTime = TimeCurrent();
    }
 }
-
 //+------------------------------------------------------------------+
 //| オブジェクト名生成のためのヘルパー関数                           |
 //+------------------------------------------------------------------+
@@ -1224,7 +1168,6 @@ void DeleteAllGhostObjectsByType(int type)
    ChartRedraw();
 }
 
-
 //+------------------------------------------------------------------+
 //| すべてのエントリーポイントを削除                                  |
 //+------------------------------------------------------------------+
@@ -1283,7 +1226,7 @@ void RecreateValidGhostLines()
          ObjectCreate(lineName, OBJ_HLINE, 0, 0, g_GhostBuyPositions[i].price);
          ObjectSet(lineName, OBJPROP_COLOR, GhostBuyColor);
          ObjectSet(lineName, OBJPROP_STYLE, STYLE_DOT);
-         ObjectSet(lineName, OBJPROP_WIDTH, 1);
+         ObjectSet(lineName,OBJPROP_WIDTH, 1);
          ObjectSet(lineName, OBJPROP_BACK, true);
          ObjectSet(lineName, OBJPROP_SELECTABLE, false);
       }
@@ -1311,31 +1254,66 @@ void RecreateValidGhostLines()
 }
 
 
+
+
+
+
+
+
+
+
+//+------------------------------------------------------------------+
+//| トレーリングストップラインを復元表示する                           |
+//+------------------------------------------------------------------+
+
+
+
+//+------------------------------------------------------------------+
+//| ゴーストポジション情報をグローバル変数に保存                      |
+//+------------------------------------------------------------------+
+
+
+
+
+
+
+
+
+
+
+//+------------------------------------------------------------------+
+//| CheckGhostNanpinCondition関数 - ナンピンレベル廃止版               |
+//+------------------------------------------------------------------+
+
+
+
+
+
 //+------------------------------------------------------------------+
 //| 有効なゴーストポジション数を取得                                   |
 //+------------------------------------------------------------------+
 int CountValidGhosts(int type)
 {
-   int validCount = 0;
-   
-   if(type == OP_BUY)
+int validCount = 0;
+
+if(type == OP_BUY)
+{
+   for(int i = 0; i < g_GhostBuyCount; i++)
    {
-      for(int i = 0; i < g_GhostBuyCount; i++)
-      {
-         if(g_GhostBuyPositions[i].isGhost)
-            validCount++;
-      }
+      if(g_GhostBuyPositions[i].isGhost)
+         validCount++;
    }
-   else // OP_SELL
+}
+else // OP_SELL
+{
+   for(int i = 0; i < g_GhostSellCount; i++)
    {
-      for(int i = 0; i < g_GhostSellCount; i++)
-      {
-         if(g_GhostSellPositions[i].isGhost)
-            validCount++;
-      }
+      if(g_GhostSellPositions[i].isGhost)
+         validCount++;
    }
-   
-   return validCount;
+}
+
+return validCount;
 }
 
 //+------------------------------------------------------------------+
@@ -1343,121 +1321,119 @@ int CountValidGhosts(int type)
 //+------------------------------------------------------------------+
 void ClearGhostPositionsFromGlobal()
 {
-   // 複数チャート対策: アカウント番号とマジックナンバーを含むプレフィックスを使用
-   int deletedCount = 0;  // 削除したグローバル変数のカウンター変数を追加
-   
-   // すべてのグローバル変数をチェック
-   for(int i = GlobalVariablesTotal() - 1; i >= 0; i--)
+// 複数チャート対策: アカウント番号とマジックナンバーを含むプレフィックスを使用
+int deletedCount = 0;  // 削除したグローバル変数のカウンター変数を追加
+
+// すべてのグローバル変数をチェック
+for(int i = GlobalVariablesTotal() - 1; i >= 0; i--)
+{
+   string name = GlobalVariableName(i);
+   // プレフィックスが一致するものを削除
+   if(StringFind(name, g_GlobalVarPrefix) == 0)
    {
-      string name = GlobalVariableName(i);
-      // プレフィックスが一致するものを削除
-      if(StringFind(name, g_GlobalVarPrefix) == 0)
-      {
-         GlobalVariableDel(name);
-         deletedCount++; // 削除したグローバル変数をカウント
-      }
+      GlobalVariableDel(name);
+      deletedCount++; // 削除したグローバル変数をカウント
    }
-   
-   Print("グローバル変数からゴーストポジション情報を削除しました - ", deletedCount, "個の変数を削除");
+}
+
+Print("グローバル変数からゴーストポジション情報を削除しました - ", deletedCount, "個の変数を削除");
 }
 
 
 //+------------------------------------------------------------------+
-//| グローバル変数からゴーストポジション情報を読み込み - ナンピンタイム参照廃止版 |
+//| グローバル変数からゴーストポジション情報を読み込み               |
 //+------------------------------------------------------------------+
 bool LoadGhostPositionsFromGlobal()
 {
-   // 複数チャート対策: アカウント番号とマジックナンバーを含むプレフィックスを使用
+// 複数チャート対策: アカウント番号とマジックナンバーを含むプレフィックスを使用
+
+// データが存在するか確認
+if(!GlobalVariableCheck(g_GlobalVarPrefix + "SaveTime"))
+{
+   Print("グローバル変数にゴーストポジション情報が見つかりませんでした");
+   return false;
+}
+
+// リアルポジションがある場合は読み込みをスキップ
+if(position_count(OP_BUY) > 0 || position_count(OP_SELL) > 0) {
+   Print("リアルポジションが存在するため、ゴーストポジション情報の読み込みをスキップします");
+   return false;
+}
+
+// カウンター読み込み
+int buyCount = (int)GlobalVariableGet(g_GlobalVarPrefix + "BuyCount");
+int sellCount = (int)GlobalVariableGet(g_GlobalVarPrefix + "SellCount");
+
+// Buy ゴーストポジション読み込み
+for(int i = 0; i < buyCount; i++)
+{
+   string posPrefix = g_GlobalVarPrefix + "Buy_" + IntegerToString(i) + "_";
    
-   // データが存在するか確認
-   if(!GlobalVariableCheck(g_GlobalVarPrefix + "SaveTime"))
+   if(i < ArraySize(g_GhostBuyPositions))
    {
-      Print("グローバル変数にゴーストポジション情報が見つかりませんでした");
-      return false;
+      g_GhostBuyPositions[i].type = (int)GlobalVariableGet(posPrefix + "Type");
+      g_GhostBuyPositions[i].lots = GlobalVariableGet(posPrefix + "Lots");
+      g_GhostBuyPositions[i].symbol = Symbol(); // シンボルは現在のチャートから取得
+      g_GhostBuyPositions[i].price = GlobalVariableGet(posPrefix + "Price");
+      g_GhostBuyPositions[i].profit = GlobalVariableGet(posPrefix + "Profit");
+      g_GhostBuyPositions[i].ticket = (int)GlobalVariableGet(posPrefix + "Ticket");
+      g_GhostBuyPositions[i].openTime = (datetime)GlobalVariableGet(posPrefix + "OpenTime");
+      g_GhostBuyPositions[i].isGhost = GlobalVariableGet(posPrefix + "IsGhost") > 0;
+      g_GhostBuyPositions[i].level = (int)GlobalVariableGet(posPrefix + "Level");
+      
+      // ストップロスの読み込み
+      if(GlobalVariableCheck(posPrefix + "StopLoss"))
+         g_GhostBuyPositions[i].stopLoss = GlobalVariableGet(posPrefix + "StopLoss");
+      else
+         g_GhostBuyPositions[i].stopLoss = 0;  // 存在しない場合は0
    }
+}
+g_GhostBuyCount = buyCount;
+
+// Sell ゴーストポジション読み込み
+for(int i = 0; i < sellCount; i++)
+{
+   string posPrefix = g_GlobalVarPrefix + "Sell_" + IntegerToString(i) + "_";
    
-   // リアルポジションがある場合は読み込みをスキップ
-   if(position_count(OP_BUY) > 0 || position_count(OP_SELL) > 0) {
-      Print("リアルポジションが存在するため、ゴーストポジション情報の読み込みをスキップします");
-      return false;
-   }
-   
-   // カウンター読み込み
-   int buyCount = (int)GlobalVariableGet(g_GlobalVarPrefix + "BuyCount");
-   int sellCount = (int)GlobalVariableGet(g_GlobalVarPrefix + "SellCount");
-   
-   // ナンピンタイム変数の読み込みを削除（廃止）
-   
-   // Buy ゴーストポジション読み込み
-   for(int i = 0; i < buyCount; i++)
+   if(i < ArraySize(g_GhostSellPositions))
    {
-      string posPrefix = g_GlobalVarPrefix + "Buy_" + IntegerToString(i) + "_";
+      g_GhostSellPositions[i].type = (int)GlobalVariableGet(posPrefix + "Type");
+      g_GhostSellPositions[i].lots = GlobalVariableGet(posPrefix + "Lots");
+      g_GhostSellPositions[i].symbol = Symbol(); // シンボルは現在のチャートから取得
+      g_GhostSellPositions[i].price = GlobalVariableGet(posPrefix + "Price");
+      g_GhostSellPositions[i].profit = GlobalVariableGet(posPrefix + "Profit");
+      g_GhostSellPositions[i].ticket = (int)GlobalVariableGet(posPrefix + "Ticket");
+      g_GhostSellPositions[i].openTime = (datetime)GlobalVariableGet(posPrefix + "OpenTime");
+      g_GhostSellPositions[i].isGhost = GlobalVariableGet(posPrefix + "IsGhost") > 0;
+      g_GhostSellPositions[i].level = (int)GlobalVariableGet(posPrefix + "Level");
       
-      if(i < ArraySize(g_GhostBuyPositions))
-      {
-         g_GhostBuyPositions[i].type = (int)GlobalVariableGet(posPrefix + "Type");
-         g_GhostBuyPositions[i].lots = GlobalVariableGet(posPrefix + "Lots");
-         g_GhostBuyPositions[i].symbol = Symbol(); // シンボルは現在のチャートから取得
-         g_GhostBuyPositions[i].price = GlobalVariableGet(posPrefix + "Price");
-         g_GhostBuyPositions[i].profit = GlobalVariableGet(posPrefix + "Profit");
-         g_GhostBuyPositions[i].ticket = (int)GlobalVariableGet(posPrefix + "Ticket");
-         g_GhostBuyPositions[i].openTime = (datetime)GlobalVariableGet(posPrefix + "OpenTime");
-         g_GhostBuyPositions[i].isGhost = GlobalVariableGet(posPrefix + "IsGhost") > 0;
-         g_GhostBuyPositions[i].level = (int)GlobalVariableGet(posPrefix + "Level");
-         
-         // ストップロスの読み込み
-         if(GlobalVariableCheck(posPrefix + "StopLoss"))
-            g_GhostBuyPositions[i].stopLoss = GlobalVariableGet(posPrefix + "StopLoss");
-         else
-            g_GhostBuyPositions[i].stopLoss = 0;  // 存在しない場合は0
-      }
+      // ストップロスの読み込み
+      if(GlobalVariableCheck(posPrefix + "StopLoss"))
+         g_GhostSellPositions[i].stopLoss = GlobalVariableGet(posPrefix + "StopLoss");
+      else
+         g_GhostSellPositions[i].stopLoss = 0;  // 存在しない場合は0
    }
-   g_GhostBuyCount = buyCount;
+}
+g_GhostSellCount = sellCount;
+
+// フラグ読み込み
+g_GhostMode = GlobalVariableGet(g_GlobalVarPrefix + "GhostMode") > 0;
+g_AvgPriceVisible = GlobalVariableGet(g_GlobalVarPrefix + "AvgPriceVisible") > 0;
+g_BuyGhostClosed = GlobalVariableGet(g_GlobalVarPrefix + "BuyGhostClosed") > 0;
+g_SellGhostClosed = GlobalVariableGet(g_GlobalVarPrefix + "SellGhostClosed") > 0;
+
+// トレーリングストップ有効フラグの読み込み
+if(GlobalVariableCheck(g_GlobalVarPrefix + "TrailingStopEnabled"))
+   g_EnableTrailingStop = GlobalVariableGet(g_GlobalVarPrefix + "TrailingStopEnabled") > 0;
+
+   Print("グローバル変数からゴーストポジション情報を読み込みました - Buy: ", buyCount, ", Sell: ", sellCount);
+
+   // ストップロスラインを再表示
+   RestoreGhostStopLines();
    
-   // Sell ゴーストポジション読み込み
-   for(int i = 0; i < sellCount; i++)
-   {
-      string posPrefix = g_GlobalVarPrefix + "Sell_" + IntegerToString(i) + "_";
-      
-      if(i < ArraySize(g_GhostSellPositions))
-      {
-         g_GhostSellPositions[i].type = (int)GlobalVariableGet(posPrefix + "Type");
-         g_GhostSellPositions[i].lots = GlobalVariableGet(posPrefix + "Lots");
-         g_GhostSellPositions[i].symbol = Symbol(); // シンボルは現在のチャートから取得
-         g_GhostSellPositions[i].price = GlobalVariableGet(posPrefix + "Price");
-         g_GhostSellPositions[i].profit = GlobalVariableGet(posPrefix + "Profit");
-         g_GhostSellPositions[i].ticket = (int)GlobalVariableGet(posPrefix + "Ticket");
-         g_GhostSellPositions[i].openTime = (datetime)GlobalVariableGet(posPrefix + "OpenTime");
-         g_GhostSellPositions[i].isGhost = GlobalVariableGet(posPrefix + "IsGhost") > 0;
-         g_GhostSellPositions[i].level = (int)GlobalVariableGet(posPrefix + "Level");
-         
-         // ストップロスの読み込み
-         if(GlobalVariableCheck(posPrefix + "StopLoss"))
-            g_GhostSellPositions[i].stopLoss = GlobalVariableGet(posPrefix + "StopLoss");
-         else
-            g_GhostSellPositions[i].stopLoss = 0;  // 存在しない場合は0
-      }
-   }
-   g_GhostSellCount = sellCount;
-   
-   // フラグ読み込み
-   g_GhostMode = GlobalVariableGet(g_GlobalVarPrefix + "GhostMode") > 0;
-   g_AvgPriceVisible = GlobalVariableGet(g_GlobalVarPrefix + "AvgPriceVisible") > 0;
-   g_BuyGhostClosed = GlobalVariableGet(g_GlobalVarPrefix + "BuyGhostClosed") > 0;
-   g_SellGhostClosed = GlobalVariableGet(g_GlobalVarPrefix + "SellGhostClosed") > 0;
-   
-   // トレーリングストップ有効フラグの読み込み
-   if(GlobalVariableCheck(g_GlobalVarPrefix + "TrailingStopEnabled"))
-      g_EnableTrailingStop = GlobalVariableGet(g_GlobalVarPrefix + "TrailingStopEnabled") > 0;
-   
-      Print("グローバル変数からゴーストポジション情報を読み込みました - Buy: ", buyCount, ", Sell: ", sellCount);
-   
-      // ストップロスラインを再表示
-      RestoreGhostStopLines();
-      
-      // 読み込み成功
-      return true;
-   }
+   // 読み込み成功
+   return true;
+}
 
 
 
@@ -1466,109 +1442,107 @@ bool LoadGhostPositionsFromGlobal()
 //+------------------------------------------------------------------+
 void RestoreGhostStopLines()
 {
-   // Buy側のチェック
-   bool foundValidBuyStop = false;
-   double buyStopLevel = 0;
-   
-   for(int i = 0; i < g_GhostBuyCount; i++)
+// Buy側のチェック
+bool foundValidBuyStop = false;
+double buyStopLevel = 0;
+
+for(int i = 0; i < g_GhostBuyCount; i++)
+{
+   if(g_GhostBuyPositions[i].isGhost && g_GhostBuyPositions[i].stopLoss > 0)
    {
-      if(g_GhostBuyPositions[i].isGhost && g_GhostBuyPositions[i].stopLoss > 0)
+      // 最も高いストップロスを採用（安全サイド）
+      if(g_GhostBuyPositions[i].stopLoss > buyStopLevel || !foundValidBuyStop)
       {
-         // 最も高いストップロスを採用（安全サイド）
-         if(g_GhostBuyPositions[i].stopLoss > buyStopLevel || !foundValidBuyStop)
-         {
-            buyStopLevel = g_GhostBuyPositions[i].stopLoss;
-            foundValidBuyStop = true;
-         }
+         buyStopLevel = g_GhostBuyPositions[i].stopLoss;
+         foundValidBuyStop = true;
       }
    }
-   
-   // 有効なBuyストップがあれば表示
-   if(foundValidBuyStop)
+}
+
+// 有効なBuyストップがあれば表示
+if(foundValidBuyStop)
+{
+   UpdateGhostStopLine(0, buyStopLevel);
+}
+
+// Sell側のチェック
+bool foundValidSellStop = false;
+double sellStopLevel = 0;
+
+for(int i = 0; i < g_GhostSellCount; i++)
+{
+   if(g_GhostSellPositions[i].isGhost && g_GhostSellPositions[i].stopLoss > 0)
    {
-      UpdateGhostStopLine(0, buyStopLevel);
-   }
-   
-   // Sell側のチェック
-   bool foundValidSellStop = false;
-   double sellStopLevel = 0;
-   
-   for(int i = 0; i < g_GhostSellCount; i++)
-   {
-      if(g_GhostSellPositions[i].isGhost && g_GhostSellPositions[i].stopLoss > 0)
+      // 最も低いストップロスを採用（安全サイド）
+      if(g_GhostSellPositions[i].stopLoss < sellStopLevel || !foundValidSellStop)
       {
-         // 最も低いストップロスを採用（安全サイド）
-         if(g_GhostSellPositions[i].stopLoss < sellStopLevel || !foundValidSellStop)
-         {
-            sellStopLevel = g_GhostSellPositions[i].stopLoss;
-            foundValidSellStop = true;
-         }
+         sellStopLevel = g_GhostSellPositions[i].stopLoss;
+         foundValidSellStop = true;
       }
    }
-   
-   // 有効なSellストップがあれば表示
-   if(foundValidSellStop)
-   {
-      UpdateGhostStopLine(1, sellStopLevel);
-   }
+}
+
+// 有効なSellストップがあれば表示
+if(foundValidSellStop)
+{
+   UpdateGhostStopLine(1, sellStopLevel);
+}
 }
 
 
 //+------------------------------------------------------------------+
-//| ゴーストポジション情報をグローバル変数に保存 - ナンピンタイム参照廃止版   |
+//| ゴーストポジション情報をグローバル変数に保存                      |
 //+------------------------------------------------------------------+
 void SaveGhostPositionsToGlobal()
 {
-   // 複数チャート対策: アカウント番号とマジックナンバーを含むプレフィックスを使用
-   
-   // カウンター保存
-   GlobalVariableSet(g_GlobalVarPrefix + "BuyCount", g_GhostBuyCount);
-   GlobalVariableSet(g_GlobalVarPrefix + "SellCount", g_GhostSellCount);
-   
-   // ナンピンタイム変数の保存を削除（廃止）
-   
-   // Buy ゴーストポジション保存
-   for(int i = 0; i < g_GhostBuyCount; i++)
-   {
-      string posPrefix = g_GlobalVarPrefix + "Buy_" + IntegerToString(i) + "_";
-      GlobalVariableSet(posPrefix + "Type", g_GhostBuyPositions[i].type);
-      GlobalVariableSet(posPrefix + "Lots", g_GhostBuyPositions[i].lots);
-      GlobalVariableSet(posPrefix + "Price", g_GhostBuyPositions[i].price);
-      GlobalVariableSet(posPrefix + "Profit", g_GhostBuyPositions[i].profit);
-      GlobalVariableSet(posPrefix + "Ticket", g_GhostBuyPositions[i].ticket);
-      GlobalVariableSet(posPrefix + "OpenTime", g_GhostBuyPositions[i].openTime);
-      GlobalVariableSet(posPrefix + "IsGhost", g_GhostBuyPositions[i].isGhost ? 1 : 0);
-      GlobalVariableSet(posPrefix + "Level", g_GhostBuyPositions[i].level);
-      GlobalVariableSet(posPrefix + "StopLoss", g_GhostBuyPositions[i].stopLoss); // ストップロスを保存
-   }
+// 複数チャート対策: アカウント番号とマジックナンバーを含むプレフィックスを使用
 
-   // Sell ゴーストポジション保存
-   for(int i = 0; i < g_GhostSellCount; i++)
-   {
-      string posPrefix = g_GlobalVarPrefix + "Sell_" + IntegerToString(i) + "_";
-      GlobalVariableSet(posPrefix + "Type", g_GhostSellPositions[i].type);
-      GlobalVariableSet(posPrefix + "Lots", g_GhostSellPositions[i].lots);
-      GlobalVariableSet(posPrefix + "Price", g_GhostSellPositions[i].price);
-      GlobalVariableSet(posPrefix + "Profit", g_GhostSellPositions[i].profit);
-      GlobalVariableSet(posPrefix + "Ticket", g_GhostSellPositions[i].ticket);
-      GlobalVariableSet(posPrefix + "OpenTime", g_GhostSellPositions[i].openTime);
-      GlobalVariableSet(posPrefix + "IsGhost", g_GhostSellPositions[i].isGhost ? 1 : 0);
-      GlobalVariableSet(posPrefix + "Level", g_GhostSellPositions[i].level);
-      GlobalVariableSet(posPrefix + "StopLoss", g_GhostSellPositions[i].stopLoss); // ストップロスを保存
-   }
+// カウンター保存
+GlobalVariableSet(g_GlobalVarPrefix + "BuyCount", g_GhostBuyCount);
+GlobalVariableSet(g_GlobalVarPrefix + "SellCount", g_GhostSellCount);
 
-   // フラグ設定（ゴーストモード状態を保存）
-   GlobalVariableSet(g_GlobalVarPrefix + "GhostMode", g_GhostMode ? 1 : 0);
-   GlobalVariableSet(g_GlobalVarPrefix + "AvgPriceVisible", g_AvgPriceVisible ? 1 : 0);
-   GlobalVariableSet(g_GlobalVarPrefix + "BuyGhostClosed", g_BuyGhostClosed ? 1 : 0);
-   GlobalVariableSet(g_GlobalVarPrefix + "SellGhostClosed", g_SellGhostClosed ? 1 : 0);
-   // トレーリングストップ有効フラグも保存
-   GlobalVariableSet(g_GlobalVarPrefix + "TrailingStopEnabled", EnableTrailingStop ? 1 : 0);
+// Buy ゴーストポジション保存
+for(int i = 0; i < g_GhostBuyCount; i++)
+{
+   string posPrefix = g_GlobalVarPrefix + "Buy_" + IntegerToString(i) + "_";
+   GlobalVariableSet(posPrefix + "Type", g_GhostBuyPositions[i].type);
+   GlobalVariableSet(posPrefix + "Lots", g_GhostBuyPositions[i].lots);
+   GlobalVariableSet(posPrefix + "Price", g_GhostBuyPositions[i].price);
+   GlobalVariableSet(posPrefix + "Profit", g_GhostBuyPositions[i].profit);
+   GlobalVariableSet(posPrefix + "Ticket", g_GhostBuyPositions[i].ticket);
+   GlobalVariableSet(posPrefix + "OpenTime", g_GhostBuyPositions[i].openTime);
+   GlobalVariableSet(posPrefix + "IsGhost", g_GhostBuyPositions[i].isGhost ? 1 : 0);
+   GlobalVariableSet(posPrefix + "Level", g_GhostBuyPositions[i].level);
+   GlobalVariableSet(posPrefix + "StopLoss", g_GhostBuyPositions[i].stopLoss); // ストップロスを保存
+}
 
-   // 保存時間を記録
-   GlobalVariableSet(g_GlobalVarPrefix + "SaveTime", TimeCurrent());
+// Sell ゴーストポジション保存
+for(int i = 0; i < g_GhostSellCount; i++)
+{
+   string posPrefix = g_GlobalVarPrefix + "Sell_" + IntegerToString(i) + "_";
+   GlobalVariableSet(posPrefix + "Type", g_GhostSellPositions[i].type);
+   GlobalVariableSet(posPrefix + "Lots", g_GhostSellPositions[i].lots);
+   GlobalVariableSet(posPrefix + "Price", g_GhostSellPositions[i].price);
+   GlobalVariableSet(posPrefix + "Profit", g_GhostSellPositions[i].profit);
+   GlobalVariableSet(posPrefix + "Ticket", g_GhostSellPositions[i].ticket);
+   GlobalVariableSet(posPrefix + "OpenTime", g_GhostSellPositions[i].openTime);
+   GlobalVariableSet(posPrefix + "IsGhost", g_GhostSellPositions[i].isGhost ? 1 : 0);
+   GlobalVariableSet(posPrefix + "Level", g_GhostSellPositions[i].level);
+   GlobalVariableSet(posPrefix + "StopLoss", g_GhostSellPositions[i].stopLoss); // ストップロスを保存
+}
 
-   Print("ゴーストポジション情報をグローバル変数に保存しました - 有効Buy: ", CountValidGhosts(OP_BUY), ", 有効Sell: ", CountValidGhosts(OP_SELL));
+// フラグ設定（ゴーストモード状態を保存）
+GlobalVariableSet(g_GlobalVarPrefix + "GhostMode", g_GhostMode ? 1 : 0);
+GlobalVariableSet(g_GlobalVarPrefix + "AvgPriceVisible", g_AvgPriceVisible ? 1 : 0);
+GlobalVariableSet(g_GlobalVarPrefix + "BuyGhostClosed", g_BuyGhostClosed ? 1 : 0);
+GlobalVariableSet(g_GlobalVarPrefix + "SellGhostClosed", g_SellGhostClosed ? 1 : 0);
+// トレーリングストップ有効フラグも保存
+GlobalVariableSet(g_GlobalVarPrefix + "TrailingStopEnabled", EnableTrailingStop ? 1 : 0);
+
+// 保存時間を記録
+GlobalVariableSet(g_GlobalVarPrefix + "SaveTime", TimeCurrent());
+
+Print("ゴーストポジション情報をグローバル変数に保存しました - 有効Buy: ", CountValidGhosts(OP_BUY), ", 有効Sell: ", CountValidGhosts(OP_SELL));
 }
 
 
@@ -1578,134 +1552,39 @@ void SaveGhostPositionsToGlobal()
 //+------------------------------------------------------------------+
 double CalculateGhostAveragePrice(int type)
 {
-   double totalLots = 0;
-   double weightedPrice = 0;
+double totalLots = 0;
+double weightedPrice = 0;
 
-   if(type == OP_BUY)
-   {
-      for(int i = 0; i < g_GhostBuyCount; i++)
-      {
-         if(g_GhostBuyPositions[i].isGhost) // 有効なゴーストのみ計算
-         {
-            totalLots += g_GhostBuyPositions[i].lots;
-            weightedPrice += g_GhostBuyPositions[i].price * g_GhostBuyPositions[i].lots;
-         }
-      }
-   }
-   else
-   {
-      for(int i = 0; i < g_GhostSellCount; i++)
-      {
-         if(g_GhostSellPositions[i].isGhost) // 有効なゴーストのみ計算
-         {
-            totalLots += g_GhostSellPositions[i].lots;
-            weightedPrice += g_GhostSellPositions[i].price * g_GhostSellPositions[i].lots;
-         }
-      }
-   }
-
-   // 平均取得価格を計算
-   if(totalLots > 0)
-      return weightedPrice / totalLots;
-   else
-      return 0;
-}
-
-
-//+------------------------------------------------------------------+
-//| 平均取得価格計算関数 - 計算モード対応版                           |
-//+------------------------------------------------------------------+
-double CalculateCombinedAveragePrice(int type)
+if(type == OP_BUY)
 {
-   // リアルポジションがある場合
-   int realPositionCount = position_count(type);
-   if(realPositionCount > 0)
+   for(int i = 0; i < g_GhostBuyCount; i++)
    {
-      // 計算モードに基づいて処理
-      if(AvgPriceCalculationMode == REAL_POSITIONS_ONLY)
+      if(g_GhostBuyPositions[i].isGhost) // 有効なゴーストのみ計算
       {
-         // リアルポジションのみの平均価格を計算
-         return CalculateRealAveragePrice(type);
+         totalLots += g_GhostBuyPositions[i].lots;
+         weightedPrice += g_GhostBuyPositions[i].price * g_GhostBuyPositions[i].lots;
       }
    }
-
-   // 以下は元の実装と同じ（ゴーストも含めた計算）
-   double totalLots = 0;
-   double weightedPrice = 0;
-
-   // リアルポジションの合計
-   for(int i = OrdersTotal() - 1; i >= 0; i--)
-   {
-      if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
-      {
-         if(OrderType() == type && OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
-         {
-            totalLots += OrderLots();
-            weightedPrice += OrderOpenPrice() * OrderLots();
-         }
-      }
-   }
-
-   // リアルポジションがない場合はゴーストポジションのみで計算
-   if(realPositionCount == 0)
-   {
-      // ゴーストポジションの合計 (有効なゴーストのみ)
-      if(type == OP_BUY)
-      {
-         for(int i = 0; i < g_GhostBuyCount; i++)
-         {
-            if(g_GhostBuyPositions[i].isGhost) // 有効なゴーストのみ
-            {
-               totalLots += g_GhostBuyPositions[i].lots;
-               weightedPrice += g_GhostBuyPositions[i].price * g_GhostBuyPositions[i].lots;
-            }
-         }
-      }
-      else // OP_SELL
-      {
-         for(int i = 0; i < g_GhostSellCount; i++)
-         {
-            if(g_GhostSellPositions[i].isGhost) // 有効なゴーストのみ
-            {
-               totalLots += g_GhostSellPositions[i].lots;
-               weightedPrice += g_GhostSellPositions[i].price * g_GhostSellPositions[i].lots;
-            }
-         }
-      }
-   }
-   // リアルポジションがあり、かつREAL_AND_GHOSTモードの場合はゴーストも含める
-   else if(AvgPriceCalculationMode == REAL_AND_GHOST)
-   {
-      if(type == OP_BUY)
-      {
-         for(int i = 0; i < g_GhostBuyCount; i++)
-         {
-            if(g_GhostBuyPositions[i].isGhost) // 有効なゴーストのみ
-            {
-               totalLots += g_GhostBuyPositions[i].lots;
-               weightedPrice += g_GhostBuyPositions[i].price * g_GhostBuyPositions[i].lots;
-            }
-         }
-      }
-      else // OP_SELL
-      {
-         for(int i = 0; i < g_GhostSellCount; i++)
-         {
-            if(g_GhostSellPositions[i].isGhost) // 有効なゴーストのみ
-            {
-               totalLots += g_GhostSellPositions[i].lots;
-               weightedPrice += g_GhostSellPositions[i].price * g_GhostSellPositions[i].lots;
-            }
-         }
-      }
-   }
-
-   // 平均取得価格を計算
-   if(totalLots > 0)
-      return weightedPrice / totalLots;
-   else
-      return 0;
 }
+else
+{
+   for(int i = 0; i < g_GhostSellCount; i++)
+   {
+      if(g_GhostSellPositions[i].isGhost) // 有効なゴーストのみ計算
+      {
+         totalLots += g_GhostSellPositions[i].lots;
+         weightedPrice += g_GhostSellPositions[i].price * g_GhostSellPositions[i].lots;
+      }
+   }
+}
+
+// 平均取得価格を計算
+if(totalLots > 0)
+   return weightedPrice / totalLots;
+else
+   return 0;
+}
+
 
 
 
@@ -1714,64 +1593,61 @@ double CalculateCombinedAveragePrice(int type)
 //+------------------------------------------------------------------+
 double CalculateCombinedProfit(int type)
 {
-   double totalProfit = 0;
+double totalProfit = 0;
 
-   // リアルポジションの損益を合計
-   for(int i = OrdersTotal() - 1; i >= 0; i--)
+// リアルポジションの損益を合計
+for(int i = OrdersTotal() - 1; i >= 0; i--)
+{
+   if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
    {
-      if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+      if(OrderType() == type && OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
       {
-         if(OrderType() == type && OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
-         {
-            totalProfit += OrderProfit() + OrderSwap() + OrderCommission();
-         }
+         totalProfit += OrderProfit() + OrderSwap() + OrderCommission();
       }
    }
+}
 
-   // ゴーストポジションの仮想損益を計算 (有効なゴーストのみ)
-   if(type == OP_BUY)
+// ゴーストポジションの仮想損益を計算 (有効なゴーストのみ)
+if(type == OP_BUY)
+{
+   for(int i = 0; i < g_GhostBuyCount; i++)
    {
-      for(int i = 0; i < g_GhostBuyCount; i++)
+      if(g_GhostBuyPositions[i].isGhost) // 有効なゴーストのみ
       {
-         if(g_GhostBuyPositions[i].isGhost) // 有効なゴーストのみ
-         {
-            double currentProfit = (GetBidPrice() - g_GhostBuyPositions[i].price) * g_GhostBuyPositions[i].lots * MarketInfo(Symbol(), MODE_TICKVALUE) / Point;
-            totalProfit += currentProfit;
-         }
+         double currentProfit = (GetBidPrice() - g_GhostBuyPositions[i].price) * g_GhostBuyPositions[i].lots * MarketInfo(Symbol(), MODE_TICKVALUE) / Point;
+         totalProfit += currentProfit;
       }
    }
-   else // OP_SELL
+}
+else // OP_SELL
+{
+   for(int i = 0; i < g_GhostSellCount; i++)
    {
-      for(int i = 0; i < g_GhostSellCount; i++)
+      if(g_GhostSellPositions[i].isGhost) // 有効なゴーストのみ
       {
-         if(g_GhostSellPositions[i].isGhost) // 有効なゴーストのみ
-         {
-            double currentProfit = (g_GhostSellPositions[i].price - GetAskPrice()) * g_GhostSellPositions[i].lots * MarketInfo(Symbol(), MODE_TICKVALUE) / Point;
-            totalProfit += currentProfit;
-         }
+         double currentProfit = (g_GhostSellPositions[i].price - GetAskPrice()) * g_GhostSellPositions[i].lots * MarketInfo(Symbol(), MODE_TICKVALUE) / Point;
+         totalProfit += currentProfit;
       }
    }
+}
 
-   return totalProfit;
+return totalProfit;
 }
 
 
+// CheckGhostNanpinCondition関数の正しい修正
 
-
-//+------------------------------------------------------------------+
-//| CheckGhostNanpinCondition関数 - 改良版（ナンピンタイムグローバル変数廃止） |
-//+------------------------------------------------------------------+
 void CheckGhostNanpinCondition(int type)
 {
    // 前回のチェックからの経過時間を確認
    static datetime lastCheckTime[2] = {0, 0}; // [0] = Buy, [1] = Sell
    int typeIndex = (type == OP_BUY) ? 0 : 1;
-   
+
    if(TimeCurrent() - lastCheckTime[typeIndex] < 10) // 10秒間隔でチェック
       return;
-   
+
    lastCheckTime[typeIndex] = TimeCurrent();
-   
+
    // リアルポジションがある場合は処理をスキップ（複数チャート対策）
    if(position_count(OP_BUY) > 0 || position_count(OP_SELL) > 0) {
       return;
@@ -1794,22 +1670,28 @@ void CheckGhostNanpinCondition(int type)
       return;
    }
 
-   double currentPrice = (type == OP_BUY) ? GetBidPrice() : GetAskPrice();
-   
-   // 最後のゴーストポジション価格を取得
-   double lastPrice = ghost_position_last_price(type);
-   if(lastPrice <= 0) {
-      // ゴーストポジションがない場合
+   // 合計ポジション数を取得
+   int ghostCount = ghost_position_count(type);
+   int totalPositionCount = combined_position_count(type);
+
+   // 最大ポジション数チェック
+   if(totalPositionCount >= (int)MaxPositions)
+   {
       return;
    }
-   
-   // ゴーストポジション数を取得
-   int ghostCount = ghost_position_count(type);
-   int currentLevel = ghostCount; // レベルは1-indexedだが配列は0-indexed
-   
-   // 最後のエントリー時間を取得（改良版）
+
+   // 最後のポジション価格を取得
+   double lastPrice = GetLastCombinedPositionPrice(type);
+   if(lastPrice <= 0) {
+      // ポジションがない場合
+      return;
+   }
+
+   double currentPrice = (type == OP_BUY) ? GetBidPrice() : GetAskPrice();
+
+   // 最後のエントリー時間を取得
    datetime lastEntryTime = GetLastEntryTime(type);
-   
+
    // ナンピンインターバルチェック
    if(NanpinInterval > 0 && TimeCurrent() - lastEntryTime < NanpinInterval * 60)
    {
@@ -1824,10 +1706,10 @@ void CheckGhostNanpinCondition(int type)
       }
       return;
    }
-   
+
    // 計算に使用するナンピン幅を取得
-   int nanpinSpread = g_NanpinSpreadTable[currentLevel - 1];
-   
+   int nanpinSpread = g_NanpinSpreadTable[totalPositionCount - 1];
+
    // デバッグログの追加（1分に1回のみ出力）
    static datetime lastDebugLogTime[2] = {0, 0};
    if(TimeCurrent() - lastDebugLogTime[typeIndex] > 60)
@@ -1839,10 +1721,10 @@ void CheckGhostNanpinCondition(int type)
             " ポイント, 差=", (type == OP_BUY ? (lastPrice - currentPrice) : (currentPrice - lastPrice)) / Point);
       lastDebugLogTime[typeIndex] = TimeCurrent();
    }
-   
+
    // ナンピン条件判定
    bool nanpinCondition = false;
-   
+
    if(type == OP_BUY) // Buy
    {
       // Buyナンピン条件: 現在価格が前回ポジション価格 - ナンピン幅 より低い
@@ -1853,71 +1735,56 @@ void CheckGhostNanpinCondition(int type)
       // Sellナンピン条件: 現在価格が前回ポジション価格 + ナンピン幅 より高い
       nanpinCondition = (currentPrice > lastPrice + nanpinSpread * Point);
    }
-   
+
    // ナンピン条件が満たされた場合
    if(nanpinCondition)
    {
-      AddGhostNanpin(type);
-      Print((type == OP_BUY ? "Buy" : "Sell"), " ゴーストナンピン条件成立、ゴーストナンピン追加");
+      // ======= 修正: スキップレベルと正確に一致する場合にリアルエントリーに切り替え =======
+      // ゴーストカウントがスキップレベルと同じ場合はリアルエントリーではなくゴーストエントリーを行う
+      if(ghostCount == (int)NanpinSkipLevel)
+      {
+         Print("【ゴースト→リアル切替(正確なタイミング)】: ", type == OP_BUY ? "Buy" : "Sell", 
+            "ゴーストカウント(", ghostCount, ")がスキップレベル(", (int)NanpinSkipLevel, ")に達しナンピン条件も成立したため、リアルエントリーに切り替えます");
+      
+         // リアルエントリーを実行して関数を終了
+         ExecuteRealEntry(type, "正確なナンピン切替: " + IntegerToString(ghostCount) + "段目までゴースト、" + IntegerToString(ghostCount + 1) + "段目からリアル");
+      
+         // ゴーストはリセットしない
+         return;
+      }
+      else
+      {
+         // 通常のゴーストナンピン追加
+         AddGhostNanpin(type);
+         Print((type == OP_BUY ? "Buy" : "Sell"), " ゴーストナンピン条件成立、ゴーストナンピン追加");
+      }
    }
-}
-//+------------------------------------------------------------------+
-//| 全チャートオブジェクトの整理と再構築                             |
-//+------------------------------------------------------------------+
-void RebuildAllGhostObjects()
-{
-   Print("RebuildAllGhostObjects: すべてのゴーストオブジェクトを整理して再構築します");
-   
-   // 1. 古いオブジェクトをすべて削除
-   DeleteAllGhostObjectsByType(OP_BUY);
-   DeleteAllGhostObjectsByType(OP_SELL);
-   
-   // 2. ゴーストポジションの状態を確認
-   int validBuy = CountValidGhosts(OP_BUY);
-   int validSell = CountValidGhosts(OP_SELL);
-   
-   Print("有効なゴーストポジション - Buy: ", validBuy, ", Sell: ", validSell);
-   
-   // 3. ゴーストエントリーポイントを再作成
-   RecreateGhostEntryPoints();
-   
-   // 4. 平均価格ラインを更新
-   if(AveragePriceLine == ON_MODE && g_AvgPriceVisible)
-   {
-      UpdateAveragePriceLines(0); // Buy側
-      UpdateAveragePriceLines(1); // Sell側
-   }
-   
-   // 5. チャートを再描画
-   ChartRedraw();
 }
 
+
 //+------------------------------------------------------------------+
-//| タイマーイベントで定期的に実行する関数                           |
+//| 代替関数：ゴーストオブジェクトを整理する                          |
 //+------------------------------------------------------------------+
 void CleanupAndRebuildGhostObjects()
 {
-   // この関数はOnTimerイベントで呼び出すことができます
-   // 定期的なゴーストオブジェクトの整理と再構築
-
    // カウンターの一貫性をチェック
    int buyCount = 0;
    int sellCount = 0;
-   
+
    for(int i = 0; i < ArraySize(g_GhostBuyPositions); i++)
    {
       if(g_GhostBuyPositions[i].isGhost)
          buyCount++;
    }
-   
+
    for(int i = 0; i < ArraySize(g_GhostSellPositions); i++)
    {
       if(g_GhostSellPositions[i].isGhost)
          sellCount++;
    }
-   
+
    bool needsFixing = false;
-   
+
    // カウンターと実際のゴーストポジション数が一致しない場合
    if(buyCount != g_GhostBuyCount || sellCount != g_GhostSellCount)
    {
@@ -1930,11 +1797,11 @@ void CleanupAndRebuildGhostObjects()
       
       needsFixing = true;
    }
-   
+
    // オブジェクトの数を確認
    int ghostLineCount = 0;
    int validLineCount = 0;
-   
+
    for(int i = ObjectsTotal() - 1; i >= 0; i--)
    {
       string name = ObjectName(i);
@@ -1984,7 +1851,7 @@ void CleanupAndRebuildGhostObjects()
             needsFixing = true;
       }
    }
-   
+
    // 有効なゴーストポジション数と有効な線の数が一致しない場合
    if(validLineCount != buyCount + sellCount)
    {
@@ -1992,17 +1859,36 @@ void CleanupAndRebuildGhostObjects()
             ", 有効な線: ", validLineCount, ", 全線: ", ghostLineCount);
       needsFixing = true;
    }
-   
+
    // 修正が必要な場合
    if(needsFixing)
    {
-      Print("ゴーストオブジェクトの不整合を検出したため、すべて再構築します");
-      RebuildAllGhostObjects();
+      Print("ゴーストオブジェクトの不整合を検出したため、再構築します");
+      
+      // 1. 古いオブジェクトをすべて削除
+      DeleteAllGhostObjectsByType(OP_BUY);
+      DeleteAllGhostObjectsByType(OP_SELL);
+      
+      // 2. ゴーストポジションの状態を確認
+      int validBuy = CountValidGhosts(OP_BUY);
+      int validSell = CountValidGhosts(OP_SELL);
+      
+      Print("有効なゴーストポジション - Buy: ", validBuy, ", Sell: ", validSell);
+      
+      // 3. ゴーストエントリーポイントを再作成
+      RecreateGhostEntryPoints();
+      
+      // 4. 平均価格ラインを更新
+      if(AveragePriceLine == ON_MODE && g_AvgPriceVisible)
+      {
+         UpdateAveragePriceLines(0); // Buy側
+         UpdateAveragePriceLines(1); // Sell側
+      }
+      
+      // 5. チャートを再描画
+      ChartRedraw();
    }
 }
-
-
-
 
 
 //+------------------------------------------------------------------+
@@ -2013,11 +1899,11 @@ void CheckLimitTakeProfitExecutions()
    // 前回のポジション数を保存する静的変数
    static int prevBuyCount = 0;
    static int prevSellCount = 0;
-   
+
    // 現在のポジション数を取得
    int currentBuyCount = position_count(OP_BUY);
    int currentSellCount = position_count(OP_SELL);
-   
+
    // Buy側でポジション数減少を検出
    if(currentBuyCount < prevBuyCount)
    {
@@ -2037,7 +1923,7 @@ void CheckLimitTakeProfitExecutions()
       // 関連するラインを削除
       CleanupLinesOnClose(0);
    }
-   
+
    // Sell側でポジション数減少を検出
    if(currentSellCount < prevSellCount)
    {
@@ -2057,25 +1943,22 @@ void CheckLimitTakeProfitExecutions()
       // 関連するラインを削除
       CleanupLinesOnClose(1);
    }
-   
+
    // 現在のカウントを保存（次回のチェックのため）
    prevBuyCount = currentBuyCount;
    prevSellCount = currentSellCount;
 }
 
 
-//+------------------------------------------------------------------+
-//| ProcessGhostEntries関数 - ゴーストからリアルへの移行修正          |
-//+------------------------------------------------------------------+
 void ProcessGhostEntries(int side)
 {
    string direction = (side == 0) ? "Buy" : "Sell";
    Print("ProcessGhostEntries: ", direction, " 処理開始");
-   
+
    // リアルポジションがある場合はスキップ - 同一タイプのみチェックに変更
    int operationType = (side == 0) ? OP_BUY : OP_SELL;
    int existingCount = position_count(operationType);
-   
+
    if(existingCount > 0) {
       Print("ProcessGhostEntries: 既に", direction, "リアルポジションが存在するためスキップします");
       return;
@@ -2094,13 +1977,6 @@ void ProcessGhostEntries(int side)
       return;
    }
 
-   // ナンピンスキップレベルがSKIP_NONEの場合は直接リアルエントリー
-   if(NanpinSkipLevel == SKIP_NONE) {
-      Print("ProcessGhostEntries: ナンピンスキップレベルがSKIP_NONE、直接リアルエントリーを実行");
-      ProcessRealEntries(side);
-      return;
-   }
-
    // 決済済みフラグのチェック
    bool closedFlag = (operationType == OP_BUY) ? g_BuyGhostClosed : g_SellGhostClosed;
    if(closedFlag) {
@@ -2114,19 +1990,32 @@ void ProcessGhostEntries(int side)
       modeAllowed = (EntryMode == MODE_BUY_ONLY || EntryMode == MODE_BOTH);
    else // Sell
       modeAllowed = (EntryMode == MODE_SELL_ONLY || EntryMode == MODE_BOTH);
-   
+
    if(!modeAllowed) {
       Print("ProcessGhostEntries: エントリーモードにより ", direction, " 側はスキップします");
       return;
    }
-   
+
    Print("ProcessGhostEntries: ", direction, " エントリーモードチェック通過");
-   
+
    // ゴーストポジションの状態チェック
-   int maxGhostPositions = (int)NanpinSkipLevel;
    int ghostCount = ghost_position_count(operationType);
+   int totalPositionCount = combined_position_count(operationType);
+
+   Print("ProcessGhostEntries: 現在の", direction, "ゴーストカウント=", ghostCount, ", 合計ポジション数=", totalPositionCount);
    
-   Print("ProcessGhostEntries: 現在の", direction, "ゴーストカウント=", ghostCount, ", 最大数=", maxGhostPositions);
+   // ======= 修正: この部分を削除またはコメントアウト =======
+   // ゴーストポジションのカウントがスキップレベル以上の場合、リアルエントリーに切り替え
+   // if(ghostCount > 0 && ghostCount >= (int)NanpinSkipLevel) {
+   //    Print("ProcessGhostEntries: ゴーストカウント(", ghostCount, ")がスキップレベル(", (int)NanpinSkipLevel, ")に達したため、リアルエントリーに切り替えます");
+   //    
+   //    // リアル注文で実行
+   //    ExecuteRealEntry(operationType, "ゴーストスキップレベル到達によるリアルエントリー");
+   //    
+   //    // 修正: ゴーストリセットしない
+   //    
+   //    return;
+   // }
 
    // 新規エントリー条件
    if(ghostCount == 0 && position_count(operationType) == 0)
@@ -2149,14 +2038,138 @@ void ProcessGhostEntries(int side)
          Print("ProcessGhostEntries: ", direction, " エントリー条件を満たさないためスキップします");
       }
    }
-   // ゴーストカウントがスキップレベルに達したらリアルエントリー
-   else if(ghostCount >= maxGhostPositions) {
-      Print("ProcessGhostEntries: ゴーストカウント(", ghostCount, ")がスキップレベル(", maxGhostPositions, ")に達したため、リアルエントリーを実行");
-      ExecuteRealEntry(operationType, "スキップレベル到達");
-   }
    // ナンピン条件チェック
-   else if(ghostCount > 0 && ghostCount < maxGhostPositions && EnableNanpin) {
+   else if(ghostCount > 0 && EnableNanpin) {
       Print("ProcessGhostEntries: 既存ゴーストあり、ナンピン条件チェック開始");
       CheckGhostNanpinCondition(operationType);
    }
+}
+
+
+//+------------------------------------------------------------------+
+//| 最後のポジション（ゴーストまたはリアル）を取得する関数            |
+//+------------------------------------------------------------------+
+double GetLastCombinedPositionPrice(int type)
+{
+double lastPrice = 0;
+datetime lastTime = 0;
+bool found = false;
+
+// 1. リアルポジションをチェック
+for(int i = OrdersTotal() - 1; i >= 0; i--)
+{
+   if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+   {
+      if(OrderType() == type && OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
+      {
+         if(OrderOpenTime() > lastTime)
+         {
+            lastTime = OrderOpenTime();
+            lastPrice = OrderOpenPrice();
+            found = true;
+         }
+      }
+   }
+}
+
+// 2. ゴーストポジションもチェック
+if(type == OP_BUY)
+{
+   for(int i = 0; i < g_GhostBuyCount; i++)
+   {
+      if(g_GhostBuyPositions[i].isGhost && g_GhostBuyPositions[i].openTime > lastTime)
+      {
+         lastTime = g_GhostBuyPositions[i].openTime;
+         lastPrice = g_GhostBuyPositions[i].price;
+         found = true;
+      }
+   }
+}
+else // OP_SELL
+{
+   for(int i = 0; i < g_GhostSellCount; i++)
+   {
+      if(g_GhostSellPositions[i].isGhost && g_GhostSellPositions[i].openTime > lastTime)
+      {
+         lastTime = g_GhostSellPositions[i].openTime;
+         lastPrice = g_GhostSellPositions[i].price;
+         found = true;
+      }
+   }
+}
+
+if(found)
+{
+   Print("最後のポジション価格取得: ", type == OP_BUY ? "Buy" : "Sell", " 価格=", DoubleToString(lastPrice, Digits));
+}
+else
+{
+   Print("警告: 最後のポジション価格を取得できませんでした");
+}
+
+return lastPrice;
+}
+
+//+------------------------------------------------------------------+
+//| 最後のポジション（ゴーストまたはリアル）のロットを取得する関数    |
+//+------------------------------------------------------------------+
+double GetLastCombinedPositionLot(int type)
+{
+double lastLot = 0;
+datetime lastTime = 0;
+bool found = false;
+
+// 1. リアルポジションをチェック
+for(int i = OrdersTotal() - 1; i >= 0; i--)
+{
+   if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+   {
+      if(OrderType() == type && OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
+      {
+         if(OrderOpenTime() > lastTime)
+         {
+            lastTime = OrderOpenTime();
+            lastLot = OrderLots();
+            found = true;
+         }
+      }
+   }
+}
+
+// 2. ゴーストポジションもチェック
+if(type == OP_BUY)
+{
+   for(int i = 0; i < g_GhostBuyCount; i++)
+   {
+      if(g_GhostBuyPositions[i].isGhost && g_GhostBuyPositions[i].openTime > lastTime)
+      {
+         lastTime = g_GhostBuyPositions[i].openTime;
+         lastLot = g_GhostBuyPositions[i].lots;
+         found = true;
+      }
+   }
+}
+else // OP_SELL
+{
+   for(int i = 0; i < g_GhostSellCount; i++)
+   {
+      if(g_GhostSellPositions[i].isGhost && g_GhostSellPositions[i].openTime > lastTime)
+      {
+         lastTime = g_GhostSellPositions[i].openTime;
+         lastLot = g_GhostSellPositions[i].lots;
+         found = true;
+      }
+   }
+}
+
+if(found)
+{
+   Print("最後のポジションロット取得: ", type == OP_BUY ? "Buy" : "Sell", " ロット=", DoubleToString(lastLot, 2));
+}
+else
+{
+   Print("警告: 最後のポジションロットを取得できませんでした");
+}
+
+return lastLot;
 }
