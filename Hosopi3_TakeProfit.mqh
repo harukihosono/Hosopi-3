@@ -268,8 +268,11 @@ void CheckGhostTrailingStopConditions(int side)
    // ストップロス発動チェック
    CheckGhostStopLossHit(side);
 }
+
+
+
 //+------------------------------------------------------------------+
-//| 利確処理の統合関数 - 決済方法に応じて処理                         |
+//| 利確処理の統合関数 - 決済方法に応じて処理 (通知機能対応版)         |
 //+------------------------------------------------------------------+
 void ManageTakeProfit(int side)
 {
@@ -355,6 +358,9 @@ void ManageTakeProfit(int side)
                   ", TP価格=", DoubleToString(tpPrice, Digits),
                   ", 現在価格=", DoubleToString(currentPrice, Digits));
             
+            // 決済前に利益を計算
+            double ghostProfit = CalculateGhostProfit(operationType);
+            
             // ゴーストポジションをリセット
             if(operationType == OP_BUY) {
                // ゴーストポジションの状態をリセット
@@ -387,6 +393,9 @@ void ManageTakeProfit(int side)
             
             // テーブルを更新
             UpdatePositionTable();
+            
+            // ゴースト決済通知を送信
+            NotifyGhostClosure(operationType, ghostProfit);
          }
       }
       
@@ -461,16 +470,14 @@ void ManageTakeProfit(int side)
                ", TP価格=", DoubleToString(tpPrice, Digits),
                ", 現在価格=", DoubleToString(currentPrice, Digits));
          
-         // リアルポジションの決済
-         if(positionCount > 0) {
-            bool closeResult = position_close(operationType);
-            Print("リアル", direction, "ポジションを決済しました: 結果=", closeResult ? "成功" : "失敗");
-         }
-         
-         // ゴーストポジションの処理 - ゴーストがある場合は必ず処理する
+         // ゴーストポジションの処理
+         double ghostProfit = 0;
          if(ghostCount > 0)
          {
             Print("ゴースト", direction, "ポジション(", ghostCount, "個)が存在します");
+            
+            // 決済前に利益を計算
+            ghostProfit = CalculateGhostProfit(operationType);
             
             // ゴーストポジションをリセット（リアルポジションの有無に関わらず）
             if(operationType == OP_BUY) {
@@ -504,6 +511,15 @@ void ManageTakeProfit(int side)
             
             // テーブルを更新
             UpdatePositionTable();
+            
+            // ゴースト決済通知を送信
+            NotifyGhostClosure(operationType, ghostProfit);
+         }
+         
+         // リアルポジションの決済
+         if(positionCount > 0) {
+            bool closeResult = position_close(operationType);
+            Print("リアル", direction, "ポジションを決済しました: 結果=", closeResult ? "成功" : "失敗");
          }
       }
    }
@@ -525,6 +541,9 @@ void ManageTakeProfit(int side)
                      (side == 0 ? "+" : "-") + IntegerToString(tpPoints) + "pt)";
    CreatePriceLabel(g_ObjectPrefix + labelName, labelText, tpPrice, TakeProfitLineColor, side == 0);
 }
+
+
+
 
 
 //+------------------------------------------------------------------+

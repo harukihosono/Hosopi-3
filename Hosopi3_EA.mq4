@@ -16,6 +16,7 @@
 #include "Hosopi3_Ghost.mqh"
 #include "Hosopi3_TakeProfit.mqh"  
 #include "Hosopi3_Manager.mqh"
+#include "Hosopi3_Notification.mqh"
 //+------------------------------------------------------------------+
 //|                          入力パラメータ                          |
 //+------------------------------------------------------------------+
