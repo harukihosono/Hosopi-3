@@ -7,7 +7,7 @@
 #include "Hosopi3_Utils.mqh"
 #include "Hosopi3_Ghost.mqh"
 
-// ポジション数に応じた利確幅を取得する関数
+
 int GetTakeProfitPointsByPositionCount(int positionCount)
 {
    // ポジション数に応じた利確設定が無効の場合は固定値を返す
@@ -37,9 +37,30 @@ int GetTakeProfitPointsByPositionCount(int positionCount)
       case 18: return TP_Level18;
       case 19: return TP_Level19;
       case 20: return TP_Level20;
-      default: return TP_Level20; // 20ポジション以上は最後のレベルを使用
+      case 21: return TP_Level21;
+      case 22: return TP_Level22;
+      case 23: return TP_Level23;
+      case 24: return TP_Level24;
+      case 25: return TP_Level25;
+      case 26: return TP_Level26;
+      case 27: return TP_Level27;
+      case 28: return TP_Level28;
+      case 29: return TP_Level29;
+      case 30: return TP_Level30;
+      case 31: return TP_Level31;
+      case 32: return TP_Level32;
+      case 33: return TP_Level33;
+      case 34: return TP_Level34;
+      case 35: return TP_Level35;
+      case 36: return TP_Level36;
+      case 37: return TP_Level37;
+      case 38: return TP_Level38;
+      case 39: return TP_Level39;
+      case 40: return TP_Level40;
+      default: return TP_Level40; // 40ポジション以上は最後のレベルを使用
    }
 }
+
 
 //+------------------------------------------------------------------+
 //| トレールストップ条件のチェック                                    |

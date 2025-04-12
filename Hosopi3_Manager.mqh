@@ -706,14 +706,13 @@ void CheckNanpinConditions(int side)
 
 
 //+------------------------------------------------------------------+
-//| InitializeEA関数 - キャッシュ初期化追加版                         |
+//| InitializeEA関数 - レイアウトパターン対応版                        |
 //+------------------------------------------------------------------+
 int InitializeEA()
 {
    // キャッシュをリセット（高速化のため）
    ResetTradingCaches();
 
-   // 以下は既存のコード
    // アカウント番号を取得して保存
    g_AccountNumber = AccountNumber();
    
@@ -722,6 +721,10 @@ int InitializeEA()
    
    // オブジェクト名のプレフィックスを設定
    g_ObjectPrefix = IntegerToString(MagicNumber) + "_" + IntegerToString(g_AccountNumber) + "_";
+   
+   // レイアウトパターンを適用 - 追加
+   ApplyLayoutPattern();
+   Print("レイアウトパターンを初期化しました: ", GetLayoutPatternText());
    
    // ロットテーブルの初期化
    InitializeLotTable();
@@ -827,6 +830,8 @@ int InitializeEA()
 
    return(INIT_SUCCEEDED);
 }
+
+
 
 //+------------------------------------------------------------------+
 //| Expert deinitialization function - バックテスト用修正             |

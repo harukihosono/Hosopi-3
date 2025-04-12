@@ -264,13 +264,34 @@ void InitializeLotTable()
       g_LotTable[17] = Lot_18;
       g_LotTable[18] = Lot_19;
       g_LotTable[19] = Lot_20;
+      // 追加の20-40のロットを設定
+      g_LotTable[20] = Lot_21;
+      g_LotTable[21] = Lot_22;
+      g_LotTable[22] = Lot_23;
+      g_LotTable[23] = Lot_24;
+      g_LotTable[24] = Lot_25;
+      g_LotTable[25] = Lot_26;
+      g_LotTable[26] = Lot_27;
+      g_LotTable[27] = Lot_28;
+      g_LotTable[28] = Lot_29;
+      g_LotTable[29] = Lot_30;
+      g_LotTable[30] = Lot_31;
+      g_LotTable[31] = Lot_32;
+      g_LotTable[32] = Lot_33;
+      g_LotTable[33] = Lot_34;
+      g_LotTable[34] = Lot_35;
+      g_LotTable[35] = Lot_36;
+      g_LotTable[36] = Lot_37;
+      g_LotTable[37] = Lot_38;
+      g_LotTable[38] = Lot_39;
+      g_LotTable[39] = Lot_40;
    }
    else
    {
       Print("マーチンゲール方式でロット計算します - 初期ロット: ", InitialLot, ", 倍率: ", LotMultiplier);
       // マーチンゲール方式でロット計算
       g_LotTable[0] = InitialLot;
-      for(int i = 1; i < 20; i++)
+      for(int i = 1; i < 40; i++) // 40に拡張
       {
          double nextLot = g_LotTable[i-1] * LotMultiplier;
          // 小数点以下3桁で切り上げ
@@ -303,9 +324,6 @@ void InitializeLotTable()
 }
 
 
-//+------------------------------------------------------------------+
-//| ナンピン幅テーブルの初期化                                         |
-//+------------------------------------------------------------------+
 void InitializeNanpinSpreadTable()
 {
    // 個別指定が有効な場合
@@ -331,17 +349,37 @@ void InitializeNanpinSpreadTable()
       g_NanpinSpreadTable[17] = Spread_18;
       g_NanpinSpreadTable[18] = Spread_19;
       g_NanpinSpreadTable[19] = Spread_20;
+      // 追加の20-40のナンピン幅を設定
+      g_NanpinSpreadTable[20] = Spread_21;
+      g_NanpinSpreadTable[21] = Spread_22;
+      g_NanpinSpreadTable[22] = Spread_23;
+      g_NanpinSpreadTable[23] = Spread_24;
+      g_NanpinSpreadTable[24] = Spread_25;
+      g_NanpinSpreadTable[25] = Spread_26;
+      g_NanpinSpreadTable[26] = Spread_27;
+      g_NanpinSpreadTable[27] = Spread_28;
+      g_NanpinSpreadTable[28] = Spread_29;
+      g_NanpinSpreadTable[29] = Spread_30;
+      g_NanpinSpreadTable[30] = Spread_31;
+      g_NanpinSpreadTable[31] = Spread_32;
+      g_NanpinSpreadTable[32] = Spread_33;
+      g_NanpinSpreadTable[33] = Spread_34;
+      g_NanpinSpreadTable[34] = Spread_35;
+      g_NanpinSpreadTable[35] = Spread_36;
+      g_NanpinSpreadTable[36] = Spread_37;
+      g_NanpinSpreadTable[37] = Spread_38;
+      g_NanpinSpreadTable[38] = Spread_39;
+      g_NanpinSpreadTable[39] = Spread_40;
    }
    else
    {
       // 全て同じナンピン幅
-      for(int i = 0; i < 20; i++)
+      for(int i = 0; i < 40; i++) // 40に拡張
       {
          g_NanpinSpreadTable[i] = NanpinSpread;
       }
    }
 }
-
 
 //+------------------------------------------------------------------+
 //| 最後の有効なエントリー時間を取得する関数                          |

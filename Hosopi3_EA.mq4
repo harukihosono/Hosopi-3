@@ -289,7 +289,26 @@ input double Lot_17 = 99.0;  // 17段目 LOT
 input double Lot_18 = 99.0;  // 18段目 LOT
 input double Lot_19 = 99.0;  // 19段目 LOT
 input double Lot_20 = 99.0;  // 20段目 LOT
-
+input double Lot_21 = 99.0;  // 21段目 LOT
+input double Lot_22 = 99.0;  // 22段目 LOT
+input double Lot_23 = 99.0;  // 23段目 LOT
+input double Lot_24 = 99.0;  // 24段目 LOT
+input double Lot_25 = 99.0;  // 25段目 LOT
+input double Lot_26 = 99.0;  // 26段目 LOT
+input double Lot_27 = 99.0;  // 27段目 LOT
+input double Lot_28 = 99.0;  // 28段目 LOT
+input double Lot_29 = 99.0;  // 29段目 LOT
+input double Lot_30 = 99.0;  // 30段目 LOT
+input double Lot_31 = 99.0;  // 31段目 LOT
+input double Lot_32 = 99.0;  // 32段目 LOT
+input double Lot_33 = 99.0;  // 33段目 LOT
+input double Lot_34 = 99.0;  // 34段目 LOT
+input double Lot_35 = 99.0;  // 35段目 LOT
+input double Lot_36 = 99.0;  // 36段目 LOT
+input double Lot_37 = 99.0;  // 37段目 LOT
+input double Lot_38 = 99.0;  // 38段目 LOT
+input double Lot_39 = 99.0;  // 39段目 LOT
+input double Lot_40 = 99.0;  // 40段目 LOT
 // ======== ナンピン幅の個別設定 ========
 sinput string Comment_SpreadIndividual = ""; //+--- ナンピン幅の個別設定 ---+
 input ON_OFF IndividualSpreadEnabled = OFF_MODE; // ナンピン幅の個別指定を有効にする(ON/OFF)
@@ -313,7 +332,26 @@ input int Spread_17 = 888;  // 17段目 ナンピン幅
 input int Spread_18 = 888;  // 18段目 ナンピン幅
 input int Spread_19 = 888;  // 19段目 ナンピン幅
 input int Spread_20 = 888;  // 20段目 ナンピン幅
-
+input int Spread_21 = 888;   // 21段目 ナンピン幅
+input int Spread_22 = 888;   // 22段目 ナンピン幅
+input int Spread_23 = 888;   // 23段目 ナンピン幅
+input int Spread_24 = 888;   // 24段目 ナンピン幅
+input int Spread_25 = 888;   // 25段目 ナンピン幅
+input int Spread_26 = 888;   // 26段目 ナンピン幅
+input int Spread_27 = 888;   // 27段目 ナンピン幅
+input int Spread_28 = 888;   // 28段目 ナンピン幅
+input int Spread_29 = 888;   // 29段目 ナンピン幅
+input int Spread_30 = 888;   // 30段目 ナンピン幅
+input int Spread_31 = 888;   // 31段目 ナンピン幅
+input int Spread_32 = 888;   // 32段目 ナンピン幅
+input int Spread_33 = 888;   // 33段目 ナンピン幅
+input int Spread_34 = 888;   // 34段目 ナンピン幅
+input int Spread_35 = 888;   // 35段目 ナンピン幅
+input int Spread_36 = 888;   // 36段目 ナンピン幅
+input int Spread_37 = 888;   // 37段目 ナンピン幅
+input int Spread_38 = 888;   // 38段目 ナンピン幅
+input int Spread_39 = 888;   // 39段目 ナンピン幅
+input int Spread_40 = 888;   // 40段目 ナンピン幅
 
 // ======== ポジション数に応じた利確設定 ========
 sinput string Comment_Position_TP = ""; //+--- ポジション数に応じた利確設定 ---+
@@ -338,8 +376,44 @@ input int TP_Level17 = 130;              // 17ポジション時の利確幅(ポ
 input int TP_Level18 = 120;              // 18ポジション時の利確幅(ポイント)
 input int TP_Level19 = 110;              // 19ポジション時の利確幅(ポイント)
 input int TP_Level20 = 100;              // 20ポジション時の利確幅(ポイント)
+input int TP_Level21 = 100;  // 21ポジション時の利確幅(ポイント)
+input int TP_Level22 = 100;  // 22ポジション時の利確幅(ポイント)
+input int TP_Level23 = 100;  // 23ポジション時の利確幅(ポイント)
+input int TP_Level24 = 100;  // 24ポジション時の利確幅(ポイント)
+input int TP_Level25 = 100;  // 25ポジション時の利確幅(ポイント)
+input int TP_Level26 = 100;  // 26ポジション時の利確幅(ポイント)
+input int TP_Level27 = 100;  // 27ポジション時の利確幅(ポイント)
+input int TP_Level28 = 100;  // 28ポジション時の利確幅(ポイント)
+input int TP_Level29 = 100;  // 29ポジション時の利確幅(ポイント)
+input int TP_Level30 = 100;  // 30ポジション時の利確幅(ポイント)
+input int TP_Level31 = 100;  // 31ポジション時の利確幅(ポイント)
+input int TP_Level32 = 100;  // 32ポジション時の利確幅(ポイント)
+input int TP_Level33 = 100;  // 33ポジション時の利確幅(ポイント)
+input int TP_Level34 = 100;  // 34ポジション時の利確幅(ポイント)
+input int TP_Level35 = 100;  // 35ポジション時の利確幅(ポイント)
+input int TP_Level36 = 100;  // 36ポジション時の利確幅(ポイント)
+input int TP_Level37 = 100;  // 37ポジション時の利確幅(ポイント)
+input int TP_Level38 = 100;  // 38ポジション時の利確幅(ポイント)
+input int TP_Level39 = 100;  // 39ポジション時の利確幅(ポイント)
+input int TP_Level40 = 100;  // 40ポジション時の利確幅(ポイント)
+
+//+------------------------------------------------------------------+
+//| ゴースト通知設定パラメータ                                        |
+//+------------------------------------------------------------------+
+sinput string Comment_GhostNotification = ""; //+--- ゴースト通知設定 ---+
+input bool EnableGhostAlertNotification = true;    // ゴーストアラート通知を有効にする
+input bool EnableGhostPushNotification = false;    // ゴーストプッシュ通知を有効にする
+input bool NotifyGhostEntries = true;              // ゴーストエントリー通知
+input bool NotifyGhostClosures = true;             // ゴースト決済通知
 
 
+// ======== レイアウト設定 ========
+sinput string Comment_Layout = ""; //+--- レイアウト設定 ---+
+input LAYOUT_PATTERN LayoutPattern = LAYOUT_DEFAULT;      // レイアウトパターン
+input int CustomPanelX = 20;       // カスタム: パネルX座標
+input int CustomPanelY = 50;       // カスタム: パネルY座標
+input int CustomTableX = 20;       // カスタム: テーブルX座標
+input int CustomTableY = 400;      // カスタム: テーブルY座標
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |

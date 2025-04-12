@@ -8,12 +8,19 @@
 #include "Hosopi3_Ghost.mqh"
 
 //+------------------------------------------------------------------+
-//| ポジションテーブルを作成する - テーブルセル位置修正版              |
+//| ポジションテーブルを作成する - レイアウトパターン対応版           |
 //+------------------------------------------------------------------+
 void CreatePositionTable()
 {
    DeletePositionTable(); // 既存のテーブルを削除
    g_TableObjectCount = 0;
+   
+   // レイアウトパターンを適用
+   ApplyLayoutPattern();
+   
+   // テーブル位置を調整された値に設定
+   int adjustedTableX = g_EffectiveTableX;
+   int adjustedTableY = g_EffectiveTableY;
    
    // ヘッダー列のラベルと位置の修正
    // 列の幅を明確に定義し、一貫した間隔で配置
@@ -27,11 +34,6 @@ void CreatePositionTable()
       positions[i] = positions[i-1] + columnWidths[i-1];
    }
    
-   // パネル位置の調整を考慮したテーブル位置
-   int adjustedPanelY = PanelY;
-   int adjustedGhostTableX = PanelX;
-   int adjustedGhostTableY = adjustedPanelY + 500; // テーブル位置をさらに下げる
-   
    // オブジェクト名にプレフィックスを追加（複数チャート対策）
    string tablePrefix = g_ObjectPrefix + "GhostTable_";
    
@@ -39,8 +41,8 @@ void CreatePositionTable()
    string bgName = tablePrefix + "BG";
    ObjectCreate(bgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
    ObjectSet(bgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSet(bgName, OBJPROP_XDISTANCE, adjustedGhostTableX);
-   ObjectSet(bgName, OBJPROP_YDISTANCE, adjustedGhostTableY);
+   ObjectSet(bgName, OBJPROP_XDISTANCE, adjustedTableX);
+   ObjectSet(bgName, OBJPROP_YDISTANCE, adjustedTableY);
    ObjectSet(bgName, OBJPROP_XSIZE, TABLE_WIDTH);
    // 最小サイズ（タイトル + ヘッダー + 「No positions」行）
    ObjectSet(bgName, OBJPROP_YSIZE, TITLE_HEIGHT + TABLE_ROW_HEIGHT * 2);
@@ -56,8 +58,8 @@ void CreatePositionTable()
    string titleBgName = tablePrefix + "TitleBG";
    ObjectCreate(titleBgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
    ObjectSet(titleBgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSet(titleBgName, OBJPROP_XDISTANCE, adjustedGhostTableX);
-   ObjectSet(titleBgName, OBJPROP_YDISTANCE, adjustedGhostTableY);
+   ObjectSet(titleBgName, OBJPROP_XDISTANCE, adjustedTableX);
+   ObjectSet(titleBgName, OBJPROP_YDISTANCE, adjustedTableY);
    ObjectSet(titleBgName, OBJPROP_XSIZE, TABLE_WIDTH);
    ObjectSet(titleBgName, OBJPROP_YSIZE, TITLE_HEIGHT);
    ObjectSet(titleBgName, OBJPROP_BGCOLOR, C'32,32,48');
@@ -72,8 +74,8 @@ void CreatePositionTable()
    string titleName = tablePrefix + "Title";
    ObjectCreate(titleName, OBJ_LABEL, 0, 0, 0);
    ObjectSet(titleName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSet(titleName, OBJPROP_XDISTANCE, adjustedGhostTableX + 10);
-   ObjectSet(titleName, OBJPROP_YDISTANCE, adjustedGhostTableY + 3);
+   ObjectSet(titleName, OBJPROP_XDISTANCE, adjustedTableX + 10);
+   ObjectSet(titleName, OBJPROP_YDISTANCE, adjustedTableY + 3);
    ObjectSetText(titleName, GhostTableTitle, 7, "MS Gothic", TABLE_TEXT_COLOR);
    ObjectSet(titleName, OBJPROP_SELECTABLE, false);
    ObjectSetInteger(0, titleName, OBJPROP_ZORDER, 2);
@@ -82,8 +84,8 @@ void CreatePositionTable()
    string headerBgName = tablePrefix + "HeaderBG";
    ObjectCreate(headerBgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
    ObjectSet(headerBgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSet(headerBgName, OBJPROP_XDISTANCE, adjustedGhostTableX);
-   ObjectSet(headerBgName, OBJPROP_YDISTANCE, adjustedGhostTableY + TITLE_HEIGHT);
+   ObjectSet(headerBgName, OBJPROP_XDISTANCE, adjustedTableX);
+   ObjectSet(headerBgName, OBJPROP_YDISTANCE, adjustedTableY + TITLE_HEIGHT);
    ObjectSet(headerBgName, OBJPROP_XSIZE, TABLE_WIDTH);
    ObjectSet(headerBgName, OBJPROP_YSIZE, TABLE_ROW_HEIGHT);
    ObjectSet(headerBgName, OBJPROP_BGCOLOR, TABLE_HEADER_BG);
@@ -100,8 +102,8 @@ void CreatePositionTable()
       string name = tablePrefix + "Header_" + headers[i];
       ObjectCreate(name, OBJ_LABEL, 0, 0, 0);
       ObjectSet(name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-      ObjectSet(name, OBJPROP_XDISTANCE, adjustedGhostTableX + positions[i]);
-      ObjectSet(name, OBJPROP_YDISTANCE, adjustedGhostTableY + TITLE_HEIGHT + 4);
+      ObjectSet(name, OBJPROP_XDISTANCE, adjustedTableX + positions[i]);
+      ObjectSet(name, OBJPROP_YDISTANCE, adjustedTableY + TITLE_HEIGHT + 4);
       ObjectSetText(name, headers[i], 8, "MS Gothic", TABLE_TEXT_COLOR);
       ObjectSet(name, OBJPROP_SELECTABLE, false);
       ObjectSetInteger(0, name, OBJPROP_ZORDER, 2);
@@ -121,35 +123,19 @@ void CreatePositionTable()
 }
 
 //+------------------------------------------------------------------+
-//| ポジションテーブルを削除する                                       |
-//+------------------------------------------------------------------+
-void DeletePositionTable()
-{
-   for(int i = 0; i < g_TableObjectCount; i++)
-   {
-      if(ObjectFind(g_TableNames[i]) >= 0)
-         ObjectDelete(g_TableNames[i]);
-   }
-   
-   g_TableObjectCount = 0;
-   ChartRedraw(); // チャートを再描画
-}
-
-
-// Hosopi3_Table.mqh ファイルのUpdatePositionTable関数を修正
-
-//+------------------------------------------------------------------+
-//| ポジションテーブルを更新する - ロット順・タイプ別表示対応版       |
+//| ポジションテーブルを更新する - レイアウトパターン対応版           |
 //+------------------------------------------------------------------+
 void UpdatePositionTable()
 {
+   // レイアウトパターンを適用
+   ApplyLayoutPattern();
+   
+   // テーブル位置を調整された値に設定
+   int adjustedTableX = g_EffectiveTableX;
+   int adjustedTableY = g_EffectiveTableY;
+   
    // オブジェクト名にプレフィックスを追加（複数チャート対策）
    string tablePrefix = g_ObjectPrefix + "GhostTable_";
-   
-   // 修正: テーブル位置の調整
-   int adjustedPanelY = PanelY;
-   int adjustedGhostTableX = PanelX;
-   int adjustedGhostTableY = adjustedPanelY + 500; // テーブル位置をさらに下げる
    
    // 列の位置を定義
    int columnWidths[8] = {25, 45, 45, 90, 95, 140, 45, 90}; // 各列の幅
@@ -394,21 +380,21 @@ void UpdatePositionTable()
       }
    }
    
-// ArrayCopyの代わりに手動でコピー
-if(sortedCount > 0) {
-   for(int i = 0; i < sortedCount; i++) {
-      allPositions[i].type = sortedPositions[i].type;
-      allPositions[i].lots = sortedPositions[i].lots;
-      allPositions[i].symbol = sortedPositions[i].symbol;
-      allPositions[i].price = sortedPositions[i].price;
-      allPositions[i].profit = sortedPositions[i].profit;
-      allPositions[i].ticket = sortedPositions[i].ticket;
-      allPositions[i].openTime = sortedPositions[i].openTime;
-      allPositions[i].isGhost = sortedPositions[i].isGhost;
-      allPositions[i].level = sortedPositions[i].level;
-      allPositions[i].stopLoss = sortedPositions[i].stopLoss;
+   // ArrayCopyの代わりに手動でコピー
+   if(sortedCount > 0) {
+      for(int i = 0; i < sortedCount; i++) {
+         allPositions[i].type = sortedPositions[i].type;
+         allPositions[i].lots = sortedPositions[i].lots;
+         allPositions[i].symbol = sortedPositions[i].symbol;
+         allPositions[i].price = sortedPositions[i].price;
+         allPositions[i].profit = sortedPositions[i].profit;
+         allPositions[i].ticket = sortedPositions[i].ticket;
+         allPositions[i].openTime = sortedPositions[i].openTime;
+         allPositions[i].isGhost = sortedPositions[i].isGhost;
+         allPositions[i].level = sortedPositions[i].level;
+         allPositions[i].stopLoss = sortedPositions[i].stopLoss;
+      }
    }
-}
    
    // データがない場合のメッセージ
    if(totalPositions == 0)
@@ -416,8 +402,8 @@ if(sortedCount > 0) {
       string noDataName = tablePrefix + "Row_NoData";
       ObjectCreate(noDataName, OBJ_LABEL, 0, 0, 0);
       ObjectSet(noDataName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-      ObjectSet(noDataName, OBJPROP_XDISTANCE, adjustedGhostTableX + 10);
-      ObjectSet(noDataName, OBJPROP_YDISTANCE, adjustedGhostTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT + 10);
+      ObjectSet(noDataName, OBJPROP_XDISTANCE, adjustedTableX + 10);
+      ObjectSet(noDataName, OBJPROP_YDISTANCE, adjustedTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT + 10);
       ObjectSetText(noDataName, "No positions", 8, "MS Gothic", TABLE_TEXT_COLOR);
       ObjectSet(noDataName, OBJPROP_SELECTABLE, false);
       ObjectSetInteger(0, noDataName, OBJPROP_ZORDER, 2);
@@ -443,14 +429,14 @@ if(sortedCount > 0) {
    for(int i = 0; i < visibleRows; i++)
    {
       // 行の位置計算 - ヘッダーの下から順に配置
-      int rowY = adjustedGhostTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (i + 1);
+      int rowY = adjustedTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (i + 1);
       color rowBg = (i % 2 == 0) ? TABLE_ROW_BG1 : TABLE_ROW_BG2;
       
       // 行の背景
       string rowBgName = tablePrefix + "Row_" + IntegerToString(i) + "_BG";
       ObjectCreate(rowBgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
       ObjectSet(rowBgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-      ObjectSet(rowBgName, OBJPROP_XDISTANCE, adjustedGhostTableX);
+      ObjectSet(rowBgName, OBJPROP_XDISTANCE, adjustedTableX);
       ObjectSet(rowBgName, OBJPROP_YDISTANCE, rowY);
       ObjectSet(rowBgName, OBJPROP_XSIZE, TABLE_WIDTH);
       ObjectSet(rowBgName, OBJPROP_YSIZE, TABLE_ROW_HEIGHT);
@@ -469,7 +455,7 @@ if(sortedCount > 0) {
       string noName = tablePrefix + "Row_" + IntegerToString(i) + "_No";
       ObjectCreate(noName, OBJ_LABEL, 0, 0, 0);
       ObjectSet(noName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-      ObjectSet(noName, OBJPROP_XDISTANCE, adjustedGhostTableX + positions[0]);
+      ObjectSet(noName, OBJPROP_XDISTANCE, adjustedTableX + positions[0]);
       ObjectSet(noName, OBJPROP_YDISTANCE, rowY + 4);
       ObjectSetText(noName, IntegerToString(i+1), 8, "MS Gothic", textColorToUse);
       ObjectSet(noName, OBJPROP_SELECTABLE, false);
@@ -493,7 +479,7 @@ if(sortedCount > 0) {
       string typeName = tablePrefix + "Row_" + IntegerToString(i) + "_Type";
       ObjectCreate(typeName, OBJ_LABEL, 0, 0, 0);
       ObjectSet(typeName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-      ObjectSet(typeName, OBJPROP_XDISTANCE, adjustedGhostTableX + positions[1]);
+      ObjectSet(typeName, OBJPROP_XDISTANCE, adjustedTableX + positions[1]);
       ObjectSet(typeName, OBJPROP_YDISTANCE, rowY + 4);
       ObjectSetText(typeName, typeText, 8, "MS Gothic", typeColor);
       ObjectSet(typeName, OBJPROP_SELECTABLE, false);
@@ -503,7 +489,7 @@ if(sortedCount > 0) {
       string lotsName = tablePrefix + "Row_" + IntegerToString(i) + "_Lots";
       ObjectCreate(lotsName, OBJ_LABEL, 0, 0, 0);
       ObjectSet(lotsName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-      ObjectSet(lotsName, OBJPROP_XDISTANCE, adjustedGhostTableX + positions[2]);
+      ObjectSet(lotsName, OBJPROP_XDISTANCE, adjustedTableX + positions[2]);
       ObjectSet(lotsName, OBJPROP_YDISTANCE, rowY + 4);
       ObjectSetText(lotsName, DoubleToString(allPositions[i].lots, 2), 8, "MS Gothic", textColorToUse);
       ObjectSet(lotsName, OBJPROP_SELECTABLE, false);
@@ -513,7 +499,7 @@ if(sortedCount > 0) {
       string symbolName = tablePrefix + "Row_" + IntegerToString(i) + "_Symbol";
       ObjectCreate(symbolName, OBJ_LABEL, 0, 0, 0);
       ObjectSet(symbolName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-      ObjectSet(symbolName, OBJPROP_XDISTANCE, adjustedGhostTableX + positions[3]);
+      ObjectSet(symbolName, OBJPROP_XDISTANCE, adjustedTableX + positions[3]);
       ObjectSet(symbolName, OBJPROP_YDISTANCE, rowY + 4);
       ObjectSetText(symbolName, allPositions[i].symbol, 8, "MS Gothic", textColorToUse);
       ObjectSet(symbolName, OBJPROP_SELECTABLE, false);
@@ -531,7 +517,7 @@ if(sortedCount > 0) {
       string priceName = tablePrefix + "Row_" + IntegerToString(i) + "_Price";
       ObjectCreate(priceName, OBJ_LABEL, 0, 0, 0);
       ObjectSet(priceName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-      ObjectSet(priceName, OBJPROP_XDISTANCE, adjustedGhostTableX + positions[4]);
+      ObjectSet(priceName, OBJPROP_XDISTANCE, adjustedTableX + positions[4]);
       ObjectSet(priceName, OBJPROP_YDISTANCE, rowY + 4);
       ObjectSetText(priceName, priceStr, 8, "MS Gothic", textColorToUse);
       ObjectSet(priceName, OBJPROP_SELECTABLE, false);
@@ -542,7 +528,7 @@ if(sortedCount > 0) {
       string timeName = tablePrefix + "Row_" + IntegerToString(i) + "_OpenTime";
       ObjectCreate(timeName, OBJ_LABEL, 0, 0, 0);
       ObjectSet(timeName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-      ObjectSet(timeName, OBJPROP_XDISTANCE, adjustedGhostTableX + positions[5]);
+      ObjectSet(timeName, OBJPROP_XDISTANCE, adjustedTableX + positions[5]);
       ObjectSet(timeName, OBJPROP_YDISTANCE, rowY + 4);
       ObjectSetText(timeName, timeStr, 8, "MS Gothic", textColorToUse);
       ObjectSet(timeName, OBJPROP_SELECTABLE, false);
@@ -552,7 +538,7 @@ if(sortedCount > 0) {
       string levelName = tablePrefix + "Row_" + IntegerToString(i) + "_Level";
       ObjectCreate(levelName, OBJ_LABEL, 0, 0, 0);
       ObjectSet(levelName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-      ObjectSet(levelName, OBJPROP_XDISTANCE, adjustedGhostTableX + positions[6]);
+      ObjectSet(levelName, OBJPROP_XDISTANCE, adjustedTableX + positions[6]);
       ObjectSet(levelName, OBJPROP_YDISTANCE, rowY + 4);
       ObjectSetText(levelName, IntegerToString(allPositions[i].level + 1), 8, "MS Gothic", textColorToUse);
       ObjectSet(levelName, OBJPROP_SELECTABLE, false);
@@ -562,7 +548,7 @@ if(sortedCount > 0) {
       string profitName = tablePrefix + "Row_" + IntegerToString(i) + "_Profit";
       ObjectCreate(profitName, OBJ_LABEL, 0, 0, 0);
       ObjectSet(profitName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-      ObjectSet(profitName, OBJPROP_XDISTANCE, adjustedGhostTableX + positions[7]);
+      ObjectSet(profitName, OBJPROP_XDISTANCE, adjustedTableX + positions[7]);
       ObjectSet(profitName, OBJPROP_YDISTANCE, rowY + 4);
       
       // 損益の計算
@@ -618,8 +604,8 @@ if(sortedCount > 0) {
    string totalRowBgName = tablePrefix + "Row_Total_BG";
    ObjectCreate(totalRowBgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
    ObjectSet(totalRowBgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSet(totalRowBgName, OBJPROP_XDISTANCE, adjustedGhostTableX);
-   ObjectSet(totalRowBgName, OBJPROP_YDISTANCE, adjustedGhostTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (visibleRows + 1));
+   ObjectSet(totalRowBgName, OBJPROP_XDISTANCE, adjustedTableX);
+   ObjectSet(totalRowBgName, OBJPROP_YDISTANCE, adjustedTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (visibleRows + 1));
    ObjectSet(totalRowBgName, OBJPROP_XSIZE, TABLE_WIDTH);
    ObjectSet(totalRowBgName, OBJPROP_YSIZE, TABLE_ROW_HEIGHT);
    ObjectSet(totalRowBgName, OBJPROP_BGCOLOR, C'48,48,64');
@@ -634,8 +620,8 @@ if(sortedCount > 0) {
    string totalTextName = tablePrefix + "Row_Total_Text";
    ObjectCreate(totalTextName, OBJ_LABEL, 0, 0, 0);
    ObjectSet(totalTextName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSet(totalTextName, OBJPROP_XDISTANCE, adjustedGhostTableX + positions[0]);
-   ObjectSet(totalTextName, OBJPROP_YDISTANCE, adjustedGhostTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (visibleRows + 1) + 4);
+   ObjectSet(totalTextName, OBJPROP_XDISTANCE, adjustedTableX + positions[0]);
+   ObjectSet(totalTextName, OBJPROP_YDISTANCE, adjustedTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (visibleRows + 1) + 4);
    ObjectSetText(totalTextName, "TOTAL:", 8, "MS Gothic Bold", TABLE_TEXT_COLOR);
    ObjectSet(totalTextName, OBJPROP_SELECTABLE, false);
    ObjectSetInteger(0, totalTextName, OBJPROP_ZORDER, 3);
@@ -644,8 +630,8 @@ if(sortedCount > 0) {
    string buyTotalName = tablePrefix + "Row_BuyTotal";
    ObjectCreate(buyTotalName, OBJ_LABEL, 0, 0, 0);
    ObjectSet(buyTotalName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSet(buyTotalName, OBJPROP_XDISTANCE, adjustedGhostTableX + positions[2]);
-   ObjectSet(buyTotalName, OBJPROP_YDISTANCE, adjustedGhostTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (visibleRows + 1) + 4);
+   ObjectSet(buyTotalName, OBJPROP_XDISTANCE, adjustedTableX + positions[2]);
+   ObjectSet(buyTotalName, OBJPROP_YDISTANCE, adjustedTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (visibleRows + 1) + 4);
    color buyColor = totalBuyProfit >= 0 ? clrLime : clrRed;
    ObjectSetText(buyTotalName, "BUY: " + DoubleToStr(totalBuyProfit, 2) + "", 8, "MS Gothic", buyColor);
    ObjectSet(buyTotalName, OBJPROP_SELECTABLE, false);
@@ -655,8 +641,8 @@ if(sortedCount > 0) {
    string sellTotalName = tablePrefix + "Row_SellTotal";
    ObjectCreate(sellTotalName, OBJ_LABEL, 0, 0, 0);
    ObjectSet(sellTotalName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSet(sellTotalName, OBJPROP_XDISTANCE, adjustedGhostTableX + positions[4]);
-   ObjectSet(sellTotalName, OBJPROP_YDISTANCE, adjustedGhostTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (visibleRows + 1) + 4);
+   ObjectSet(sellTotalName, OBJPROP_XDISTANCE, adjustedTableX + positions[4]);
+   ObjectSet(sellTotalName, OBJPROP_YDISTANCE, adjustedTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (visibleRows + 1) + 4);
    color sellColor = totalSellProfit >= 0 ? clrLime : clrRed;
    ObjectSetText(sellTotalName, "SELL: " +DoubleToStr(totalSellProfit, 2) + "", 8, "MS Gothic", sellColor);
    ObjectSet(sellTotalName, OBJPROP_SELECTABLE, false);
@@ -666,8 +652,8 @@ if(sortedCount > 0) {
    string netTotalName = tablePrefix + "Row_NetTotal";
    ObjectCreate(netTotalName, OBJ_LABEL, 0, 0, 0);
    ObjectSet(netTotalName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSet(netTotalName, OBJPROP_XDISTANCE, adjustedGhostTableX + positions[7]);
-   ObjectSet(netTotalName, OBJPROP_YDISTANCE, adjustedGhostTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (visibleRows + 1) + 4);
+   ObjectSet(netTotalName, OBJPROP_XDISTANCE, adjustedTableX + positions[7]);
+   ObjectSet(netTotalName, OBJPROP_YDISTANCE, adjustedTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (visibleRows + 1) + 4);
    color totalColor = totalProfit >= 0 ? clrLime : clrRed;
    ObjectSetText(netTotalName, "NET: " + DoubleToStr(totalProfit, 2) + "", 8, "MS Gothic Bold", totalColor);
    ObjectSet(netTotalName, OBJPROP_SELECTABLE, false);
@@ -690,6 +676,23 @@ if(sortedCount > 0) {
    
    ChartRedraw();
 }
+//+------------------------------------------------------------------+
+//| ポジションテーブルを削除する                                       |
+//+------------------------------------------------------------------+
+void DeletePositionTable()
+{
+   for(int i = 0; i < g_TableObjectCount; i++)
+   {
+      if(ObjectFind(g_TableNames[i]) >= 0)
+         ObjectDelete(g_TableNames[i]);
+   }
+   
+   g_TableObjectCount = 0;
+   ChartRedraw(); // チャートを再描画
+}
+
+
+
 
 //+------------------------------------------------------------------+
 //| カスタム色テーブルを表示するための補助関数                         |

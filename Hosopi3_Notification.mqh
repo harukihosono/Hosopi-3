@@ -4,14 +4,7 @@
 //+------------------------------------------------------------------+
 #include "Hosopi3_Defines.mqh"
 
-//+------------------------------------------------------------------+
-//| ゴースト通知設定パラメータ                                        |
-//+------------------------------------------------------------------+
-sinput string Comment_GhostNotification = ""; //+--- ゴースト通知設定 ---+
-input bool EnableGhostAlertNotification = true;    // ゴーストアラート通知を有効にする
-input bool EnableGhostPushNotification = false;    // ゴーストプッシュ通知を有効にする
-input bool NotifyGhostEntries = true;              // ゴーストエントリー通知
-input bool NotifyGhostClosures = true;             // ゴースト決済通知
+
 
 //+------------------------------------------------------------------+
 //| ゴースト通知送信関数                                              |

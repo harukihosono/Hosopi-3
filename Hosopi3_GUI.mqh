@@ -11,116 +11,245 @@
 
 
 //+------------------------------------------------------------------+
-//| GUIを作成する - ゴーストエントリーボタン追加版                      |
+//| レイアウト設定のための列挙型を追加                                |
+//+------------------------------------------------------------------+
+enum LAYOUT_PATTERN
+{
+   LAYOUT_DEFAULT = 0,         // デフォルト (パネル上/テーブル下)
+   LAYOUT_SIDE_BY_SIDE = 1,    // 横並び (パネル左/テーブル右)
+   LAYOUT_TABLE_TOP = 2,       // テーブル優先 (テーブル上/パネル下)
+   LAYOUT_COMPACT = 3,         // コンパクト (小さいパネル)
+   LAYOUT_CUSTOM = 4           // カスタム (位置を個別指定)
+};
+
+
+
+// パネルとテーブルの位置を保存するグローバル変数
+int g_EffectivePanelX = 0;
+int g_EffectivePanelY = 0;
+int g_EffectiveTableX = 0;
+int g_EffectiveTableY = 0;
+
+//+------------------------------------------------------------------+
+//| レイアウトパターンに基づいて位置を設定する関数                    |
+//+------------------------------------------------------------------+
+void ApplyLayoutPattern()
+{
+   // デフォルトのサイズを設定
+   int defaultPanelWidth = PANEL_WIDTH;
+   int defaultPanelHeight = PANEL_HEIGHT + 170; // ゴーストボタン追加のため高さを拡大
+   int defaultTableWidth = TABLE_WIDTH;
+   
+   // レイアウトパターンに応じて位置を調整
+   switch(LayoutPattern)
+   {
+      case LAYOUT_DEFAULT: // デフォルト (パネル上/テーブル下)
+         g_EffectivePanelX = PanelX;
+         g_EffectivePanelY = PanelY;
+         g_EffectiveTableX = PanelX;
+         g_EffectiveTableY = PanelY + 500; // テーブルを下に配置
+         break;
+         
+      case LAYOUT_SIDE_BY_SIDE: // 横並び (パネル左/テーブル右)
+         g_EffectivePanelX = PanelX;
+         g_EffectivePanelY = PanelY;
+         g_EffectiveTableX = PanelX + defaultPanelWidth + 20; // パネルの右側にテーブルを配置
+         g_EffectiveTableY = PanelY;
+         break;
+         
+      case LAYOUT_TABLE_TOP: // テーブル優先 (テーブル上/パネル下)
+         g_EffectivePanelX = PanelX;
+         g_EffectivePanelY = PanelY + 350; // パネルを下に配置
+         g_EffectiveTableX = PanelX;
+         g_EffectiveTableY = PanelY;
+         break;
+         
+      case LAYOUT_COMPACT: // コンパクト (小さいパネル)
+         g_EffectivePanelX = PanelX;
+         g_EffectivePanelY = PanelY;
+         g_EffectiveTableX = PanelX;
+         g_EffectiveTableY = PanelY + 350; // 少し間隔を小さくする
+         break;
+         
+      case LAYOUT_CUSTOM: // カスタム (位置を個別指定)
+         g_EffectivePanelX = CustomPanelX;
+         g_EffectivePanelY = CustomPanelY;
+         g_EffectiveTableX = CustomTableX;
+         g_EffectiveTableY = CustomTableY;
+         break;
+         
+      default: // デフォルトの設定
+         g_EffectivePanelX = PanelX;
+         g_EffectivePanelY = PanelY;
+         g_EffectiveTableX = PanelX;
+         g_EffectiveTableY = PanelY + 500;
+   }
+   
+   Print("レイアウトパターンを適用: ", EnumToString(LayoutPattern), 
+         ", パネル位置 (", g_EffectivePanelX, ",", g_EffectivePanelY, ")",
+         ", テーブル位置 (", g_EffectiveTableX, ",", g_EffectiveTableY, ")");
+}
+
+//+------------------------------------------------------------------+
+//| 現在のレイアウト設定を文字列で取得する関数                        |
+//+------------------------------------------------------------------+
+string GetLayoutPatternText()
+{
+   string layoutText = "";
+   
+   switch(LayoutPattern)
+   {
+      case LAYOUT_DEFAULT:
+         layoutText = "デフォルト (パネル上/テーブル下)";
+         break;
+      case LAYOUT_SIDE_BY_SIDE:
+         layoutText = "横並び (パネル左/テーブル右)";
+         break;
+      case LAYOUT_TABLE_TOP:
+         layoutText = "テーブル優先 (テーブル上/パネル下)";
+         break;
+      case LAYOUT_COMPACT:
+         layoutText = "コンパクト (小さいパネル)";
+         break;
+      case LAYOUT_CUSTOM:
+         layoutText = "カスタム (位置個別指定)";
+         break;
+      default:
+         layoutText = "不明";
+   }
+   
+   return layoutText;
+}
+
+
+
+
+//+------------------------------------------------------------------+
+//| GUIを作成する - レイアウトパターン対応版                          |
 //+------------------------------------------------------------------+
 void CreateGUI()
 {
    DeleteGUI(); // 既存のGUIを削除
    g_PanelObjectCount = 0; // オブジェクトカウントリセット
    
-   // パネル位置を調整
-   int adjustedPanelY = PanelY;
+   // レイアウトパターンを適用
+   ApplyLayoutPattern();
    
-   // メインパネル背景 - ゴーストボタン追加のため高さを拡大
-   CreatePanel("MainPanel", PanelX, adjustedPanelY, PANEL_WIDTH, PANEL_HEIGHT + 170, COLOR_PANEL_BG, COLOR_PANEL_BORDER);
+   // パネル位置を調整された値に設定
+   int adjustedPanelX = g_EffectivePanelX;
+   int adjustedPanelY = g_EffectivePanelY;
+   
+   // コンパクトモードの場合はパネルサイズを縮小
+   int panelWidth = PANEL_WIDTH;
+   int panelHeight = PANEL_HEIGHT + 170; // ゴーストボタン追加のため高さを拡大
+   if(LayoutPattern == LAYOUT_COMPACT)
+   {
+      panelHeight = panelHeight - 50; // 高さを少し縮小
+   }
+   
+   // メインパネル背景
+   CreatePanel("MainPanel", adjustedPanelX, adjustedPanelY, panelWidth, panelHeight, COLOR_PANEL_BG, COLOR_PANEL_BORDER);
    
    // パネルタイトル
-   CreateTitleBar("TitleBar", PanelX, adjustedPanelY, PANEL_WIDTH, TITLE_HEIGHT, COLOR_TITLE_BG, PanelTitle);
+   CreateTitleBar("TitleBar", adjustedPanelX, adjustedPanelY, panelWidth, TITLE_HEIGHT, COLOR_TITLE_BG, PanelTitle);
    
-   int buttonWidth = (PANEL_WIDTH - (PANEL_MARGIN * 3)) / 2; // 2列のボタン用
-   int fullWidth = PANEL_WIDTH - (PANEL_MARGIN * 2); // 横いっぱいのボタン用
+   int buttonWidth = (panelWidth - (PANEL_MARGIN * 3)) / 2; // 2列のボタン用
+   int fullWidth = panelWidth - (PANEL_MARGIN * 2); // 横いっぱいのボタン用
    
    // ========== 行1: 決済ボタン ==========
    int row1Y = adjustedPanelY + TITLE_HEIGHT + PANEL_MARGIN;
    
    // Sell決済ボタン (左)
-   CreateButton("btnCloseSell", "Close Sell", PanelX + PANEL_MARGIN, row1Y, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_SELL, COLOR_TEXT_LIGHT);
+   CreateButton("btnCloseSell", "Close Sell", adjustedPanelX + PANEL_MARGIN, row1Y, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_SELL, COLOR_TEXT_LIGHT);
    
    // Buy決済ボタン (右)
-   CreateButton("btnCloseBuy", "Close Buy", PanelX + PANEL_MARGIN * 2 + buttonWidth, row1Y, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_BUY, COLOR_TEXT_LIGHT);
+   CreateButton("btnCloseBuy", "Close Buy", adjustedPanelX + PANEL_MARGIN * 2 + buttonWidth, row1Y, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_BUY, COLOR_TEXT_LIGHT);
    
    // ========== 行2: 全決済ボタン ==========
    int row2Y = row1Y + BUTTON_HEIGHT + PANEL_MARGIN;
    
    // 全決済ボタン（横いっぱい）
-   CreateButton("btnCloseAll", "Close All", PanelX + PANEL_MARGIN, row2Y, fullWidth, BUTTON_HEIGHT, COLOR_BUTTON_CLOSE_ALL, COLOR_TEXT_DARK);
+   CreateButton("btnCloseAll", "Close All", adjustedPanelX + PANEL_MARGIN, row2Y, fullWidth, BUTTON_HEIGHT, COLOR_BUTTON_CLOSE_ALL, COLOR_TEXT_DARK);
    
    // ========== 行3: 直接エントリーボタン ==========
    int row3Y = row2Y + BUTTON_HEIGHT + PANEL_MARGIN * 2; // 間隔を広く
    
    // セクションラベル
-   CreateLabel("lblDirectEntry", "【直接エントリー】", PanelX + PANEL_MARGIN, row3Y - 5, COLOR_TEXT_LIGHT);
+   CreateLabel("lblDirectEntry", "【直接エントリー】", adjustedPanelX + PANEL_MARGIN, row3Y - 5, COLOR_TEXT_LIGHT);
    
    // Sellエントリーボタン (左)
-   CreateButton("btnDirectSell", "SELL NOW", PanelX + PANEL_MARGIN, row3Y + 15, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_SELL, COLOR_TEXT_LIGHT);
+   CreateButton("btnDirectSell", "SELL NOW", adjustedPanelX + PANEL_MARGIN, row3Y + 15, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_SELL, COLOR_TEXT_LIGHT);
    
    // Buyエントリーボタン (右)
-   CreateButton("btnDirectBuy", "BUY NOW", PanelX + PANEL_MARGIN * 2 + buttonWidth, row3Y + 15, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_BUY, COLOR_TEXT_LIGHT);
+   CreateButton("btnDirectBuy", "BUY NOW", adjustedPanelX + PANEL_MARGIN * 2 + buttonWidth, row3Y + 15, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_BUY, COLOR_TEXT_LIGHT);
+   
+   // コンパクトモードの場合、一部のセクションを省略または縮小
+   int rowSpacing = (LayoutPattern == LAYOUT_COMPACT) ? 10 : 15;
    
    // ========== 新規追加: 行3.5: ゴーストエントリーボタン ==========
-   int row3_5Y = row3Y + BUTTON_HEIGHT + PANEL_MARGIN + 15;
+   int row3_5Y = row3Y + BUTTON_HEIGHT + PANEL_MARGIN + rowSpacing;
    
    // セクションラベル
-   CreateLabel("lblGhostEntry", "【ゴーストエントリー】", PanelX + PANEL_MARGIN, row3_5Y - 5, COLOR_TEXT_LIGHT);
+   CreateLabel("lblGhostEntry", "【ゴーストエントリー】", adjustedPanelX + PANEL_MARGIN, row3_5Y - 5, COLOR_TEXT_LIGHT);
    
    // ゴーストSellエントリーボタン (左)
-   CreateButton("btnGhostSell", "GHOST SELL", PanelX + PANEL_MARGIN, row3_5Y + 15, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_SELL, COLOR_TEXT_LIGHT);
+   CreateButton("btnGhostSell", "GHOST SELL", adjustedPanelX + PANEL_MARGIN, row3_5Y + rowSpacing, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_SELL, COLOR_TEXT_LIGHT);
    
    // ゴーストBuyエントリーボタン (右)
-   CreateButton("btnGhostBuy", "GHOST BUY", PanelX + PANEL_MARGIN * 2 + buttonWidth, row3_5Y + 15, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_BUY, COLOR_TEXT_LIGHT);
+   CreateButton("btnGhostBuy", "GHOST BUY", adjustedPanelX + PANEL_MARGIN * 2 + buttonWidth, row3_5Y + rowSpacing, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_BUY, COLOR_TEXT_LIGHT);
    
    // ========== 行4: 途中からエントリーボタン ==========
-   int row4Y = row3_5Y + BUTTON_HEIGHT + PANEL_MARGIN * 2 + 15; // 間隔を広く
+   int row4Y = row3_5Y + BUTTON_HEIGHT + PANEL_MARGIN * 2 + rowSpacing; // 間隔を広く
    
    // セクションラベル
-   CreateLabel("lblLevelEntry", "【レベル指定エントリー】", PanelX + PANEL_MARGIN, row4Y - 5, COLOR_TEXT_LIGHT);
+   CreateLabel("lblLevelEntry", "【レベル指定エントリー】", adjustedPanelX + PANEL_MARGIN, row4Y - 5, COLOR_TEXT_LIGHT);
    
    // 現在のゴーストカウントに基づいてレベルを決定
    int buyLevel = ghost_position_count(OP_BUY) + 1;
    int sellLevel = ghost_position_count(OP_SELL) + 1;
    
    // Sellエントリーボタン (左)
-   CreateButton("btnLevelSell", "SELL Level " + IntegerToString(sellLevel), PanelX + PANEL_MARGIN, row4Y + 15, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_SELL, COLOR_TEXT_LIGHT);
+   CreateButton("btnLevelSell", "SELL Level " + IntegerToString(sellLevel), adjustedPanelX + PANEL_MARGIN, row4Y + rowSpacing, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_SELL, COLOR_TEXT_LIGHT);
    
    // Buyエントリーボタン (右)
-   CreateButton("btnLevelBuy", "BUY Level " + IntegerToString(buyLevel), PanelX + PANEL_MARGIN * 2 + buttonWidth, row4Y + 15, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_BUY, COLOR_TEXT_LIGHT);
+   CreateButton("btnLevelBuy", "BUY Level " + IntegerToString(buyLevel), adjustedPanelX + PANEL_MARGIN * 2 + buttonWidth, row4Y + rowSpacing, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_BUY, COLOR_TEXT_LIGHT);
    
    // ========== 行5: 設定セクション ==========
-   int row5Y = row4Y + BUTTON_HEIGHT + PANEL_MARGIN * 2 + 15; // 間隔を広く
+   int row5Y = row4Y + BUTTON_HEIGHT + PANEL_MARGIN * 2 + rowSpacing; // 間隔を広く
    
    // セクションラベル
-   CreateLabel("lblSettings", "【設定】", PanelX + PANEL_MARGIN, row5Y - 5, COLOR_TEXT_LIGHT);
+   CreateLabel("lblSettings", "【設定】", adjustedPanelX + PANEL_MARGIN, row5Y - 5, COLOR_TEXT_LIGHT);
    
    // Ghostモードボタン（横いっぱい）
    CreateButton("btnGhostToggle", "GHOST " + (g_GhostMode ? "ON" : "OFF"), 
-               PanelX + PANEL_MARGIN, row5Y + 15, fullWidth, BUTTON_HEIGHT, 
+               adjustedPanelX + PANEL_MARGIN, row5Y + rowSpacing, fullWidth, BUTTON_HEIGHT, 
                g_GhostMode ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE, COLOR_TEXT_LIGHT);
    
    // ========== 行6: ゴーストリセットボタン ==========
-   int row6Y = row5Y + BUTTON_HEIGHT + PANEL_MARGIN + 15;
+   int row6Y = row5Y + BUTTON_HEIGHT + PANEL_MARGIN + rowSpacing;
    
    // ゴーストリセットボタン（横いっぱい）
-   CreateButton("btnResetGhost", "GHOST RESET", PanelX + PANEL_MARGIN, row6Y, fullWidth, BUTTON_HEIGHT, COLOR_BUTTON_INACTIVE, COLOR_TEXT_LIGHT);
+   CreateButton("btnResetGhost", "GHOST RESET", adjustedPanelX + PANEL_MARGIN, row6Y, fullWidth, BUTTON_HEIGHT, COLOR_BUTTON_INACTIVE, COLOR_TEXT_LIGHT);
    
    // ========== 行7: 平均取得単価表示切替ボタン ==========
    int row7Y = row6Y + BUTTON_HEIGHT + PANEL_MARGIN;
    
    // 平均取得単価表示切替ボタン（横いっぱい）
    CreateButton("btnToggleAvgPrice", "AVG PRICE " + (g_AvgPriceVisible ? "ON" : "OFF"), 
-               PanelX + PANEL_MARGIN, row7Y, fullWidth, BUTTON_HEIGHT, 
+               adjustedPanelX + PANEL_MARGIN, row7Y, fullWidth, BUTTON_HEIGHT, 
                g_AvgPriceVisible ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE, COLOR_TEXT_LIGHT);
    
    // ========== 行8: 情報表示ボタン ==========
    int row8Y = row7Y + BUTTON_HEIGHT + PANEL_MARGIN;
    
    // ロット情報表示ボタン (左)
-   CreateButton("btnShowLotTable", "Lot Table", PanelX + PANEL_MARGIN, row8Y, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_NEUTRAL, COLOR_TEXT_LIGHT);
+   CreateButton("btnShowLotTable", "Lot Table", adjustedPanelX + PANEL_MARGIN, row8Y, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_NEUTRAL, COLOR_TEXT_LIGHT);
    
    // 設定情報表示ボタン (右)
-   CreateButton("btnShowSettings", "Settings", PanelX + PANEL_MARGIN * 2 + buttonWidth, row8Y, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_NEUTRAL, COLOR_TEXT_LIGHT);
+   CreateButton("btnShowSettings", "Settings", adjustedPanelX + PANEL_MARGIN * 2 + buttonWidth, row8Y, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_NEUTRAL, COLOR_TEXT_LIGHT);
    
    // パネルの高さを調整
-   int panelHeight = row8Y + BUTTON_HEIGHT + PANEL_MARGIN - adjustedPanelY;
+   panelHeight = row8Y + BUTTON_HEIGHT + PANEL_MARGIN - adjustedPanelY;
    ObjectSet(g_ObjectPrefix + "MainPanel" + "BG", OBJPROP_YSIZE, panelHeight);
    
    ChartRedraw(); // チャートを再描画
@@ -620,8 +749,10 @@ string GetAvgPriceCalcModeString(int mode)
    }
 }
 
+
+
 //+------------------------------------------------------------------+
-//| 設定情報ダイアログを表示 - 常時エントリー戦略対応版                 |
+//| 設定情報ダイアログを表示 - レイアウトパターン対応版                |
 //+------------------------------------------------------------------+
 void ShowSettingsDialog()
 {
@@ -634,20 +765,25 @@ void ShowSettingsDialog()
    message += "ゴーストモード: " + (g_GhostMode ? "ON" : "OFF") + "\n";
    message += "ナンピンスキップレベル: " + IntegerToString((int)NanpinSkipLevel) + "\n\n";
    
+   // 【レイアウト設定】情報を追加
+   message += "【レイアウト設定】\n";
+   message += "レイアウトパターン: " + GetLayoutPatternText() + "\n";
+   message += "パネル位置: X=" + IntegerToString(g_EffectivePanelX) + ", Y=" + IntegerToString(g_EffectivePanelY) + "\n";
+   message += "テーブル位置: X=" + IntegerToString(g_EffectiveTableX) + ", Y=" + IntegerToString(g_EffectiveTableY) + "\n\n";
+   
    message += "【エントリー戦略設定】\n";
    message += "常時エントリー戦略: " + GetConstantEntryStrategyState() + "\n";
    message += "偶数/奇数時間戦略: " + GetEvenOddStrategyState() + "\n\n";
-   
    message += "【ナンピン設定】\n";
    message += "ナンピン機能: " + (EnableNanpin ? "有効" : "無効") + "\n";
    message += "ナンピンインターバル: " + IntegerToString(NanpinInterval) + "分\n";
 
-// 決済後インターバル機能の情報を追加
-message += "\n【決済後インターバル機能】\n";
-message += "決済後インターバル: " + (EnableCloseInterval ? "有効" : "無効") + "\n";
-if(EnableCloseInterval) {
-   message += "インターバル時間: " + IntegerToString(CloseInterval) + "分\n";
-}
+   // 決済後インターバル機能の情報を追加
+   message += "\n【決済後インターバル機能】\n";
+   message += "決済後インターバル: " + (EnableCloseInterval ? "有効" : "無効") + "\n";
+   if(EnableCloseInterval) {
+      message += "インターバル時間: " + IntegerToString(CloseInterval) + "分\n";
+   }
 
    message += "最大スプレッド: " + IntegerToString(MaxSpreadPoints) + "ポイント\n\n";
    
@@ -680,6 +816,7 @@ if(EnableCloseInterval) {
    // メッセージボックスを表示
    MessageBox(message, title, MB_ICONINFORMATION);
 }
+
 
 //+------------------------------------------------------------------+
 //| 平均取得単価表示/非表示切替                                       |
