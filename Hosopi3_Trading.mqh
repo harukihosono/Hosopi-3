@@ -42,6 +42,9 @@ double GetBidPrice()
 //+------------------------------------------------------------------+
 bool position_entry(int side, double lot = 0.1, int slippage = 10, int magic = 0, string comment = "")
 {
+
+   if(!IsTimeAllowed(side)){return false;}
+
    if(magic == 0) magic = MagicNumber;
    
    #ifdef __MQL5__

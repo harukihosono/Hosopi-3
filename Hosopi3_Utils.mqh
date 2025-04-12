@@ -143,227 +143,96 @@ color ColorDarken(color clr, int percent)
 }
 
 //+------------------------------------------------------------------+
-//| 曜日に応じた時間設定を取得する                                     |
+//| 時間範囲内かをチェック                                           |
 //+------------------------------------------------------------------+
-void GetDayTimeSettings(int dayOfWeek, int type, int &startHour, int &startMinute, int &endHour, int &endMinute)
+bool IsInTimeRange(int current, int start, int end)
 {
-   // type: 0 = Buy, 1 = Sell
+   // 開始・終了が同じ = 24時間有効
+   if(start == end) return true;
    
-   // 曜日別時間設定が無効な場合は共通設定を使用
-   if(DayTimeControl_Active == OFF_MODE)
-   {
-      if(type == 0) // Buy
-      {
-         startHour = buy_StartHour;
-         startMinute = buy_StartMinute;
-         endHour = buy_EndHour;
-         endMinute = buy_EndMinute;
-      }
-      else // Sell
-      {
-         startHour = sell_StartHour;
-         startMinute = sell_StartMinute;
-         endHour = sell_EndHour;
-         endMinute = sell_EndMinute;
-      }
-      return;
-   }
+   // 通常パターン (開始 < 終了)
+   if(start < end) return (current >= start && current < end);
    
-   // 曜日別設定を取得
-   switch(dayOfWeek)
-   {
-      case 0: // 日曜日
-         if(type == 0) // Buy
-         {
-            startHour = Sunday_Buy_StartHour;
-            startMinute = Sunday_Buy_StartMinute;
-            endHour = Sunday_Buy_EndHour;
-            endMinute = Sunday_Buy_EndMinute;
-         }
-         else // Sell
-         {
-            startHour = Sunday_Sell_StartHour;
-            startMinute = Sunday_Sell_StartMinute;
-            endHour = Sunday_Sell_EndHour;
-            endMinute = Sunday_Sell_EndMinute;
-         }
-         break;
-         
-      case 1: // 月曜日
-         if(type == 0) // Buy
-         {
-            startHour = Monday_Buy_StartHour;
-            startMinute = Monday_Buy_StartMinute;
-            endHour = Monday_Buy_EndHour;
-            endMinute = Monday_Buy_EndMinute;
-         }
-         else // Sell
-         {
-            startHour = Monday_Sell_StartHour;
-            startMinute = Monday_Sell_StartMinute;
-            endHour = Monday_Sell_EndHour;
-            endMinute = Monday_Sell_EndMinute;
-         }
-         break;
-         
-      case 2: // 火曜日
-         if(type == 0) // Buy
-         {
-            startHour = Tuesday_Buy_StartHour;
-            startMinute = Tuesday_Buy_StartMinute;
-            endHour = Tuesday_Buy_EndHour;
-            endMinute = Tuesday_Buy_EndMinute;
-         }
-         else // Sell
-         {
-            startHour = Tuesday_Sell_StartHour;
-            startMinute = Tuesday_Sell_StartMinute;
-            endHour = Tuesday_Sell_EndHour;
-            endMinute = Tuesday_Sell_EndMinute;
-         }
-         break;
-         
-      case 3: // 水曜日
-         if(type == 0) // Buy
-         {
-            startHour = Wednesday_Buy_StartHour;
-            startMinute = Wednesday_Buy_StartMinute;
-            endHour = Wednesday_Buy_EndHour;
-            endMinute = Wednesday_Buy_EndMinute;
-         }
-         else // Sell
-         {
-            startHour = Wednesday_Sell_StartHour;
-            startMinute = Wednesday_Sell_StartMinute;
-            endHour = Wednesday_Sell_EndHour;
-            endMinute = Wednesday_Sell_EndMinute;
-         }
-         break;
-         
-      case 4: // 木曜日
-         if(type == 0) // Buy
-         {
-            startHour = Thursday_Buy_StartHour;
-            startMinute = Thursday_Buy_StartMinute;
-            endHour = Thursday_Buy_EndHour;
-            endMinute = Thursday_Buy_EndMinute;
-         }
-         else // Sell
-         {
-            startHour = Thursday_Sell_StartHour;
-            startMinute = Thursday_Sell_StartMinute;
-            endHour = Thursday_Sell_EndHour;
-            endMinute = Thursday_Sell_EndMinute;
-         }
-         break;
-         
-      case 5: // 金曜日
-         if(type == 0) // Buy
-         {
-            startHour = Friday_Buy_StartHour;
-            startMinute = Friday_Buy_StartMinute;
-            endHour = Friday_Buy_EndHour;
-            endMinute = Friday_Buy_EndMinute;
-         }
-         else // Sell
-         {
-            startHour = Friday_Sell_StartHour;
-            startMinute = Friday_Sell_StartMinute;
-            endHour = Friday_Sell_EndHour;
-            endMinute = Friday_Sell_EndMinute;
-         }
-         break;
-         
-      case 6: // 土曜日
-         if(type == 0) // Buy
-         {
-            startHour = Saturday_Buy_StartHour;
-            startMinute = Saturday_Buy_StartMinute;
-            endHour = Saturday_Buy_EndHour;
-            endMinute = Saturday_Buy_EndMinute;
-         }
-         else // Sell
-         {
-            startHour = Saturday_Sell_StartHour;
-            startMinute = Saturday_Sell_StartMinute;
-            endHour = Saturday_Sell_EndHour;
-            endMinute = Saturday_Sell_EndMinute;
-         }
-         break;
-         
-      default: // 不明な曜日の場合は共通設定を使用
-         if(type == 0) // Buy
-         {
-            startHour = buy_StartHour;
-            startMinute = buy_StartMinute;
-            endHour = buy_EndHour;
-            endMinute = buy_EndMinute;
-         }
-         else // Sell
-         {
-            startHour = sell_StartHour;
-            startMinute = sell_StartMinute;
-            endHour = sell_EndHour;
-            endMinute = sell_EndMinute;
-         }
-         break;
-   }
+   // 日をまたぐパターン (開始 > 終了)
+   return (current >= start || current < end);
 }
 
 //+------------------------------------------------------------------+
-//| エントリー可能時間かどうかをチェック                              |
+//| 取引可能時間かチェック                                            |
 //+------------------------------------------------------------------+
 bool IsTimeAllowed(int type)
 {
-   // 時間制御が無効の場合はいつでも可能
-   if(TimeControl_Active == OFF_MODE)
-      return true;
-      
-   // 日本時間を取得
+   // 日本時間取得
    datetime jpTime = calculate_time();
-   
-   // 曜日チェック
    int dayOfWeek = TimeDayOfWeek(jpTime);
    
-   if((dayOfWeek == 0 && Sunday_Enable == OFF_MODE) ||
-      (dayOfWeek == 1 && Monday_Enable == OFF_MODE) ||
-      (dayOfWeek == 2 && Tuesday_Enable == OFF_MODE) ||
-      (dayOfWeek == 3 && Wednesday_Enable == OFF_MODE) ||
-      (dayOfWeek == 4 && Thursday_Enable == OFF_MODE) ||
-      (dayOfWeek == 5 && Friday_Enable == OFF_MODE) ||
-      (dayOfWeek == 6 && Saturday_Enable == OFF_MODE))
-   {
-      return false;
+   // 曜日の有効/無効チェック
+   switch(dayOfWeek) {
+      case 0: if(Sunday_Enable == OFF_MODE) return false; break;
+      case 1: if(Monday_Enable == OFF_MODE) return false; break;
+      case 2: if(Tuesday_Enable == OFF_MODE) return false; break;
+      case 3: if(Wednesday_Enable == OFF_MODE) return false; break;
+      case 4: if(Thursday_Enable == OFF_MODE) return false; break;
+      case 5: if(Friday_Enable == OFF_MODE) return false; break;
+      case 6: if(Saturday_Enable == OFF_MODE) return false; break;
    }
    
-   // 現在の時間と分を取得
-   int hour = TimeHour(jpTime);
-   int minute = TimeMinute(jpTime);
-   int currentTimeInMinutes = hour * 60 + minute;
+   // 現在時刻（分換算）
+   int currentMinutes = TimeHour(jpTime) * 60 + TimeMinute(jpTime);
    
-   // 曜日に応じた時間設定を取得
-   int startHour, startMinute, endHour, endMinute;
-   GetDayTimeSettings(dayOfWeek, type == OP_BUY ? 0 : 1, startHour, startMinute, endHour, endMinute);
-   
-   int startTimeInMinutes = startHour * 60 + startMinute;
-   int endTimeInMinutes = endHour * 60 + endMinute;
-   
-   // 開始・終了時刻が同じ場合は24時間稼働と判断
-   if(startHour == endHour && startMinute == endMinute)
-      return true;
-   
-   // 日をまたがない場合 (開始時間 < 終了時間)
-   if(startTimeInMinutes < endTimeInMinutes)
-   {
-      // 現在時刻が開始時刻以上、終了時刻未満であればtrue
-      return (currentTimeInMinutes >= startTimeInMinutes && currentTimeInMinutes < endTimeInMinutes);
+   // 共通設定の時間範囲
+   int commonStart = 0, commonEnd = 0;
+   if(type == OP_BUY) {
+      commonStart = buy_StartHour * 60 + buy_StartMinute;
+      commonEnd = buy_EndHour * 60 + buy_EndMinute;
+   } else {
+      commonStart = sell_StartHour * 60 + sell_StartMinute;
+      commonEnd = sell_EndHour * 60 + sell_EndMinute;
    }
-   // 日をまたぐ場合 (開始時間 > 終了時間)
-   else
-   {
-      // 現在時刻が開始時刻以上、または終了時刻未満であればtrue
-      return (currentTimeInMinutes >= startTimeInMinutes || currentTimeInMinutes < endTimeInMinutes);
+   
+   // 曜日別設定の時間範囲
+   int dayStart = 0, dayEnd = 0;
+   if(type == OP_BUY) {
+      switch(dayOfWeek) {
+         case 0: dayStart = Sunday_Buy_StartHour * 60 + Sunday_Buy_StartMinute;
+                 dayEnd = Sunday_Buy_EndHour * 60 + Sunday_Buy_EndMinute; break;
+         case 1: dayStart = Monday_Buy_StartHour * 60 + Monday_Buy_StartMinute;
+                 dayEnd = Monday_Buy_EndHour * 60 + Monday_Buy_EndMinute; break;
+         case 2: dayStart = Tuesday_Buy_StartHour * 60 + Tuesday_Buy_StartMinute;
+                 dayEnd = Tuesday_Buy_EndHour * 60 + Tuesday_Buy_EndMinute; break;
+         case 3: dayStart = Wednesday_Buy_StartHour * 60 + Wednesday_Buy_StartMinute;
+                 dayEnd = Wednesday_Buy_EndHour * 60 + Wednesday_Buy_EndMinute; break;
+         case 4: dayStart = Thursday_Buy_StartHour * 60 + Thursday_Buy_StartMinute;
+                 dayEnd = Thursday_Buy_EndHour * 60 + Thursday_Buy_EndMinute; break;
+         case 5: dayStart = Friday_Buy_StartHour * 60 + Friday_Buy_StartMinute;
+                 dayEnd = Friday_Buy_EndHour * 60 + Friday_Buy_EndMinute; break;
+         case 6: dayStart = Saturday_Buy_StartHour * 60 + Saturday_Buy_StartMinute;
+                 dayEnd = Saturday_Buy_EndHour * 60 + Saturday_Buy_EndMinute; break;
+      }
+   } else {
+      switch(dayOfWeek) {
+         case 0: dayStart = Sunday_Sell_StartHour * 60 + Sunday_Sell_StartMinute;
+                 dayEnd = Sunday_Sell_EndHour * 60 + Sunday_Sell_EndMinute; break;
+         case 1: dayStart = Monday_Sell_StartHour * 60 + Monday_Sell_StartMinute;
+                 dayEnd = Monday_Sell_EndHour * 60 + Monday_Sell_EndMinute; break;
+         case 2: dayStart = Tuesday_Sell_StartHour * 60 + Tuesday_Sell_StartMinute;
+                 dayEnd = Tuesday_Sell_EndHour * 60 + Tuesday_Sell_EndMinute; break;
+         case 3: dayStart = Wednesday_Sell_StartHour * 60 + Wednesday_Sell_StartMinute;
+                 dayEnd = Wednesday_Sell_EndHour * 60 + Wednesday_Sell_EndMinute; break;
+         case 4: dayStart = Thursday_Sell_StartHour * 60 + Thursday_Sell_StartMinute;
+                 dayEnd = Thursday_Sell_EndHour * 60 + Thursday_Sell_EndMinute; break;
+         case 5: dayStart = Friday_Sell_StartHour * 60 + Friday_Sell_StartMinute;
+                 dayEnd = Friday_Sell_EndHour * 60 + Friday_Sell_EndMinute; break;
+         case 6: dayStart = Saturday_Sell_StartHour * 60 + Saturday_Sell_StartMinute;
+                 dayEnd = Saturday_Sell_EndHour * 60 + Saturday_Sell_EndMinute; break;
+      }
    }
+   
+   // 共通設定と曜日別設定のどちらかがOKならOK（OR条件）
+   bool isCommonOK = (DayTimeControl_Active == ON_MODE) && IsInTimeRange(currentMinutes, commonStart, commonEnd);
+   bool isDayOK = (DayTimeControl_Active == OFF_MODE) && IsInTimeRange(currentMinutes, dayStart, dayEnd);
+   
+   return isCommonOK || isDayOK;
 }
 
 //+------------------------------------------------------------------+

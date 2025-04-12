@@ -126,23 +126,23 @@ input USE_TIMES set_time = GMT9;     // 時間取得方法
 input int natu = 6;                  // 夏加算時間（バックテスト用）
 input int huyu = 7;                  // 冬加算時間（バックテスト用）
 
-// ======== 曜日フィルター設定 ========
-sinput string Comment_DayFilter = ""; //+--- 曜日フィルター設定 ---+
-input ON_OFF Sunday_Enable = ON_MODE;      // 日曜日を有効にする
-input ON_OFF Monday_Enable = ON_MODE;      // 月曜日を有効にする
-input ON_OFF Tuesday_Enable = ON_MODE;     // 火曜日を有効にする
-input ON_OFF Wednesday_Enable = ON_MODE;   // 水曜日を有効にする
-input ON_OFF Thursday_Enable = ON_MODE;    // 木曜日を有効にする
-input ON_OFF Friday_Enable = ON_MODE;      // 金曜日を有効にする
-input ON_OFF Saturday_Enable = ON_MODE;    // 土曜日を有効にする
 
-// ======== 曜日別時間設定 ========
-sinput string Comment_DayTime = ""; //+--- 曜日別時間設定 ---+
-input ON_OFF TimeControl_Active = ON_MODE;    // 時間制御を有効にする(ON/OFF)
-input ON_OFF DayTimeControl_Active = OFF_MODE; // 曜日別時間設定を有効にする(ON/OFF)
+// 共通時間設定（曜日別設定が無効の場合に使用）
+sinput string Comment_Common_Time = ""; //+--- 共通時間設定 ---+
+input ON_OFF DayTimeControl_Active = ON_MODE; // 共通時間設定を有効にする(ON/OFF)
+input int buy_StartHour = 0;             // Buy取引開始時刻-時(日本時間)
+input int buy_StartMinute = 0;          // Buy取引開始時刻-分(日本時間)
+input int buy_EndHour = 24;              // Buy取引終了時刻-時(日本時間)
+input int buy_EndMinute = 0;             // Buy取引終了時刻-分(日本時間)
+input int sell_StartHour = 0;            // Sell取引開始時刻-時(日本時間)
+input int sell_StartMinute = 00;         // Sell取引開始時刻-分(日本時間)
+input int sell_EndHour = 24;             // Sell取引終了時刻-時(日本時間)
+input int sell_EndMinute = 0;            // Sell取引終了時刻-分(日本時間)
+
 
 // 日曜日の時間設定
 sinput string Comment_Sunday_Time = ""; //+--- 日曜日の時間設定 ---+
+input ON_OFF Sunday_Enable = ON_MODE;      // 日曜日を有効にする
 input int Sunday_Buy_StartHour = 0;      // 日曜日Buy開始時刻-時
 input int Sunday_Buy_StartMinute = 0;    // 日曜日Buy開始時刻-分
 input int Sunday_Buy_EndHour = 24;       // 日曜日Buy終了時刻-時
@@ -154,6 +154,7 @@ input int Sunday_Sell_EndMinute = 0;     // 日曜日Sell終了時刻-分
 
 // 月曜日の時間設定
 sinput string Comment_Monday_Time = ""; //+--- 月曜日の時間設定 ---+
+input ON_OFF Monday_Enable = ON_MODE;      // 月曜日を有効にする
 input int Monday_Buy_StartHour = 0;      // 月曜日Buy開始時刻-時
 input int Monday_Buy_StartMinute = 0;    // 月曜日Buy開始時刻-分
 input int Monday_Buy_EndHour = 24;       // 月曜日Buy終了時刻-時
@@ -165,6 +166,7 @@ input int Monday_Sell_EndMinute = 0;     // 月曜日Sell終了時刻-分
 
 // 火曜日の時間設定
 sinput string Comment_Tuesday_Time = ""; //+--- 火曜日の時間設定 ---+
+input ON_OFF Tuesday_Enable = ON_MODE;     // 火曜日を有効にする
 input int Tuesday_Buy_StartHour = 0;      // 火曜日Buy開始時刻-時
 input int Tuesday_Buy_StartMinute = 0;    // 火曜日Buy開始時刻-分
 input int Tuesday_Buy_EndHour = 24;       // 火曜日Buy終了時刻-時
@@ -176,6 +178,7 @@ input int Tuesday_Sell_EndMinute = 0;     // 火曜日Sell終了時刻-分
 
 // 水曜日の時間設定
 sinput string Comment_Wednesday_Time = ""; //+--- 水曜日の時間設定 ---+
+input ON_OFF Wednesday_Enable = ON_MODE;   // 水曜日を有効にする
 input int Wednesday_Buy_StartHour = 0;      // 水曜日Buy開始時刻-時
 input int Wednesday_Buy_StartMinute = 0;    // 水曜日Buy開始時刻-分
 input int Wednesday_Buy_EndHour = 24;       // 水曜日Buy終了時刻-時
@@ -187,6 +190,7 @@ input int Wednesday_Sell_EndMinute = 0;     // 水曜日Sell終了時刻-分
 
 // 木曜日の時間設定
 sinput string Comment_Thursday_Time = ""; //+--- 木曜日の時間設定 ---+
+input ON_OFF Thursday_Enable = ON_MODE;    // 木曜日を有効にする
 input int Thursday_Buy_StartHour = 0;      // 木曜日Buy開始時刻-時
 input int Thursday_Buy_StartMinute = 0;    // 木曜日Buy開始時刻-分
 input int Thursday_Buy_EndHour = 24;       // 木曜日Buy終了時刻-時
@@ -198,6 +202,7 @@ input int Thursday_Sell_EndMinute = 0;     // 木曜日Sell終了時刻-分
 
 // 金曜日の時間設定
 sinput string Comment_Friday_Time = ""; //+--- 金曜日の時間設定 ---+
+input ON_OFF Friday_Enable = ON_MODE;      // 金曜日を有効にする
 input int Friday_Buy_StartHour = 0;      // 金曜日Buy開始時刻-時
 input int Friday_Buy_StartMinute = 0;    // 金曜日Buy開始時刻-分
 input int Friday_Buy_EndHour = 24;       // 金曜日Buy終了時刻-時
@@ -209,6 +214,7 @@ input int Friday_Sell_EndMinute = 0;     // 金曜日Sell終了時刻-分
 
 // 土曜日の時間設定
 sinput string Comment_Saturday_Time = ""; //+--- 土曜日の時間設定 ---+
+input ON_OFF Saturday_Enable = ON_MODE;    // 土曜日を有効にする
 input int Saturday_Buy_StartHour = 0;      // 土曜日Buy開始時刻-時
 input int Saturday_Buy_StartMinute = 0;    // 土曜日Buy開始時刻-分
 input int Saturday_Buy_EndHour = 24;       // 土曜日Buy終了時刻-時
@@ -218,16 +224,7 @@ input int Saturday_Sell_StartMinute = 0;   // 土曜日Sell開始時刻-分
 input int Saturday_Sell_EndHour = 24;      // 土曜日Sell終了時刻-時
 input int Saturday_Sell_EndMinute = 0;     // 土曜日Sell終了時刻-分
 
-// 共通時間設定（曜日別設定が無効の場合に使用）
-sinput string Comment_Common_Time = ""; //+--- 共通時間設定 ---+
-input int buy_StartHour = 0;             // Buy取引開始時刻-時(日本時間)
-input int buy_StartMinute = 0;          // Buy取引開始時刻-分(日本時間)
-input int buy_EndHour = 24;              // Buy取引終了時刻-時(日本時間)
-input int buy_EndMinute = 0;             // Buy取引終了時刻-分(日本時間)
-input int sell_StartHour = 0;            // Sell取引開始時刻-時(日本時間)
-input int sell_StartMinute = 00;         // Sell取引開始時刻-分(日本時間)
-input int sell_EndHour = 24;             // Sell取引終了時刻-時(日本時間)
-input int sell_EndMinute = 0;            // Sell取引終了時刻-分(日本時間)
+
 
 
 // ======== 表示設定 ========
