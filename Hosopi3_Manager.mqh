@@ -705,13 +705,15 @@ void CheckNanpinConditions(int side)
 
 
 
-
-
 //+------------------------------------------------------------------+
-//| InitializeEA関数 - ナンピンレベル廃止対応                        |
+//| InitializeEA関数 - キャッシュ初期化追加版                         |
 //+------------------------------------------------------------------+
 int InitializeEA()
 {
+   // キャッシュをリセット（高速化のため）
+   ResetTradingCaches();
+
+   // 以下は既存のコード
    // アカウント番号を取得して保存
    g_AccountNumber = AccountNumber();
    
@@ -743,93 +745,88 @@ int InitializeEA()
    g_GhostMode = true;
    Print("ゴーストモードを有効化しました");
    
-// エントリーモードの確認と表示
-string entryModeStr = "";
-switch(EntryMode) {
-   case MODE_BUY_ONLY:
-      entryModeStr = "Buy Only";
-      break;
-   case MODE_SELL_ONLY:
-      entryModeStr = "Sell Only";
-      break;
-   case MODE_BOTH:
-      entryModeStr = "Buy & Sell Both";
-      break;
-   default:
-      entryModeStr = "Unknown";
-}
-Print("現在のエントリーモード: ", entryModeStr);
-
-// ロットテーブルの内容をログに出力
-string lotTableStr = "LOTテーブル: ";
-for(int i = 0; i < MathMin(10, ArraySize(g_LotTable)); i++)
-{
-   lotTableStr += DoubleToString(g_LotTable[i], 2) + ", ";
-}
-Print(lotTableStr);
-
-// リアルポジションがある場合のチェック（複数チャート対策）
-int buyPositions = position_count(OP_BUY);
-int sellPositions = position_count(OP_SELL);
-
-if(buyPositions > 0 || sellPositions > 0) {
-   Print("既にリアルポジションが存在します - Buy: ", buyPositions, ", Sell: ", sellPositions);
-   
-   // 既存のゴーストポジションをクリア
-   ClearGhostPositionsFromGlobal();
-   ResetGhost(OP_BUY);
-   ResetGhost(OP_SELL);
-   
-   // 平均取得価格ラインは表示
-   if(AveragePriceLine == ON_MODE) {
-      g_AvgPriceVisible = true;
+   // エントリーモードの確認と表示
+   string entryModeStr = "";
+   switch(EntryMode) {
+      case MODE_BUY_ONLY:
+         entryModeStr = "Buy Only";
+         break;
+      case MODE_SELL_ONLY:
+         entryModeStr = "Sell Only";
+         break;
+      case MODE_BOTH:
+         entryModeStr = "Buy & Sell Both";
+         break;
+      default:
+         entryModeStr = "Unknown";
    }
-} else {
-   // バックテストでなければグローバル変数からゴーストポジション情報を読み込み
-   if(!IsTesting())
+   Print("現在のエントリーモード: ", entryModeStr);
+
+   // ロットテーブルの内容をログに出力
+   string lotTableStr = "LOTテーブル: ";
+   for(int i = 0; i < MathMin(10, ArraySize(g_LotTable)); i++)
    {
-      bool loadResult = LoadGhostPositionsFromGlobal();
-      if(!loadResult)
-      {
-         Print("グローバル変数にゴーストポジション情報がないため、新規初期化します");
+      lotTableStr += DoubleToString(g_LotTable[i], 2) + ", ";
+   }
+   Print(lotTableStr);
+
+   // リアルポジションがある場合のチェック（複数チャート対策）
+   int buyPositions = position_count(OP_BUY);
+   int sellPositions = position_count(OP_SELL);
+
+   if(buyPositions > 0 || sellPositions > 0) {
+      Print("既にリアルポジションが存在します - Buy: ", buyPositions, ", Sell: ", sellPositions);
+      
+      // 既存のゴーストポジションをクリア
+      ClearGhostPositionsFromGlobal();
+      ResetGhost(OP_BUY);
+      ResetGhost(OP_SELL);
+      
+      // 平均取得価格ラインは表示
+      if(AveragePriceLine == ON_MODE) {
+         g_AvgPriceVisible = true;
       }
-      else
+   } else {
+      // バックテストでなければグローバル変数からゴーストポジション情報を読み込み
+      if(!IsTesting())
       {
-         // ゴーストエントリーポイントを再表示
-         RecreateGhostEntryPoints();
-         
-         // 有効なゴーストのみ点線を表示
-         RecreateValidGhostLines();
+         bool loadResult = LoadGhostPositionsFromGlobal();
+         if(!loadResult)
+         {
+            Print("グローバル変数にゴーストポジション情報がないため、新規初期化します");
+         }
+         else
+         {
+            // ゴーストエントリーポイントを再表示
+            RecreateGhostEntryPoints();
+            
+            // 有効なゴーストのみ点線を表示
+            RecreateValidGhostLines();
+         }
       }
    }
+
+   // グローバル変数とinputの設定を同期
+   g_EnableNanpin = EnableNanpin;
+   g_EnableGhostEntry = EnableGhostEntry;
+   g_EnableTrailingStop = EnableTrailingStop;
+   g_AutoTrading = EnableAutomaticTrading;
+
+   g_BuyClosedRecently = false;
+   g_SellClosedRecently = false;
+   g_BuyClosedTime = 0;
+   g_SellClosedTime = 0;
+
+   CreateGUI();
+
+   // ポジションテーブルを作成
+   CreatePositionTable();
+
+   // ゴーストモード初期状態のログ出力
+   Print("ゴーストモード: ", g_GhostMode ? "ON" : "OFF");
+
+   return(INIT_SUCCEEDED);
 }
-
-// グローバル変数とinputの設定を同期
-g_EnableNanpin = EnableNanpin;
-g_EnableGhostEntry = EnableGhostEntry;
-g_EnableTrailingStop = EnableTrailingStop;
-g_AutoTrading = EnableAutomaticTrading;
-
-g_BuyClosedRecently = false;
-g_SellClosedRecently = false;
-g_BuyClosedTime = 0;
-g_SellClosedTime = 0;
-
-CreateGUI();
-
-// ポジションテーブルを作成
-CreatePositionTable();
-
-// ゴーストモード初期状態のログ出力
-Print("ゴーストモード: ", g_GhostMode ? "ON" : "OFF");
-
-return(INIT_SUCCEEDED);
-}
-
-
-
-
-
 
 //+------------------------------------------------------------------+
 //| Expert deinitialization function - バックテスト用修正             |
@@ -843,6 +840,9 @@ void DeinitializeEA(const int reason)
       ResetGhost(OP_BUY);
       ResetGhost(OP_SELL);
       ClearGhostPositionsFromGlobal();
+      
+      // キャッシュをリセット
+      ResetTradingCaches();
    }
    // チャートの時間足変更などの場合はゴーストポジション情報を保存
    else if(reason == REASON_CHARTCHANGE || reason == REASON_PARAMETERS || reason == REASON_RECOMPILE)
@@ -880,6 +880,9 @@ void DeinitializeEA(const int reason)
    // チャートを再描画
    ChartRedraw();
 }
+
+
+
 
 //+------------------------------------------------------------------+
 //| チャートイベント関数                                               |

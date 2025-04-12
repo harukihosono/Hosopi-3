@@ -1,5 +1,5 @@
 //+------------------------------------------------------------------+
-//|                  Hosopi 3 - トレード関連関数                      |
+//|                  Hosopi 3 - トレード関連関数 (最適化版)            |
 //|                         Copyright 2025                           |
 //+------------------------------------------------------------------+
 #include "Hosopi3_Defines.mqh"
@@ -37,44 +37,92 @@ double GetBidPrice()
 }
 #endif
 
-
-
-
+// グローバル変数でエントリー制限の状態をキャッシュ
+bool g_EquitySufficientCache = true;
+datetime g_LastEquityCheckTime = 0;
+bool g_TimeAllowedCache[2] = {true, true}; // [0]=Buy, [1]=Sell
+datetime g_LastTimeAllowedCheckTime[2] = {0, 0}; // [0]=Buy, [1]=Sell
 
 //+------------------------------------------------------------------+
-//| 有効証拠金が基準を満たしているかチェック                          |
+//| 有効証拠金が基準を満たしているかチェック（キャッシュ対応）         |
 //+------------------------------------------------------------------+
-bool IsEquitySufficient()
+bool IsEquitySufficientCached()
 {
    // 有効証拠金チェックが無効の場合は常にtrue
    if(EquityControl_Active == OFF_MODE) return true;
+   
+   // バックテスト時に毎回チェックせず、一定時間ごとにキャッシュを使用
+   datetime currentTime = TimeCurrent();
+   
+   // バックテスト中の場合は、より長い間隔でキャッシュを利用
+   int cacheInterval = IsTesting() ? 3600 : 60; // バックテスト中は1時間、通常は1分
+   
+   // 前回のチェックから一定時間経過していない場合はキャッシュを使用
+   if(currentTime - g_LastEquityCheckTime < cacheInterval)
+   {
+      return g_EquitySufficientCache;
+   }
+   
+   // 時間が経過したら再チェック
+   g_LastEquityCheckTime = currentTime;
    
    // 現在の有効証拠金を取得
    double currentEquity = AccountEquity();
    
    // 最低有効証拠金チェック
-   if(currentEquity < MinimumEquity)
+   g_EquitySufficientCache = (currentEquity >= MinimumEquity);
+   
+   if(!g_EquitySufficientCache)
    {
       Print(StringFormat("エントリー停止: 有効証拠金 %.2f が最低基準 %.2f を下回りました", 
                          currentEquity, MinimumEquity));
-      return false;
    }
    
-   return true;
+   return g_EquitySufficientCache;
 }
 
 //+------------------------------------------------------------------+
-//| ポジションエントリー関数                                          |
+//| 取引可能時間かチェック（キャッシュ対応）                           |
+//+------------------------------------------------------------------+
+bool IsTimeAllowedCached(int side)
+{
+   // バックテスト時に毎回チェックせず、一定時間ごとにキャッシュを使用
+   datetime currentTime = TimeCurrent();
+   
+   // バックテスト中の場合は、より長い間隔でキャッシュを利用
+   // 1時間ごとにキャッシュを更新 (通常は5分)
+   int cacheInterval = IsTesting() ? 3600 : 300;
+   
+   // 前回のチェックから一定時間経過していない場合はキャッシュを使用
+   if(currentTime - g_LastTimeAllowedCheckTime[side] < cacheInterval)
+   {
+      return g_TimeAllowedCache[side];
+   }
+   
+   // 時間が経過したら再チェック
+   g_LastTimeAllowedCheckTime[side] = currentTime;
+   
+   // 実際の時間チェックを実行
+   g_TimeAllowedCache[side] = IsTimeAllowed(side);
+   
+   return g_TimeAllowedCache[side];
+}
+
+//+------------------------------------------------------------------+
+//| ポジションエントリー関数（最適化版）                               |
 //+------------------------------------------------------------------+
 bool position_entry(int side, double lot = 0.1, int slippage = 10, int magic = 0, string comment = "")
 {
+   // 高頻度呼び出し対策: キャッシュを使用したエントリー制限チェック
+   if(!IsEquitySufficientCached())
+   {
+      return false;
+   }
 
- 
-   if(!IsEquitySufficient()){return false;}
-
-   if(!IsTimeAllowed(side)){return false;}
-
-
+   if(!IsTimeAllowedCached(side))
+   {
+      return false;
+   }
 
    if(magic == 0) magic = MagicNumber;
    
@@ -204,6 +252,22 @@ bool position_close(int side, double lot = 0.0, int slippage = 10, int magic = 0
    return result;
    #endif
 }
+
+//+------------------------------------------------------------------+
+//| 状態をリセットする関数 - バックテスト高速化用                      |
+//+------------------------------------------------------------------+
+void ResetTradingCaches()
+{
+   // キャッシュをリセット
+   g_EquitySufficientCache = true;
+   g_LastEquityCheckTime = 0;
+   g_TimeAllowedCache[0] = true;
+   g_TimeAllowedCache[1] = true;
+   g_LastTimeAllowedCheckTime[0] = 0;
+   g_LastTimeAllowedCheckTime[1] = 0;
+}
+
+// 以下は既存の関数を保持
 
 //+------------------------------------------------------------------+
 //| 全ポジション決済関数                                             |
