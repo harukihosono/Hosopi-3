@@ -157,24 +157,48 @@ bool IsInTimeRange(int current, int start, int end)
    return (current >= start || current < end);
 }
 
+// グローバル変数としてキャッシュを定義
+bool g_InitialTimeAllowedCache[2] = {true, true}; // [0]=Buy, [1]=Sell
+datetime g_LastInitialTimeAllowedCheckTime[2] = {0, 0}; // [0]=Buy, [1]=Sell
+
 //+------------------------------------------------------------------+
-//| 取引可能時間かチェック                                            |
+//| IsInitialEntryTimeAllowed - 初回エントリー用の時間チェック関数（キャッシュ対応版）|
 //+------------------------------------------------------------------+
-bool IsTimeAllowed(int type)
+bool IsInitialEntryTimeAllowed(int type)
 {
+   // 処理対象のインデックスを決定
+   int typeIndex = (type == OP_BUY) ? 0 : 1;
+   
+   // 現在時刻を取得
+   datetime currentTime = TimeCurrent();
+   
+   // バックテスト中の場合は、より長い間隔でキャッシュを利用
+   int cacheInterval = IsTesting() ? 3600 : 60; // バックテスト中は1時間、通常は1分
+   
+   // 前回のチェックから一定時間経過していない場合はキャッシュを使用
+   if(currentTime - g_LastInitialTimeAllowedCheckTime[typeIndex] < cacheInterval)
+   {
+      return g_InitialTimeAllowedCache[typeIndex];
+   }
+   
+   // 時間が経過したら再チェック
+   g_LastInitialTimeAllowedCheckTime[typeIndex] = currentTime;
+   
+   // ここから下は元の時間チェックロジック
+   
    // 日本時間取得
    datetime jpTime = calculate_time();
    int dayOfWeek = TimeDayOfWeek(jpTime);
    
    // 曜日の有効/無効チェック
    switch(dayOfWeek) {
-      case 0: if(Sunday_Enable == OFF_MODE) return false; break;
-      case 1: if(Monday_Enable == OFF_MODE) return false; break;
-      case 2: if(Tuesday_Enable == OFF_MODE) return false; break;
-      case 3: if(Wednesday_Enable == OFF_MODE) return false; break;
-      case 4: if(Thursday_Enable == OFF_MODE) return false; break;
-      case 5: if(Friday_Enable == OFF_MODE) return false; break;
-      case 6: if(Saturday_Enable == OFF_MODE) return false; break;
+      case 0: if(Sunday_Enable == OFF_MODE) { g_InitialTimeAllowedCache[typeIndex] = false; return false; } break;
+      case 1: if(Monday_Enable == OFF_MODE) { g_InitialTimeAllowedCache[typeIndex] = false; return false; } break;
+      case 2: if(Tuesday_Enable == OFF_MODE) { g_InitialTimeAllowedCache[typeIndex] = false; return false; } break;
+      case 3: if(Wednesday_Enable == OFF_MODE) { g_InitialTimeAllowedCache[typeIndex] = false; return false; } break;
+      case 4: if(Thursday_Enable == OFF_MODE) { g_InitialTimeAllowedCache[typeIndex] = false; return false; } break;
+      case 5: if(Friday_Enable == OFF_MODE) { g_InitialTimeAllowedCache[typeIndex] = false; return false; } break;
+      case 6: if(Saturday_Enable == OFF_MODE) { g_InitialTimeAllowedCache[typeIndex] = false; return false; } break;
    }
    
    // 現在時刻（分換算）
@@ -232,8 +256,12 @@ bool IsTimeAllowed(int type)
    bool isCommonOK = (DayTimeControl_Active == ON_MODE) && IsInTimeRange(currentMinutes, commonStart, commonEnd);
    bool isDayOK = (DayTimeControl_Active == OFF_MODE) && IsInTimeRange(currentMinutes, dayStart, dayEnd);
    
-   return isCommonOK || isDayOK;
+   // 結果をキャッシュに保存して返す
+   g_InitialTimeAllowedCache[typeIndex] = isCommonOK || isDayOK;
+   
+   return g_InitialTimeAllowedCache[typeIndex];
 }
+
 
 //+------------------------------------------------------------------+
 //| ロットテーブルの初期化 - 個別指定モードをより明確に処理            |

@@ -208,9 +208,8 @@ void CreateGhostEntryPoint(int type, double price, double lots, int level, datet
 }
 
 
-
 //+------------------------------------------------------------------+
-//| InitializeGhostPosition関数 - 通知機能追加版                     |
+//| InitializeGhostPosition関数 - 初回エントリー時間制限対応版         |
 //+------------------------------------------------------------------+
 void InitializeGhostPosition(int type, string entryReason = "")
 {
@@ -227,6 +226,20 @@ void InitializeGhostPosition(int type, string entryReason = "")
       return;
    }
 
+   // 合計ポジション数を取得 - ゴーストも含めて初回かどうかを判断
+   int totalPositionCount = combined_position_count(type);
+   
+   // 初回エントリーの場合のみ時間チェック
+   if(totalPositionCount == 0)
+   {
+      // 手動ボタン操作以外の時は、時間制限チェックを行う
+      if(StringFind(entryReason, "手動") < 0 && !IsInitialEntryTimeAllowed(type))
+      {
+         Print("InitializeGhostPosition: 初回エントリー時間制限により", type == OP_BUY ? "Buy" : "Sell", "側はスキップします");
+         return;
+      }
+   }
+
    // スプレッドチェック
    double spreadPoints = (GetAskPrice() - GetBidPrice()) / Point;
    if(spreadPoints > MaxSpreadPoints && MaxSpreadPoints > 0)
@@ -237,9 +250,6 @@ void InitializeGhostPosition(int type, string entryReason = "")
    
    // 現在の時間を取得
    datetime currentTime = TimeCurrent();
-
-   // 合計ポジション数を取得
-   int totalPositionCount = combined_position_count(type);
 
    // ポジション情報の作成
    PositionInfo newPosition;
@@ -256,7 +266,6 @@ void InitializeGhostPosition(int type, string entryReason = "")
 
    if(type == OP_BUY)
    {
-      if(!IsTimeAllowed(OP_BUY)){return;}
       // Buyゴーストポジションの追加
       g_GhostBuyPositions[g_GhostBuyCount] = newPosition;
       g_GhostBuyCount++;
@@ -269,7 +278,6 @@ void InitializeGhostPosition(int type, string entryReason = "")
    }
    else
    {
-      if(!IsTimeAllowed(OP_SELL)){return;}
       // Sellゴーストポジションの追加
       g_GhostSellPositions[g_GhostSellCount] = newPosition;
       g_GhostSellCount++;
@@ -1651,7 +1659,69 @@ else // OP_SELL
 
 return totalProfit;
 }
+//+------------------------------------------------------------------+
+//| リアルとゴーストを合わせた最後のポジション価格を取得する関数      |
+//+------------------------------------------------------------------+
+double GetLastCombinedPositionPrice(int type)
+{
+   double lastPrice = 0;
+   datetime lastTime = 0;
+   bool found = false;
 
+   // 1. リアルポジションをチェック
+   for(int i = OrdersTotal() - 1; i >= 0; i--)
+   {
+      if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+      {
+         if(OrderType() == type && OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
+         {
+            if(OrderOpenTime() > lastTime)
+            {
+               lastTime = OrderOpenTime();
+               lastPrice = OrderOpenPrice();
+               found = true;
+            }
+         }
+      }
+   }
+
+   // 2. ゴーストポジションもチェック
+   if(type == OP_BUY)
+   {
+      for(int i = 0; i < g_GhostBuyCount; i++)
+      {
+         if(g_GhostBuyPositions[i].isGhost && g_GhostBuyPositions[i].openTime > lastTime)
+         {
+            lastTime = g_GhostBuyPositions[i].openTime;
+            lastPrice = g_GhostBuyPositions[i].price;
+            found = true;
+         }
+      }
+   }
+   else // OP_SELL
+   {
+      for(int i = 0; i < g_GhostSellCount; i++)
+      {
+         if(g_GhostSellPositions[i].isGhost && g_GhostSellPositions[i].openTime > lastTime)
+         {
+            lastTime = g_GhostSellPositions[i].openTime;
+            lastPrice = g_GhostSellPositions[i].price;
+            found = true;
+         }
+      }
+   }
+
+   if(found)
+   {
+      Print("最後のポジション価格取得: ", type == OP_BUY ? "Buy" : "Sell", " 価格=", DoubleToString(lastPrice, Digits));
+   }
+   else
+   {
+      Print("警告: 最後のポジション価格を取得できませんでした");
+   }
+
+   return lastPrice;
+}
 
 // CheckGhostNanpinCondition関数の正しい修正
 
@@ -1967,7 +2037,9 @@ void CheckLimitTakeProfitExecutions()
    prevSellCount = currentSellCount;
 }
 
-
+//+------------------------------------------------------------------+
+//| ProcessGhostEntries関数 - 初回エントリー時間制限対応版            |
+//+------------------------------------------------------------------+
 void ProcessGhostEntries(int side)
 {
    string direction = (side == 0) ? "Buy" : "Sell";
@@ -1988,12 +2060,14 @@ void ProcessGhostEntries(int side)
       Print("ProcessGhostEntries: ポジション保護モードにより", direction, "側はスキップします");
       return;
    }
-  // 決済後インターバルチェック
-  if(!IsCloseIntervalElapsed(side))
-  {
-     Print("ProcessGhostEntries: 決済後インターバル中のため", direction, "側はスキップします");
-     return;
-  }
+   
+   // 決済後インターバルチェック
+   if(!IsCloseIntervalElapsed(side))
+   {
+      Print("ProcessGhostEntries: 決済後インターバル中のため", direction, "側はスキップします");
+      return;
+   }
+   
    // ゴーストモードチェック
    if(!g_GhostMode) {
       Print("ProcessGhostEntries: ゴーストモード無効のためスキップします");
@@ -2026,23 +2100,17 @@ void ProcessGhostEntries(int side)
    int totalPositionCount = combined_position_count(operationType);
 
    Print("ProcessGhostEntries: 現在の", direction, "ゴーストカウント=", ghostCount, ", 合計ポジション数=", totalPositionCount);
-   
-   // ======= 修正: この部分を削除またはコメントアウト =======
-   // ゴーストポジションのカウントがスキップレベル以上の場合、リアルエントリーに切り替え
-   // if(ghostCount > 0 && ghostCount >= (int)NanpinSkipLevel) {
-   //    Print("ProcessGhostEntries: ゴーストカウント(", ghostCount, ")がスキップレベル(", (int)NanpinSkipLevel, ")に達したため、リアルエントリーに切り替えます");
-   //    
-   //    // リアル注文で実行
-   //    ExecuteRealEntry(operationType, "ゴーストスキップレベル到達によるリアルエントリー");
-   //    
-   //    // 修正: ゴーストリセットしない
-   //    
-   //    return;
-   // }
 
    // 新規エントリー条件
    if(ghostCount == 0 && position_count(operationType) == 0)
    {
+      // 初回エントリーの場合のみ時間チェックを追加
+      if(!IsInitialEntryTimeAllowed(operationType))
+      {
+         Print("ProcessGhostEntries: 初回エントリー時間制限により", direction, "側はスキップします");
+         return;
+      }
+      
       // エントリー条件: インジケーターまたは時間
       bool indicatorSignal = CheckIndicatorSignals(side);
       
@@ -2061,76 +2129,11 @@ void ProcessGhostEntries(int side)
          Print("ProcessGhostEntries: ", direction, " エントリー条件を満たさないためスキップします");
       }
    }
-   // ナンピン条件チェック
+   // ナンピン条件チェック - ここは時間制限の影響を受けない
    else if(ghostCount > 0 && EnableNanpin) {
       Print("ProcessGhostEntries: 既存ゴーストあり、ナンピン条件チェック開始");
       CheckGhostNanpinCondition(operationType);
    }
-}
-
-
-//+------------------------------------------------------------------+
-//| 最後のポジション（ゴーストまたはリアル）を取得する関数            |
-//+------------------------------------------------------------------+
-double GetLastCombinedPositionPrice(int type)
-{
-double lastPrice = 0;
-datetime lastTime = 0;
-bool found = false;
-
-// 1. リアルポジションをチェック
-for(int i = OrdersTotal() - 1; i >= 0; i--)
-{
-   if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
-   {
-      if(OrderType() == type && OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
-      {
-         if(OrderOpenTime() > lastTime)
-         {
-            lastTime = OrderOpenTime();
-            lastPrice = OrderOpenPrice();
-            found = true;
-         }
-      }
-   }
-}
-
-// 2. ゴーストポジションもチェック
-if(type == OP_BUY)
-{
-   for(int i = 0; i < g_GhostBuyCount; i++)
-   {
-      if(g_GhostBuyPositions[i].isGhost && g_GhostBuyPositions[i].openTime > lastTime)
-      {
-         lastTime = g_GhostBuyPositions[i].openTime;
-         lastPrice = g_GhostBuyPositions[i].price;
-         found = true;
-      }
-   }
-}
-else // OP_SELL
-{
-   for(int i = 0; i < g_GhostSellCount; i++)
-   {
-      if(g_GhostSellPositions[i].isGhost && g_GhostSellPositions[i].openTime > lastTime)
-      {
-         lastTime = g_GhostSellPositions[i].openTime;
-         lastPrice = g_GhostSellPositions[i].price;
-         found = true;
-      }
-   }
-}
-
-if(found)
-{
-   Print("最後のポジション価格取得: ", type == OP_BUY ? "Buy" : "Sell", " 価格=", DoubleToString(lastPrice, Digits));
-}
-else
-{
-   Print("警告: 最後のポジション価格を取得できませんでした");
-}
-
-return lastPrice;
 }
 
 //+------------------------------------------------------------------+

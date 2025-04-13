@@ -64,7 +64,7 @@ void SaveEntryLogToFile(string logMessage)
 
 
 //+------------------------------------------------------------------+
-//| 実際のエントリー処理 - ナンピンレベル廃止版                       |
+//| ExecuteRealEntry関数 - 初回エントリー時間制限対応版               |
 //+------------------------------------------------------------------+
 void ExecuteRealEntry(int type, string entryReason)
 {
@@ -89,6 +89,17 @@ void ExecuteRealEntry(int type, string entryReason)
    
    // 合計ポジション数（ゴースト+リアル）を取得
    int totalPositionCount = combined_position_count(type);
+   
+   // 初回エントリーの場合のみ時間チェック
+   if(totalPositionCount == 0)
+   {
+      // 手動操作以外の時は、時間制限チェックを行う
+      if(StringFind(entryReason, "手動") < 0 && !IsInitialEntryTimeAllowed(type))
+      {
+         Print("ExecuteRealEntry: 初回エントリー時間制限により", type == OP_BUY ? "Buy" : "Sell", "側はスキップします");
+         return;
+      }
+   }
    
    // エントリー理由が指定されていない場合は自動生成
    if(entryReason == "")
@@ -185,7 +196,9 @@ void ExecuteRealEntry(int type, string entryReason)
       Print("リアル", type == OP_BUY ? "Buy" : "Sell", "エントリーエラー: ", GetLastError());
    }
 }
-// 2. ExecuteRealNanpin関数の完全版
+
+
+
 //+------------------------------------------------------------------+
 //| ExecuteRealNanpin関数 - ナンピンレベル廃止版                     |
 //+------------------------------------------------------------------+
@@ -286,8 +299,9 @@ void ExecuteRealNanpin(int typeOrder)
 }
 
 
+
 //+------------------------------------------------------------------+
-//| 裁量エントリー実行関数                                           |
+//| ExecuteDiscretionaryEntry関数 - 初回エントリー時間制限対応版      |
 //+------------------------------------------------------------------+
 void ExecuteDiscretionaryEntry(int typeOrder, double lotSize = 0)
 {
@@ -312,6 +326,10 @@ void ExecuteDiscretionaryEntry(int typeOrder, double lotSize = 0)
    
    // 合計ポジション数（ゴースト+リアル）を取得
    int totalPositionCount = combined_position_count(typeOrder);
+   
+   // 初回エントリーの場合は時間チェックを行う - ただし手動操作のため、常に許可する
+   // 手動操作による裁量エントリーなので、時間制限は適用しない
+   
    double lotsToUse;
    
    if(lotSize > 0) {
@@ -369,12 +387,8 @@ void ExecuteDiscretionaryEntry(int typeOrder, double lotSize = 0)
 }
 
 
-
-
-
-// 8. ExecuteEntryFromLevel関数の完全版
 //+------------------------------------------------------------------+
-//| 途中からのエントリー用関数 - ナンピンレベル廃止版                  |
+//| ExecuteEntryFromLevel関数 - 初回エントリー時間制限対応版          |
 //+------------------------------------------------------------------+
 void ExecuteEntryFromLevel(int type, int level)
 {
@@ -402,6 +416,23 @@ void ExecuteEntryFromLevel(int type, int level)
    {
       Print("指定レベルが範囲外のため、レベル指定エントリーはスキップされました: ", level);
       return;
+   }
+   
+   // 合計ポジション数を取得
+   int totalPositionCount = combined_position_count(type);
+   
+   // 初回エントリーの場合のみ時間チェック
+   if(totalPositionCount == 0)
+   {
+      // レベル指定エントリーは手動操作なので、時間制限は適用しない
+      // ただし、念のため処理は残しておく（コメントアウト）
+      /*
+      if(!IsInitialEntryTimeAllowed(type))
+      {
+         Print("ExecuteEntryFromLevel: 初回エントリー時間制限により", type == OP_BUY ? "Buy" : "Sell", "側はスキップします");
+         return;
+      }
+      */
    }
    
    // ロット選択を明確化 - レベルは1始まりだが配列は0始まりなので調整
@@ -436,8 +467,6 @@ void ExecuteEntryFromLevel(int type, int level)
       Print("レベル", level, "からの", type == OP_BUY ? "Buy" : "Sell", "エントリーエラー: ", GetLastError());
    }
 }
-
-
 
 //+------------------------------------------------------------------+
 //| OnTickManager関数の修正 - CleanupAndRebuildGhostObjectsに変更    |
@@ -1005,7 +1034,7 @@ void CheckPositionChanges()
 
 
 //+------------------------------------------------------------------+
-//| ProcessRealEntries関数 - ナンピンレベル廃止対応版                    |
+//| ProcessRealEntries関数 - 初回エントリー時間制限対応版              |
 //+------------------------------------------------------------------+
 void ProcessRealEntries(int side)
 {
@@ -1027,13 +1056,27 @@ void ProcessRealEntries(int side)
       Print("ProcessRealEntries: ポジション保護モードにより", direction, "側はスキップします");
       return;
    }
-      // 決済後インターバルチェック
-      if(!IsCloseIntervalElapsed(side))
+   
+   // 決済後インターバルチェック
+   if(!IsCloseIntervalElapsed(side))
+   {
+      Print("ProcessRealEntries: 決済後インターバル中のため", direction, "側はスキップします");
+      return;
+   }
+
+   // ここに時間制限を追加（初回エントリーのみ）
+   // ゴーストも含めた合計ポジション数を取得
+   int totalPositionCount = combined_position_count(operationType);
+   
+   // 初回エントリーの場合のみ時間チェックを行う
+   if(totalPositionCount == 0)
+   {
+      if(!IsInitialEntryTimeAllowed(operationType))
       {
-         Print("ProcessRealEntries: 決済後インターバル中のため", direction, "側はスキップします");
+         Print("ProcessRealEntries: 初回エントリー時間制限により", direction, "側はスキップします");
          return;
       }
-
+   }
 
    // エントリーモードチェック
    bool modeAllowed = false;
