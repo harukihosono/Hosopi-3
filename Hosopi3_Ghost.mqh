@@ -1723,7 +1723,7 @@ double GetLastCombinedPositionPrice(int type)
    return lastPrice;
 }
 
-// CheckGhostNanpinCondition関数の正しい修正
+
 
 void CheckGhostNanpinCondition(int type)
 {
@@ -1755,6 +1755,18 @@ void CheckGhostNanpinCondition(int type)
 
    // 決済済みフラグが立っている場合はスキップ
    if((type == OP_BUY && g_BuyGhostClosed) || (type == OP_SELL && g_SellGhostClosed)) {
+      return;
+   }
+   
+   // エントリーモードチェック (追加)
+   bool modeAllowed = false;
+   if(type == OP_BUY) // Buy
+      modeAllowed = (EntryMode == MODE_BUY_ONLY || EntryMode == MODE_BOTH);
+   else // Sell
+      modeAllowed = (EntryMode == MODE_SELL_ONLY || EntryMode == MODE_BOTH);
+      
+   if(!modeAllowed) {
+      // デバッグログは出さない（頻繁にチェックされるため）
       return;
    }
 
@@ -1825,7 +1837,7 @@ void CheckGhostNanpinCondition(int type)
    }
 
    // ナンピン条件が満たされた場合
-   if(nanpinCondition)
+   if(nanpinCondition && modeAllowed) // modeAllowedを追加
    {
       // ======= 修正: スキップレベルと正確に一致する場合にリアルエントリーに切り替え =======
       // ゴーストカウントがスキップレベルと同じ場合はリアルエントリーではなくゴーストエントリーを行う
@@ -1848,6 +1860,7 @@ void CheckGhostNanpinCondition(int type)
       }
    }
 }
+
 
 
 //+------------------------------------------------------------------+
@@ -2037,9 +2050,7 @@ void CheckLimitTakeProfitExecutions()
    prevSellCount = currentSellCount;
 }
 
-//+------------------------------------------------------------------+
-//| ProcessGhostEntries関数 - 初回エントリー時間制限対応版            |
-//+------------------------------------------------------------------+
+
 void ProcessGhostEntries(int side)
 {
    string direction = (side == 0) ? "Buy" : "Sell";
@@ -2114,13 +2125,21 @@ void ProcessGhostEntries(int side)
       // エントリー条件: インジケーターまたは時間
       bool indicatorSignal = CheckIndicatorSignals(side);
       
-      Print("ProcessGhostEntries: ", direction, " インジケーターシグナル=", indicatorSignal);
+      // 方向フィルタリングをここで適用 (追加)
+      bool directionAllowed = false;
+      if(side == 0) // Buy
+         directionAllowed = (EntryMode == MODE_BUY_ONLY || EntryMode == MODE_BOTH);
+      else // Sell
+         directionAllowed = (EntryMode == MODE_SELL_ONLY || EntryMode == MODE_BOTH);
       
-      // いずれかの条件が満たされればエントリー
-      bool shouldEnter = indicatorSignal;
+      Print("ProcessGhostEntries: ", direction, " インジケーターシグナル=", indicatorSignal, ", 方向許可=", directionAllowed);
+      
+      // いずれかの条件が満たされればエントリー (修正)
+      bool shouldEnter = indicatorSignal && directionAllowed;
       
       string reason = "";
       if(indicatorSignal) reason += "インジケーター条件OK ";
+      if(directionAllowed) reason += "方向OK ";
       
       if(shouldEnter) {
          Print("新規ゴースト", direction, "エントリー実行 - 理由: ", reason);
@@ -2135,6 +2154,8 @@ void ProcessGhostEntries(int side)
       CheckGhostNanpinCondition(operationType);
    }
 }
+
+
 
 //+------------------------------------------------------------------+
 //| 最後のポジション（ゴーストまたはリアル）のロットを取得する関数    |

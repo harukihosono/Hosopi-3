@@ -376,20 +376,28 @@ sinput string Comment_Condition = ""; //+--- 条件判定設定 ---+
 input CONDITION_TYPE Indicator_Condition_Type = OR_CONDITION; // インジケーター条件判定（OR/AND）
 
 
-
-//+------------------------------------------------------------------+
-//| EvaluateIndicatorsForEntry関数 - インジケーター評価（セクション追加）|
-//+------------------------------------------------------------------+
 bool EvaluateIndicatorsForEntry(int side)
 {
    Print("【インジケーターシグナル評価】 開始 - side=", side);
 
-// 有効な戦略のシグナルを評価
+   // エントリーモードの確認を追加
+   bool modeAllowed = false;
+   if(side == 0) // Buy
+      modeAllowed = (EntryMode == MODE_BUY_ONLY || EntryMode == MODE_BOTH);
+   else // Sell
+      modeAllowed = (EntryMode == MODE_SELL_ONLY || EntryMode == MODE_BOTH);
+   
+   if(!modeAllowed) {
+      Print("【エントリーモード】: 現在のモードでは", side == 0 ? "Buy" : "Sell", "側は許可されていません");
+      return false;
+   }
+
+   // 有効な戦略のシグナルを評価
    bool strategySignals = false;
    int enabledStrategies = 0;
    int validSignals = 0;
 
-// 【セクション: MAクロス】
+   // 【セクション: MAクロス】
    if(MA_Entry_Strategy == MA_ENTRY_ENABLED)
    {
       enabledStrategies++;
@@ -404,7 +412,7 @@ bool EvaluateIndicatorsForEntry(int side)
       }
    }
 
-// 【セクション: RSI】
+   // 【セクション: RSI】
    if(RSI_Entry_Strategy == RSI_ENTRY_ENABLED)
    {
       enabledStrategies++;
@@ -419,7 +427,7 @@ bool EvaluateIndicatorsForEntry(int side)
       }
    }
 
-// 【セクション: ボリンジャーバンド】
+   // 【セクション: ボリンジャーバンド】
    if(BB_Entry_Strategy == BB_ENTRY_ENABLED)
    {
       enabledStrategies++;
@@ -434,7 +442,7 @@ bool EvaluateIndicatorsForEntry(int side)
       }
    }
 
-// 【セクション: RCI】
+   // 【セクション: RCI】
    if(RCI_Entry_Strategy == RCI_ENTRY_ENABLED)
    {
       enabledStrategies++;
@@ -449,7 +457,7 @@ bool EvaluateIndicatorsForEntry(int side)
       }
    }
 
-// 【セクション: ストキャスティクス】
+   // 【セクション: ストキャスティクス】
    if(Stoch_Entry_Strategy == STOCH_ENTRY_ENABLED)
    {
       enabledStrategies++;
@@ -464,7 +472,7 @@ bool EvaluateIndicatorsForEntry(int side)
       }
    }
 
-// 【セクション: CCI】
+   // 【セクション: CCI】
    if(CCI_Entry_Strategy == CCI_ENTRY_ENABLED)
    {
       enabledStrategies++;
@@ -479,7 +487,7 @@ bool EvaluateIndicatorsForEntry(int side)
       }
    }
 
-// 【セクション: ADX/DMI】
+   // 【セクション: ADX/DMI】
    if(ADX_Entry_Strategy == ADX_ENTRY_ENABLED)
    {
       enabledStrategies++;
@@ -494,7 +502,7 @@ bool EvaluateIndicatorsForEntry(int side)
       }
    }
 
-// 【セクション: 偶数/奇数時間】
+   // 【セクション: 偶数/奇数時間】
    if(EvenOdd_Entry_Strategy != EVEN_ODD_DISABLED)
    {
       enabledStrategies++;
@@ -509,33 +517,34 @@ bool EvaluateIndicatorsForEntry(int side)
       }
    }
 
-// 【セクション: 最終判断】
+   // 【セクション: 最終判断】
    Print("【最終判断】 有効なインジケーター数: ", enabledStrategies, ", シグナル成立数: ", validSignals);
 
-// 有効な戦略が1つもない場合はfalseを返す
+   // 有効な戦略が1つもない場合はfalseを返す
    if(enabledStrategies == 0)
    {
       Print("【最終判断】: 有効なインジケーターが0のため false を返します");
       return false;
    }
 
-// 条件タイプに基づいて評価
-if(Indicator_Condition_Type == AND_CONDITION)
-{
-   // AND条件: すべての有効なインジケーターがシグナルを出した場合のみtrue
-   strategySignals = (validSignals == enabledStrategies);
-   Print("【最終判断】 AND条件で評価: ", strategySignals ? "すべてのシグナルが成立" : "一部のシグナルが不成立");
-}
-else
-{// OR条件: 少なくとも1つのインジケーターがシグナルを出した場合にtrue
-   strategySignals = (validSignals > 0);
-   Print("【最終判断】 OR条件で評価: ", strategySignals ? "1つ以上のシグナルが成立" : "シグナル不成立");
-}
+   // 条件タイプに基づいて評価
+   if(Indicator_Condition_Type == AND_CONDITION)
+   {
+      // AND条件: すべての有効なインジケーターがシグナルを出した場合のみtrue
+      strategySignals = (validSignals == enabledStrategies);
+      Print("【最終判断】 AND条件で評価: ", strategySignals ? "すべてのシグナルが成立" : "一部のシグナルが不成立");
+   }
+   else
+   {// OR条件: 少なくとも1つのインジケーターがシグナルを出した場合にtrue
+      strategySignals = (validSignals > 0);
+      Print("【最終判断】 OR条件で評価: ", strategySignals ? "1つ以上のシグナルが成立" : "シグナル不成立");
+   }
 
-Print("【最終判断】 結果: ", strategySignals ? "成立" : "不成立");
-return strategySignals;
+   // エントリーモードのチェック結果も加味
+   bool finalResult = strategySignals && modeAllowed;
+   Print("【最終判断】 エントリーモード考慮の結果: ", finalResult ? "成立" : "不成立");
+   return finalResult;
 }
-
 
 //+------------------------------------------------------------------+
 //| EvaluateStrategyForEntry関数 - 常時エントリー戦略追加版            |
@@ -1470,30 +1479,47 @@ bool ShouldProcessGhostEntry(int side)
 return EvaluateStrategyForEntry(side);
 }
 
-//+------------------------------------------------------------------+
-//| 戦略評価 - ProcessRealEntries関数用のインターフェース             |
-//+------------------------------------------------------------------+
 bool ShouldProcessRealEntry(int side)
 {
-// ProcessRealEntries関数から呼び出されるエントリー評価関数
-return EvaluateStrategyForEntry(side);
+   // ProcessRealEntries関数から呼び出されるエントリー評価関数
+   bool result = EvaluateStrategyForEntry(side);
+   
+   // エントリーモードとの整合性を確保する追加チェック
+   bool modeAllowed = false;
+   if(side == 0) // Buy
+      modeAllowed = (EntryMode == MODE_BUY_ONLY || EntryMode == MODE_BOTH);
+   else // Sell
+      modeAllowed = (EntryMode == MODE_SELL_ONLY || EntryMode == MODE_BOTH);
+   
+   // 両方の条件が満たされた場合のみtrueを返す
+   return result && modeAllowed;
 }
 
-//+------------------------------------------------------------------+
-//| CheckIndicatorSignals関数 - 常時エントリー戦略対応版               |
-//+------------------------------------------------------------------+
+
 bool CheckIndicatorSignals(int side)
 {
-// どれか1つでもシグナルがあればtrue
-return (ConstantEntryStrategy != CONSTANT_ENTRY_DISABLED && CheckConstantEntryStrategy(side)) ||
-       (MA_Entry_Strategy == MA_ENTRY_ENABLED && CheckMASignal(side)) ||
-       (RSI_Entry_Strategy == RSI_ENTRY_ENABLED && CheckRSISignal(side)) ||
-       (BB_Entry_Strategy == BB_ENTRY_ENABLED && CheckBollingerSignal(side)) ||
-       (RCI_Entry_Strategy == RCI_ENTRY_ENABLED && CheckRCISignal(side)) ||
-       (Stoch_Entry_Strategy == STOCH_ENTRY_ENABLED && CheckStochasticSignal(side)) ||
-       (CCI_Entry_Strategy == CCI_ENTRY_ENABLED && CheckCCISignal(side)) ||
-       (ADX_Entry_Strategy == ADX_ENTRY_ENABLED && CheckADXSignal(side)) ||
-       (EvenOdd_Entry_Strategy != EVEN_ODD_DISABLED && CheckEvenOddStrategy(side));
+   // エントリーモードチェック (追加)
+   bool modeAllowed = false;
+   if(side == 0) // Buy
+      modeAllowed = (EntryMode == MODE_BUY_ONLY || EntryMode == MODE_BOTH);
+   else // Sell
+      modeAllowed = (EntryMode == MODE_SELL_ONLY || EntryMode == MODE_BOTH);
+      
+   if(!modeAllowed) {
+      // デバッグログは出さない（頻繁にチェックされるため）
+      return false;
+   }
+
+   // どれか1つでもシグナルがあればtrue
+   return (ConstantEntryStrategy != CONSTANT_ENTRY_DISABLED && CheckConstantEntryStrategy(side)) ||
+          (MA_Entry_Strategy == MA_ENTRY_ENABLED && CheckMASignal(side)) ||
+          (RSI_Entry_Strategy == RSI_ENTRY_ENABLED && CheckRSISignal(side)) ||
+          (BB_Entry_Strategy == BB_ENTRY_ENABLED && CheckBollingerSignal(side)) ||
+          (RCI_Entry_Strategy == RCI_ENTRY_ENABLED && CheckRCISignal(side)) ||
+          (Stoch_Entry_Strategy == STOCH_ENTRY_ENABLED && CheckStochasticSignal(side)) ||
+          (CCI_Entry_Strategy == CCI_ENTRY_ENABLED && CheckCCISignal(side)) ||
+          (ADX_Entry_Strategy == ADX_ENTRY_ENABLED && CheckADXSignal(side)) ||
+          (EvenOdd_Entry_Strategy != EVEN_ODD_DISABLED && CheckEvenOddStrategy(side));
 }
 
 
