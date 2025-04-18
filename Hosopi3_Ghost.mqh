@@ -2010,16 +2010,12 @@ void CheckLimitTakeProfitExecutions()
    {
       Print("Buy側ポジション減少検出: ", prevBuyCount, " -> ", currentBuyCount);
       
-      // 完全に決済された場合
-      if(currentBuyCount == 0)
-      {
-         // 同方向のゴーストをリセット
-         if(ghost_position_count(OP_BUY) > 0)
-         {
+
+
             Print("Buy側指値決済検出: ゴーストポジションもリセットします");
             ResetSpecificGhost(OP_BUY);
-         }
-      }
+         
+      
       
       // 関連するラインを削除
       CleanupLinesOnClose(0);
@@ -2030,16 +2026,12 @@ void CheckLimitTakeProfitExecutions()
    {
       Print("Sell側ポジション減少検出: ", prevSellCount, " -> ", currentSellCount);
       
-      // 完全に決済された場合
-      if(currentSellCount == 0)
-      {
-         // 同方向のゴーストをリセット
-         if(ghost_position_count(OP_SELL) > 0)
-         {
+
+
             Print("Sell側指値決済検出: ゴーストポジションもリセットします");
             ResetSpecificGhost(OP_SELL);
-         }
-      }
+         
+      
       
       // 関連するラインを削除
       CleanupLinesOnClose(1);
