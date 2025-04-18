@@ -37,15 +37,9 @@ double GetBidPrice()
 }
 #endif
 
-// グローバル変数でエントリー制限の状態をキャッシュ
-bool g_EquitySufficientCache = true;
-datetime g_LastEquityCheckTime = 0;
-bool g_TimeAllowedCache[2] = {true, true}; // [0]=Buy, [1]=Sell
-datetime g_LastTimeAllowedCheckTime[2] = {0, 0}; // [0]=Buy, [1]=Sell
 
-//+------------------------------------------------------------------+
-//| 有効証拠金が基準を満たしているかチェック（キャッシュ対応）         |
-//+------------------------------------------------------------------+
+
+// IsEquitySufficientCached 関数の高速化（バックテスト時のキャッシュ期間延長）
 bool IsEquitySufficientCached()
 {
    // 有効証拠金チェックが無効の場合は常にtrue
@@ -223,9 +217,7 @@ bool position_close(int side, double lot = 0.0, int slippage = 10, int magic = 0
    #endif
 }
 
-//+------------------------------------------------------------------+
-//| 状態をリセットする関数 - バックテスト高速化用                      |
-//+------------------------------------------------------------------+
+// ResetTradingCaches関数を追加（各種キャッシュをリセット）
 void ResetTradingCaches()
 {
    // キャッシュをリセット
@@ -235,6 +227,10 @@ void ResetTradingCaches()
    g_TimeAllowedCache[1] = true;
    g_LastTimeAllowedCheckTime[0] = 0;
    g_LastTimeAllowedCheckTime[1] = 0;
+   g_InitialTimeAllowedCache[0] = true;
+   g_InitialTimeAllowedCache[1] = true;
+   g_LastInitialTimeAllowedCheckTime[0] = 0;
+   g_LastInitialTimeAllowedCheckTime[1] = 0;
 }
 
 // 以下は既存の関数を保持
@@ -351,7 +347,7 @@ double GetLastPositionPrice(int type)
    double lastPrice = 0;
    datetime lastTime = 0;
    
-   Print("GetLastPositionPrice: ", type == OP_BUY ? "Buy" : "Sell", "の最新ポジション価格を検索中");
+   
    
    // このEAが管理するポジションのみを対象に
    for(int i = OrdersTotal() - 1; i >= 0; i--)
@@ -360,33 +356,19 @@ double GetLastPositionPrice(int type)
       {
          if(OrderType() == type && OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
          {
-            Print("  ポジション検出: チケット=", OrderTicket(), 
-                  ", 価格=", DoubleToString(OrderOpenPrice(), Digits), 
-                  ", 時間=", TimeToString(OrderOpenTime()));
-            
+                      
             // 最も新しいポジションを探す
             if(OrderOpenTime() > lastTime)
             {
                lastTime = OrderOpenTime();
                lastPrice = OrderOpenPrice();
-               Print("  [更新] 最新ポジション: 価格=", DoubleToString(lastPrice, Digits), 
-                     ", 時間=", TimeToString(lastTime));
+               
             }
          }
       }
    }
    
-   // デバッグログ追加
-   if(lastPrice > 0)
-   {
-      Print("GetLastPositionPrice 結果: ", type == OP_BUY ? "Buy" : "Sell", 
-            "の最新ポジション価格=", DoubleToString(lastPrice, Digits), 
-            ", 時間=", TimeToString(lastTime));
-   }
-   else
-   {
-      Print("警告: ", type == OP_BUY ? "Buy" : "Sell", "ポジションが見つかりません");
-   }
+ 
    
    return lastPrice;
 }

@@ -127,6 +127,10 @@ void CreatePositionTable()
 //+------------------------------------------------------------------+
 void UpdatePositionTable()
 {
+
+      // バックテスト時は更新頻度を下げる
+      if(IsTesting() && MathMod(Bars, 20) != 0)
+      return;
    // レイアウトパターンを適用
    ApplyLayoutPattern();
    

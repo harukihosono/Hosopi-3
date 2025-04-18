@@ -112,7 +112,7 @@ void CheckGhostStopLossHit(int side)
       // 決済前に利益を計算
       double ghostProfit = CalculateGhostProfit(operationType);
       
-      Print("ゴースト", side == 0 ? "Buy" : "Sell", "のトレーリングストップがヒットしました: 価格=", DoubleToString(currentPrice, Digits));
+      
       
       // リアルポジションとゴーストポジションを決済
       if(side == 0)
@@ -169,6 +169,9 @@ void CreateGhostEntryPoint(int type, double price, double lots, int level, datet
 {
    if(!PositionSignDisplay)
       return;
+   // バックテスト時は頻度を下げる
+   if(IsTesting() && MathMod(Bars, 100) != 0)
+      return;
       
    // エントリー時間を使用（引数で指定された時間）
    datetime time = entryTime;
@@ -215,14 +218,12 @@ void InitializeGhostPosition(int type, string entryReason = "")
 {
    // リアルポジションがある場合は処理をスキップ（複数チャート対策）
    if(position_count(OP_BUY) > 0 || position_count(OP_SELL) > 0) {
-      Print("リアルポジションが存在するため、ゴーストポジション初期化をスキップします");
       return;
    }
 
    // ポジション保護モードのチェック
    if(!IsEntryAllowedByProtectionMode(type == OP_BUY ? 0 : 1))
    {
-      Print("InitializeGhostPosition: ポジション保護モードにより", type == OP_BUY ? "Buy" : "Sell", "側はスキップします");
       return;
    }
 
@@ -235,7 +236,6 @@ void InitializeGhostPosition(int type, string entryReason = "")
       // 手動ボタン操作以外の時は、時間制限チェックを行う
       if(StringFind(entryReason, "手動") < 0 && !IsInitialEntryTimeAllowed(type))
       {
-         Print("InitializeGhostPosition: 初回エントリー時間制限により", type == OP_BUY ? "Buy" : "Sell", "側はスキップします");
          return;
       }
    }
@@ -289,8 +289,7 @@ void InitializeGhostPosition(int type, string entryReason = "")
       g_SellGhostClosed = false;
    }
 
-   // ユーザー表示用にはレベル+1を表示（1-indexed）
-   Print("ゴーストポジション作成: ", type == OP_BUY ? "Buy" : "Sell", ", レベル: 1, 価格: ", DoubleToString(newPosition.price, 5));
+ 
 
    // グローバル変数へ保存
    SaveGhostPositionsToGlobal();
@@ -304,22 +303,22 @@ void InitializeGhostPosition(int type, string entryReason = "")
 //+------------------------------------------------------------------+
 void AddGhostNanpin(int type)
 {
-   if(position_count(OP_BUY) > 0 || position_count(OP_SELL) > 0) {
-      Print("リアルポジションが存在するため、ゴーストナンピン追加をスキップします");
+   if(position_count(type) > 0) {
+      
       return;
    }
 
    // ポジション保護モードのチェック
    if(!IsEntryAllowedByProtectionMode(type == OP_BUY ? 0 : 1))
    {
-      Print("AddGhostNanpin: ポジション保護モードにより", type == OP_BUY ? "Buy" : "Sell", "側はスキップします");
+      
       return;
    }
 
    if((GetAskPrice() - GetBidPrice()) / Point > MaxSpreadPoints && MaxSpreadPoints > 0)
    {
-      Print("スプレッドが大きすぎるため、ゴーストナンピン追加をスキップします: ", 
-            (GetAskPrice() - GetBidPrice()) / Point, " > ", MaxSpreadPoints);
+      
+           
       return;
    }
    
@@ -327,7 +326,7 @@ void AddGhostNanpin(int type)
    int totalPositionCount = combined_position_count(type);
    if(totalPositionCount >= (int)MaxPositions)
    {
-      Print("合計ポジション数が最大数(", (int)MaxPositions, ")に達しているため、ゴーストナンピンをスキップします");
+      
       return;
    }
    
@@ -346,11 +345,11 @@ void AddGhostNanpin(int type)
       int nextLevel = totalPositionCount; // 次のレベル
       if(nextLevel < ArraySize(g_LotTable)) {
          lotSize = g_LotTable[nextLevel];
-         Print("個別指定ロットモード: ナンピンレベル", nextLevel + 1, "のロット", DoubleToString(lotSize, 2), "を使用");
+         
       } else {
          // 範囲外の場合は最後のロットを使用
          lotSize = g_LotTable[ArraySize(g_LotTable) - 1];
-         Print("警告: ナンピンレベルが範囲外のため最大レベルのロット", DoubleToString(lotSize, 2), "を使用");
+         
       }
    }
    // マーチンゲールモードの場合
@@ -358,17 +357,17 @@ void AddGhostNanpin(int type)
       // 前回のロットに倍率を掛ける
       if(lastLotSize <= 0) {
          lotSize = g_LotTable[0]; // ロットが取得できなければ初期ロットを使用
-         Print("警告: 最後のポジションのロットサイズを取得できませんでした。初期ロット", DoubleToString(lotSize, 2), "を使用");
+        
       } else {
          // 0.01ロットの場合のみ、かつマーチン倍率が1.3より大きい場合の特別処理
          if(MathAbs(lastLotSize - 0.01) < 0.001 && LotMultiplier > 1.3) {
             lotSize = 0.02;
-            Print("0.01ロット検出 + マーチン倍率>1.3: 次のロットを0.02に固定します");
+            
          } else {
             // それ以外は通常のマーチンゲール計算
             lotSize = lastLotSize * LotMultiplier;
             lotSize = MathCeil(lotSize * 1000) / 1000; // 小数点以下3桁で切り上げ
-            Print("通常マーチンゲール計算: 前回ロット×倍率=", DoubleToString(lotSize, 2));
+            
          }
       }
    }
@@ -403,8 +402,6 @@ void AddGhostNanpin(int type)
       CreateGhostEntryPoint(type, newPosition.price, newPosition.lots, newPosition.level, currentTime);
    }
    
-   // ここでは表示用に1-indexedのレベルを使用（ユーザーには1始まりで表示）
-   Print("ゴーストナンピン追加: ", type == OP_BUY ? "Buy" : "Sell", ", レベル: ", newPosition.level + 1, ", 価格: ", DoubleToString(newPosition.price, 5));
    
    // グローバル変数に保存
    SaveGhostPositionsToGlobal();
@@ -462,7 +459,7 @@ void RecreateGhostEntryPoints()
       }
    }
    
-   Print("ゴースト水平線を再作成しました - 有効Buy: ", CountValidGhosts(OP_BUY), ", 有効Sell: ", CountValidGhosts(OP_SELL));
+   
 }
 //+------------------------------------------------------------------+
 //| 特定方向のゴーストポジションだけをリセットする関数 - 通知機能追加版 |
@@ -474,7 +471,7 @@ void ResetSpecificGhost(int type)
    if(type == OP_BUY)
    {
       // ゴーストBuyポジションのカウントをログに出力
-      Print("ゴーストBuyポジションのみリセット開始: カウント=", g_GhostBuyCount);
+      
       
       // 合計利益を計算
       if(g_GhostBuyCount > 0) {
@@ -497,7 +494,7 @@ void ResetSpecificGhost(int type)
       // 決済済みフラグをセット - ここでtrueのままにしておく
       g_BuyGhostClosed = true;
       
-      Print("ゴーストBuyポジションのみリセット完了（矢印とテキストは保持）");
+      
       
       // ゴースト決済通知を送信
       NotifyGhostClosure(OP_BUY, totalProfit);
@@ -505,7 +502,7 @@ void ResetSpecificGhost(int type)
    else // OP_SELL
    {
       // ゴーストSellポジションのカウントをログに出力
-      Print("ゴーストSellポジションのみリセット開始: カウント=", g_GhostSellCount);
+     
       
       // 合計利益を計算
       if(g_GhostSellCount > 0) {
@@ -528,7 +525,7 @@ void ResetSpecificGhost(int type)
       // 決済済みフラグをセット - ここでtrueのままにしておく
       g_SellGhostClosed = true;
       
-      Print("ゴーストSellポジションのみリセット完了（矢印とテキストは保持）");
+      
       
       // ゴースト決済通知を送信
       NotifyGhostClosure(OP_SELL, totalProfit);
@@ -555,11 +552,7 @@ void ResetGhost(int type)
    CleanupLinesOnClose(type == OP_BUY ? 0 : 1);
    if(type == OP_BUY)
    {
-      // ゴーストBuyポジションのカウントをログに出力
-      Print("ゴーストBuyポジションリセット開始: カウント=", g_GhostBuyCount);
-      
-      // 重要: 先にオブジェクトを削除（強化版）
-      Print("Buy関連のゴーストオブジェクト削除開始");
+    
       
       // 全てのゴーストBuyオブジェクトを削除
       DeleteAllGhostObjectsByType(OP_BUY);
@@ -598,15 +591,11 @@ void ResetGhost(int type)
       // フラグをリセット
       g_BuyGhostClosed = false;
       
-      Print("ゴーストBuyポジションをリセットしました");
+      
    }
    else // OP_SELL
    {
-      // 同様の処理をSell側にも追加
-      Print("ゴーストSellポジションリセット開始: カウント=", g_GhostSellCount);
-      
-      // 重要: 先にオブジェクトを削除（強化版）
-      Print("Sell関連のゴーストオブジェクト削除開始");
+    
 
       // 全てのゴーストSellオブジェクトを削除
       DeleteAllGhostObjectsByType(OP_SELL);
@@ -642,7 +631,7 @@ void ResetGhost(int type)
       // フラグをリセット
       g_SellGhostClosed = false;
       
-      Print("ゴーストSellポジションをリセットしました");
+      
    }
    
    // 最後に明示的にDeleteAllEntryPointsを呼び出し
@@ -681,7 +670,7 @@ void ResetGhost(int type)
    
    if(remainingCount > 0)
    {
-      Print("警告: まだ", remainingCount, "個のゴースト関連オブジェクトが残っています。強制削除を試みます。");
+     
       DeleteAllGhostObjectsByType(0);
       DeleteAllGhostObjectsByType(1);
    }
@@ -708,14 +697,14 @@ void OnTimerHandler()
             if(g_BuyGhostClosed)
             {
                g_BuyGhostClosed = false;
-               Print("定期チェック: Buyゴースト決済済みフラグをリセットしました");
+               
                needsUpdate = true;
             }
             
             if(g_SellGhostClosed)
             {
                g_SellGhostClosed = false;
-               Print("定期チェック: Sellゴースト決済済みフラグをリセットしました");
+            
                needsUpdate = true;
             }
             
@@ -839,7 +828,7 @@ void DeleteGhostLinesByType(int operationType, int lineType)
    // 削除したオブジェクトがある場合のみログ出力
    if(deletedCount > 0)
    {
-      Print("DeleteGhostLinesByType: ", typeStr, "タイプの", deletedCount, "個の", lineTypeStr, "オブジェクトを削除しました");
+     
    }
 }
 
@@ -941,7 +930,7 @@ void UpdateAveragePriceLines(int side)
    static datetime lastUpdateLogTime = 0;
    if(TimeCurrent() - lastUpdateLogTime > 60)
    {
-      Print("平均取得価格ライン更新: ", direction, ", 平均価格=", DoubleToString(avgPrice, Digits));
+     
       lastUpdateLogTime = TimeCurrent();
    }
 }
@@ -955,7 +944,7 @@ void UpdateAveragePriceLines(int side)
 void DeleteGhostLinesAndPreventRecreation(int type)
 {
    string typeStr = (type == OP_BUY) ? "Buy" : "Sell";
-   Print("DeleteGhostLinesAndPreventRecreation: ", typeStr, " 関連のゴースト水平線を削除します");
+  
    
    // 水平線のみを削除
    DeleteGhostLinesByType(type, LINE_TYPE_GHOST);    // ゴースト水平線
@@ -1025,12 +1014,9 @@ double ghost_position_last_price(int type)
       {
          // 最後のBuyゴーストポジションの価格を返す
          lastPrice = g_GhostBuyPositions[g_GhostBuyCount - 1].price;
-         Print("最後のBuyゴーストポジション価格: ", DoubleToString(lastPrice, 5), ", レベル: ", g_GhostBuyCount);
+         
       }
-      else
-      {
-         Print("Buyゴーストポジションが存在しません");
-      }
+    
    }
    else // OP_SELL
    {
@@ -1039,12 +1025,9 @@ double ghost_position_last_price(int type)
       {
          // 最後のSellゴーストポジションの価格を返す
          lastPrice = g_GhostSellPositions[g_GhostSellCount - 1].price;
-         Print("最後のSellゴーストポジション価格: ", DoubleToString(lastPrice, 5), ", レベル: ", g_GhostSellCount);
+         
       }
-      else
-      {
-         Print("Sellゴーストポジションが存在しません");
-      }
+      
    }
    
    return lastPrice;
@@ -1075,7 +1058,7 @@ double combined_position_last_price(int type)
 void DeleteAllGhostObjectsByType(int type)
 {
    string typeStr = (type == OP_BUY) ? "Buy" : "Sell";
-   Print("DeleteAllGhostObjectsByType: ", typeStr, " 関連オブジェクトの削除を開始");
+   
    
    // 削除したオブジェクトの数をカウント
    int deletedCount = 0;
@@ -1188,7 +1171,7 @@ void DeleteAllGhostObjectsByType(int type)
       }
    }
    
-   Print("DeleteAllGhostObjectsByType: ", typeStr, "タイプの", deletedCount, "個のオブジェクトを削除しました");
+   
    
    // チャートを再描画
    ChartRedraw();
@@ -1227,7 +1210,7 @@ void DeleteAllEntryPoints()
    
    g_EntryObjectCount = 0;
    
-   Print("DeleteAllEntryPoints: ", deletedCount, "個のゴーストエントリーポイントオブジェクトを削除");
+   
 }
 
 //+------------------------------------------------------------------+
@@ -1235,7 +1218,7 @@ void DeleteAllEntryPoints()
 //+------------------------------------------------------------------+
 void RecreateValidGhostLines()
 {
-   Print("RecreateValidGhostLines: 有効なゴーストポジションに対してのみ点線を再作成");
+   
    
    // 先に既存の点線を全て削除
    DeleteGhostLinesByType(OP_BUY, LINE_TYPE_GHOST);
@@ -1362,7 +1345,7 @@ for(int i = GlobalVariablesTotal() - 1; i >= 0; i--)
    }
 }
 
-Print("グローバル変数からゴーストポジション情報を削除しました - ", deletedCount, "個の変数を削除");
+
 }
 
 
@@ -1376,13 +1359,13 @@ bool LoadGhostPositionsFromGlobal()
 // データが存在するか確認
 if(!GlobalVariableCheck(g_GlobalVarPrefix + "SaveTime"))
 {
-   Print("グローバル変数にゴーストポジション情報が見つかりませんでした");
+   
    return false;
 }
 
 // リアルポジションがある場合は読み込みをスキップ
 if(position_count(OP_BUY) > 0 || position_count(OP_SELL) > 0) {
-   Print("リアルポジションが存在するため、ゴーストポジション情報の読み込みをスキップします");
+   
    return false;
 }
 
@@ -1452,7 +1435,7 @@ g_SellGhostClosed = GlobalVariableGet(g_GlobalVarPrefix + "SellGhostClosed") > 0
 if(GlobalVariableCheck(g_GlobalVarPrefix + "TrailingStopEnabled"))
    g_EnableTrailingStop = GlobalVariableGet(g_GlobalVarPrefix + "TrailingStopEnabled") > 0;
 
-   Print("グローバル変数からゴーストポジション情報を読み込みました - Buy: ", buyCount, ", Sell: ", sellCount);
+   
 
    // ストップロスラインを再表示
    RestoreGhostStopLines();
@@ -1568,7 +1551,6 @@ GlobalVariableSet(g_GlobalVarPrefix + "TrailingStopEnabled", EnableTrailingStop 
 // 保存時間を記録
 GlobalVariableSet(g_GlobalVarPrefix + "SaveTime", TimeCurrent());
 
-Print("ゴーストポジション情報をグローバル変数に保存しました - 有効Buy: ", CountValidGhosts(OP_BUY), ", 有効Sell: ", CountValidGhosts(OP_SELL));
 }
 
 
@@ -1711,14 +1693,8 @@ double GetLastCombinedPositionPrice(int type)
       }
    }
 
-   if(found)
-   {
-      Print("最後のポジション価格取得: ", type == OP_BUY ? "Buy" : "Sell", " 価格=", DoubleToString(lastPrice, Digits));
-   }
-   else
-   {
-      Print("警告: 最後のポジション価格を取得できませんでした");
-   }
+
+  
 
    return lastPrice;
 }
@@ -1815,10 +1791,6 @@ void CheckGhostNanpinCondition(int type)
    if(TimeCurrent() - lastDebugLogTime[typeIndex] > 60)
    {
       string direction = (type == OP_BUY) ? "Buy" : "Sell";
-      Print(direction, " ゴーストナンピン条件チェック: 現在価格=", currentPrice, 
-            ", 前回価格=", lastPrice, 
-            ", ナンピン幅=", nanpinSpread, 
-            " ポイント, 差=", (type == OP_BUY ? (lastPrice - currentPrice) : (currentPrice - lastPrice)) / Point);
       lastDebugLogTime[typeIndex] = TimeCurrent();
    }
 
@@ -1843,8 +1815,7 @@ void CheckGhostNanpinCondition(int type)
       // ゴーストカウントがスキップレベルと同じ場合はリアルエントリーではなくゴーストエントリーを行う
       if(ghostCount == (int)NanpinSkipLevel)
       {
-         Print("【ゴースト→リアル切替(正確なタイミング)】: ", type == OP_BUY ? "Buy" : "Sell", 
-            "ゴーストカウント(", ghostCount, ")がスキップレベル(", (int)NanpinSkipLevel, ")に達しナンピン条件も成立したため、リアルエントリーに切り替えます");
+       
       
          // リアルエントリーを実行して関数を終了
          ExecuteRealEntry(type, "正確なナンピン切替: " + IntegerToString(ghostCount) + "段目までゴースト、" + IntegerToString(ghostCount + 1) + "段目からリアル");
@@ -1856,7 +1827,7 @@ void CheckGhostNanpinCondition(int type)
       {
          // 通常のゴーストナンピン追加
          AddGhostNanpin(type);
-         Print((type == OP_BUY ? "Buy" : "Sell"), " ゴーストナンピン条件成立、ゴーストナンピン追加");
+         
       }
    }
 }
@@ -1889,8 +1860,7 @@ void CleanupAndRebuildGhostObjects()
    // カウンターと実際のゴーストポジション数が一致しない場合
    if(buyCount != g_GhostBuyCount || sellCount != g_GhostSellCount)
    {
-      Print("警告: ゴーストカウンターの不一致を検出 - 内部Buy: ", buyCount, ", カウンター: ", g_GhostBuyCount, 
-            ", 内部Sell: ", sellCount, ", カウンター: ", g_GhostSellCount);
+   
       
       // カウンターを修正
       g_GhostBuyCount = buyCount;
@@ -1956,15 +1926,14 @@ void CleanupAndRebuildGhostObjects()
    // 有効なゴーストポジション数と有効な線の数が一致しない場合
    if(validLineCount != buyCount + sellCount)
    {
-      Print("警告: 有効なゴースト線の数が一致しません - 有効なゴースト: ", buyCount + sellCount, 
-            ", 有効な線: ", validLineCount, ", 全線: ", ghostLineCount);
+
       needsFixing = true;
    }
 
    // 修正が必要な場合
    if(needsFixing)
    {
-      Print("ゴーストオブジェクトの不整合を検出したため、再構築します");
+      
       
       // 1. 古いオブジェクトをすべて削除
       DeleteAllGhostObjectsByType(OP_BUY);
@@ -1974,7 +1943,7 @@ void CleanupAndRebuildGhostObjects()
       int validBuy = CountValidGhosts(OP_BUY);
       int validSell = CountValidGhosts(OP_SELL);
       
-      Print("有効なゴーストポジション - Buy: ", validBuy, ", Sell: ", validSell);
+      
       
       // 3. ゴーストエントリーポイントを再作成
       RecreateGhostEntryPoints();
@@ -2008,11 +1977,7 @@ void CheckLimitTakeProfitExecutions()
    // Buy側でポジション数減少を検出
    if(currentBuyCount < prevBuyCount)
    {
-      Print("Buy側ポジション減少検出: ", prevBuyCount, " -> ", currentBuyCount);
-      
-
-
-            Print("Buy側指値決済検出: ゴーストポジションもリセットします");
+   
             ResetSpecificGhost(OP_BUY);
          
       
@@ -2024,11 +1989,11 @@ void CheckLimitTakeProfitExecutions()
    // Sell側でポジション数減少を検出
    if(currentSellCount < prevSellCount)
    {
-      Print("Sell側ポジション減少検出: ", prevSellCount, " -> ", currentSellCount);
+      
       
 
 
-            Print("Sell側指値決済検出: ゴーストポジションもリセットします");
+           
             ResetSpecificGhost(OP_SELL);
          
       
@@ -2046,41 +2011,41 @@ void CheckLimitTakeProfitExecutions()
 void ProcessGhostEntries(int side)
 {
    string direction = (side == 0) ? "Buy" : "Sell";
-   Print("ProcessGhostEntries: ", direction, " 処理開始");
+  
 
    // リアルポジションがある場合はスキップ - 同一タイプのみチェックに変更
    int operationType = (side == 0) ? OP_BUY : OP_SELL;
    int existingCount = position_count(operationType);
 
    if(existingCount > 0) {
-      Print("ProcessGhostEntries: 既に", direction, "リアルポジションが存在するためスキップします");
+      
       return;
    }
 
    // ポジション保護モードのチェック
    if(!IsEntryAllowedByProtectionMode(side))
    {
-      Print("ProcessGhostEntries: ポジション保護モードにより", direction, "側はスキップします");
+      
       return;
    }
    
    // 決済後インターバルチェック
    if(!IsCloseIntervalElapsed(side))
    {
-      Print("ProcessGhostEntries: 決済後インターバル中のため", direction, "側はスキップします");
+      
       return;
    }
    
    // ゴーストモードチェック
    if(!g_GhostMode) {
-      Print("ProcessGhostEntries: ゴーストモード無効のためスキップします");
+      
       return;
    }
 
    // 決済済みフラグのチェック
    bool closedFlag = (operationType == OP_BUY) ? g_BuyGhostClosed : g_SellGhostClosed;
    if(closedFlag) {
-      Print("ProcessGhostEntries: ", direction, " 決済済みフラグが立っているためスキップします");
+      
       return;
    }
 
@@ -2092,17 +2057,17 @@ void ProcessGhostEntries(int side)
       modeAllowed = (EntryMode == MODE_SELL_ONLY || EntryMode == MODE_BOTH);
 
    if(!modeAllowed) {
-      Print("ProcessGhostEntries: エントリーモードにより ", direction, " 側はスキップします");
+      
       return;
    }
 
-   Print("ProcessGhostEntries: ", direction, " エントリーモードチェック通過");
+   
 
    // ゴーストポジションの状態チェック
    int ghostCount = ghost_position_count(operationType);
    int totalPositionCount = combined_position_count(operationType);
 
-   Print("ProcessGhostEntries: 現在の", direction, "ゴーストカウント=", ghostCount, ", 合計ポジション数=", totalPositionCount);
+   
 
    // 新規エントリー条件
    if(ghostCount == 0 && position_count(operationType) == 0)
@@ -2110,7 +2075,7 @@ void ProcessGhostEntries(int side)
       // 初回エントリーの場合のみ時間チェックを追加
       if(!IsInitialEntryTimeAllowed(operationType))
       {
-         Print("ProcessGhostEntries: 初回エントリー時間制限により", direction, "側はスキップします");
+         
          return;
       }
       
@@ -2124,7 +2089,7 @@ void ProcessGhostEntries(int side)
       else // Sell
          directionAllowed = (EntryMode == MODE_SELL_ONLY || EntryMode == MODE_BOTH);
       
-      Print("ProcessGhostEntries: ", direction, " インジケーターシグナル=", indicatorSignal, ", 方向許可=", directionAllowed);
+      
       
       // いずれかの条件が満たされればエントリー (修正)
       bool shouldEnter = indicatorSignal && directionAllowed;
@@ -2134,15 +2099,13 @@ void ProcessGhostEntries(int side)
       if(directionAllowed) reason += "方向OK ";
       
       if(shouldEnter) {
-         Print("新規ゴースト", direction, "エントリー実行 - 理由: ", reason);
+        
          InitializeGhostPosition(operationType, reason);
-      } else {
-         Print("ProcessGhostEntries: ", direction, " エントリー条件を満たさないためスキップします");
-      }
+      } 
    }
    // ナンピン条件チェック - ここは時間制限の影響を受けない
    else if(ghostCount > 0 && EnableNanpin) {
-      Print("ProcessGhostEntries: 既存ゴーストあり、ナンピン条件チェック開始");
+      
       CheckGhostNanpinCondition(operationType);
    }
 }
@@ -2201,14 +2164,8 @@ else // OP_SELL
    }
 }
 
-if(found)
-{
-   Print("最後のポジションロット取得: ", type == OP_BUY ? "Buy" : "Sell", " ロット=", DoubleToString(lastLot, 2));
-}
-else
-{
-   Print("警告: 最後のポジションロットを取得できませんでした");
-}
+
+
 
 return lastLot;
 }

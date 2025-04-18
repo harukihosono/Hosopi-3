@@ -378,7 +378,7 @@ input CONDITION_TYPE Indicator_Condition_Type = OR_CONDITION; // インジケー
 
 bool EvaluateIndicatorsForEntry(int side)
 {
-   Print("【インジケーターシグナル評価】 開始 - side=", side);
+   
 
    // エントリーモードの確認を追加
    bool modeAllowed = false;
@@ -388,7 +388,7 @@ bool EvaluateIndicatorsForEntry(int side)
       modeAllowed = (EntryMode == MODE_SELL_ONLY || EntryMode == MODE_BOTH);
    
    if(!modeAllowed) {
-      Print("【エントリーモード】: 現在のモードでは", side == 0 ? "Buy" : "Sell", "側は許可されていません");
+      
       return false;
    }
 
@@ -1695,14 +1695,16 @@ return strategyDetails;
 }
 
 
-// 3. ProcessStrategyLogic関数の修正
-
+// ProcessStrategyLogic関数を最適化する
 void ProcessStrategyLogic()
 {
+   // バックテスト時のログ出力を最小限にする
+   bool isTesting = IsTesting();
+   
    // 【セクション: 自動売買チェック】
    if(!EnableAutomaticTrading)
    {
-      Print("【自動売買チェック】: 自動売買が無効のためスキップします");
+      if(!isTesting) Print("【自動売買チェック】: 自動売買が無効のためスキップします");
       return;
    }
 
@@ -1719,16 +1721,12 @@ void ProcessStrategyLogic()
       useGhostMode = false;
    }
 
-   Print("【ポジション状態】: リアルポジション状況 - Buy=", hasRealBuy, ", Sell=", hasRealSell);
-   Print("【ゴーストモード】: 設定=", useGhostMode ? "有効" : "無効", ", NanpinSkipLevel=", EnumToString(NanpinSkipLevel));
-
    // 【セクション: 既存ポジションの管理】
    if(hasRealBuy || hasRealSell)
    {
       // ナンピン機能が有効な場合のみナンピン条件をチェック
       if(EnableNanpin)
       {
-         Print("【ナンピン管理】: リアルポジションあり、ナンピン条件チェック開始");
          // リアルポジションのナンピン条件をチェック
          CheckNanpinConditions(0); // Buy側のナンピン条件チェック
          CheckNanpinConditions(1); // Sell側のナンピン条件チェック
@@ -1736,49 +1734,9 @@ void ProcessStrategyLogic()
    }
    else
    {
-      // 【セクション: 新規エントリー管理】
-      Print("【新規エントリー】: リアルポジションなし、エントリー条件チェック開始");
-
-      // エントリーモード表示
-      Print("【エントリーモード】: 現在のエントリーモード=",
-            (EntryMode == MODE_BUY_ONLY) ? "BUYのみ" :
-            (EntryMode == MODE_SELL_ONLY) ? "SELLのみ" : "両方");
-            
-      // 【セクション: ポジション保護モード表示】- 新規追加
-      Print("【ポジション保護モード】: 現在の設定=", GetProtectionModeText());
-
       // 【セクション: 偶数/奇数時間戦略チェック】
       if(EvenOdd_Entry_Strategy != EVEN_ODD_DISABLED)
       {
-         datetime current_time = EvenOdd_UseJPTime ? calculate_time() : TimeCurrent();
-         int current_hour = TimeHour(current_time);
-         bool is_even_hour = (current_hour % 2 == 0);
-         
-         string strategyType = "";
-         switch(EvenOdd_Entry_Strategy)
-         {
-            case EVEN_HOUR_BUY_ODD_HOUR_SELL:
-               strategyType = "偶数時間Buy・奇数時間Sell";
-               break;
-            case ODD_HOUR_BUY_EVEN_HOUR_SELL:
-               strategyType = "奇数時間Buy・偶数時間Sell";
-               break;
-            case EVEN_HOUR_BOTH:
-               strategyType = "偶数時間のみ両方向";
-               break;
-            case ODD_HOUR_BOTH:
-               strategyType = "奇数時間のみ両方向";
-               break;
-            case ALL_HOURS_ENABLED:
-               strategyType = "全時間両方向";
-               break;
-         }
-         
-         Print("【偶数/奇数時間戦略】: 現在時間=", current_hour, "時", 
-               ", 時間タイプ=", is_even_hour ? "偶数時間" : "奇数時間", 
-               ", 戦略タイプ=", strategyType);
-         
-         // 変数にフラグを設定（g_UseEvenOddHoursEntryフラグの更新）
          g_UseEvenOddHoursEntry = true;
       }
       else
@@ -1786,39 +1744,9 @@ void ProcessStrategyLogic()
          g_UseEvenOddHoursEntry = false;
       }
 
-      // ======= 修正: この部分を削除またはコメントアウト =======
-      // Buyゴーストチェック
-      // int buyGhostCount = ghost_position_count(OP_BUY);
-      // if(buyGhostCount >= (int)NanpinSkipLevel && buyGhostCount > 0 && position_count(OP_BUY) == 0)
-      // {
-      //    Print("【ゴースト→リアル切替】: Buyゴーストカウント(", buyGhostCount, ")がスキップレベル(", (int)NanpinSkipLevel, ")に達しました - リアルに切替");
-      //    // エントリーモードをチェック
-      //    if(EntryMode == MODE_BUY_ONLY || EntryMode == MODE_BOTH)
-      //    {
-      //       // リアルエントリーを実行
-      //       ExecuteRealEntry(OP_BUY, "ゴーストスキップレベル到達によるリアルエントリー");
-      //       // 修正: ゴーストをリセットしない
-      //    }
-      // }
-      // 
-      // // Sellゴーストチェック
-      // int sellGhostCount = ghost_position_count(OP_SELL);
-      // if(sellGhostCount >= (int)NanpinSkipLevel && sellGhostCount > 0 && position_count(OP_SELL) == 0)
-      // {
-      //    Print("【ゴースト→リアル切替】: Sellゴーストカウント(", sellGhostCount, ")がスキップレベル(", (int)NanpinSkipLevel, ")に達しました - リアルに切替");
-      //    // エントリーモードをチェック
-      //    if(EntryMode == MODE_SELL_ONLY || EntryMode == MODE_BOTH)
-      //    {
-      //       // リアルエントリーを実行
-      //       ExecuteRealEntry(OP_SELL, "ゴーストスキップレベル到達によるリアルエントリー");
-      //       // 修正: ゴーストをリセットしない
-      //    }
-      // }
-
       // ゴーストモードがONの場合
       if(useGhostMode && EnableGhostEntry)
       {
-         Print("【ゴーストエントリー】: ゴーストエントリー処理を実行");
          // エントリーモードに基づいてゴーストエントリー処理
          if(EntryMode == MODE_BUY_ONLY || EntryMode == MODE_BOTH)
          {
@@ -1832,7 +1760,6 @@ void ProcessStrategyLogic()
       }
       else
       {
-         Print("【リアルエントリー】: リアルエントリー処理を実行");
          // エントリーモードに基づいてリアルエントリー処理
          if(EntryMode == MODE_BUY_ONLY || EntryMode == MODE_BOTH)
          {
@@ -1846,7 +1773,6 @@ void ProcessStrategyLogic()
       }
    }
 }
-
 
 //+------------------------------------------------------------------+
 //| 常時エントリー戦略のタイプ定義                                    |

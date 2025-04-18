@@ -85,9 +85,6 @@ void ApplyLayoutPattern()
          g_EffectiveTableY = PanelY + 500;
    }
    
-   Print("レイアウトパターンを適用: ", EnumToString(LayoutPattern), 
-         ", パネル位置 (", g_EffectivePanelX, ",", g_EffectivePanelY, ")",
-         ", テーブル位置 (", g_EffectiveTableX, ",", g_EffectiveTableY, ")");
 }
 
 //+------------------------------------------------------------------+
@@ -541,7 +538,7 @@ void ProcessButtonClick(string buttonName)
       g_SellGhostClosed = false;
       SaveGhostPositionsToGlobal();
       
-      Print("すべてのポジションとゴーストをリセットしました");
+   
       
       UpdateGUI();
       UpdatePositionTable();
@@ -567,13 +564,13 @@ void ProcessButtonClick(string buttonName)
       }
       
       UpdateGUI();
-      Print("ゴーストモードを", g_GhostMode ? "ON" : "OFF", "に切り替えました");
+   
    }
    
    // Reset Ghost
    else if(buttonName == "btnResetGhost")
    {
-      Print("Reset Ghost clicked - ゴーストデータをリセットします");
+      
       
       // ゴーストオブジェクトを削除
       DeleteAllGhostObjectsByType(OP_BUY);
@@ -982,7 +979,6 @@ void CleanupLinesOnClose(int side)
         if(ObjectFind(objects[i]) >= 0)
         {
             ObjectDelete(objects[i]);
-            Print("決済時にライン削除: ", objects[i]);
         }
     }
     

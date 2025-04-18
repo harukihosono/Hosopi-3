@@ -120,10 +120,7 @@ void CheckTrailingStopConditions(int side)
                      bool result = OrderModify(OrderTicket(), OrderOpenPrice(), stopPrice, OrderTakeProfit(), 0, clrGreen);
                      if(result)
                      {
-                        Print("Buy トレールストップ更新: チケット=", OrderTicket(), 
-                             ", 平均価格=", DoubleToString(avgPrice, Digits),
-                             ", 現在価格=", DoubleToString(currentPrice, Digits),
-                             ", 新ストップ=", DoubleToString(stopPrice, Digits));
+                       
                      }
                      else
                      {
@@ -163,10 +160,7 @@ void CheckTrailingStopConditions(int side)
                      bool result = OrderModify(OrderTicket(), OrderOpenPrice(), stopPrice, OrderTakeProfit(), 0, clrRed);
                      if(result)
                      {
-                        Print("Sell トレールストップ更新: チケット=", OrderTicket(), 
-                             ", 平均価格=", DoubleToString(avgPrice, Digits),
-                             ", 現在価格=", DoubleToString(currentPrice, Digits),
-                             ", 新ストップ=", DoubleToString(stopPrice, Digits));
+                        
                      }
                      else
                      {
@@ -525,7 +519,6 @@ void ManageTakeProfit(int side)
             // グローバル変数を更新
             SaveGhostPositionsToGlobal();
             
-            Print(direction, "ゴーストポジション利確: リセットしました");
             
             // 平均価格ラインとTPラインを削除
             CleanupLinesOnClose(side);

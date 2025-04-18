@@ -204,7 +204,11 @@ bool g_BuyClosedRecently = false;    // Buy側が最近決済されたフラグ
 bool g_SellClosedRecently = false;   // Sell側が最近決済されたフラグ
 datetime g_BuyClosedTime = 0;        // Buy側の決済時間
 datetime g_SellClosedTime = 0;       // Sell側の決済時間
- 
+
+// Hosopi3_Defines.mqh に追加する変数
+bool g_ShowPositionTable = true;    // テーブル表示フラグ
+
+
  // オブジェクト関連
  string g_LineNames[10];    // ライン関連のオブジェクト名を保存する配列
  int g_LineObjectCount = 0;
@@ -221,3 +225,12 @@ datetime g_SellClosedTime = 0;       // Sell側の決済時間
  string g_ObjectPrefix = "";      // オブジェクト名プレフィックス
  
  datetime g_LastUpdateTime = 0;   // 前回の更新時間
+
+
+
+ // キャッシュを活用するための変数を追加 (Hosopi3_Defines.mqh に追加)
+// グローバル変数でエントリー制限の状態をキャッシュ
+bool g_EquitySufficientCache = true;
+datetime g_LastEquityCheckTime = 0;
+bool g_TimeAllowedCache[2] = {true, true}; // [0]=Buy, [1]=Sell
+datetime g_LastTimeAllowedCheckTime[2] = {0, 0}; // [0]=Buy, [1]=Sell

@@ -401,7 +401,7 @@ input int TP_Level40 = 100;  // 40ポジション時の利確幅(ポイント)
 //| ゴースト通知設定パラメータ                                        |
 //+------------------------------------------------------------------+
 sinput string Comment_GhostNotification = ""; //+--- ゴースト通知設定 ---+
-input bool EnableGhostAlertNotification = true;    // ゴーストアラート通知を有効にする
+input bool EnableGhostAlertNotification = false;    // ゴーストアラート通知を有効にする
 input bool EnableGhostPushNotification = false;    // ゴーストプッシュ通知を有効にする
 input bool NotifyGhostEntries = true;              // ゴーストエントリー通知
 input bool NotifyGhostClosures = true;             // ゴースト決済通知
@@ -409,6 +409,7 @@ input bool NotifyGhostClosures = true;             // ゴースト決済通知
 
 // ======== レイアウト設定 ========
 sinput string Comment_Layout = ""; //+--- レイアウト設定 ---+
+// Hosopi3_EA.mq4 のinput部分に追加
 input LAYOUT_PATTERN LayoutPattern = LAYOUT_DEFAULT;      // レイアウトパターン
 input int CustomPanelX = 20;       // カスタム: パネルX座標
 input int CustomPanelY = 50;       // カスタム: パネルY座標

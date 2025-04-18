@@ -468,31 +468,45 @@ void ExecuteEntryFromLevel(int type, int level)
    }
 }
 
-//+------------------------------------------------------------------+
-//| OnTickManager関数の修正 - CleanupAndRebuildGhostObjectsに変更    |
-//+------------------------------------------------------------------+
+
+// Hosopi3_Manager.mqh の OnTickManager関数内の最初の部分を修正 (バックテスト高速化対応)
 void OnTickManager()
 {
-   // 一定間隔でテーブルを更新
+   // バックテスト時の処理を最適化
+   bool isTesting = IsTesting();
+   
+   // テーブル更新の処理
    if(TimeCurrent() >= g_LastUpdateTime + UpdateInterval)
    {
-      UpdatePositionTable();
+      // テーブル表示が有効な場合は更新（バックテスト時も表示する）
+      if(EnablePositionTable)
+      {
+         UpdatePositionTable();
+      }
+      
       g_LastUpdateTime = TimeCurrent();
+      
       // ポジションがない場合のライン削除チェック
       CheckAndDeleteLinesIfNoPositions();
-      // 定期的にゴーストポジション情報を保存 (1分ごと)
+      
+      // 定期的にゴーストポジション情報を保存 (バックテスト時は頻度を下げる)
       static datetime lastSaveTime = 0;
-      if(TimeCurrent() - lastSaveTime > 60)
+      int saveInterval = isTesting ? 300 : 60; // バックテスト時は5分間隔、通常時は1分間隔
+      
+      if(TimeCurrent() - lastSaveTime > saveInterval)
       {
          SaveGhostPositionsToGlobal();
          lastSaveTime = TimeCurrent();
       }
       
-      // 定期的にゴーストオブジェクトの整合性チェックと再構築 (5分ごと)
+      // 定期的にゴーストオブジェクトの整合性チェックと再構築
+      // バックテスト時は頻度を大幅に下げる
       static datetime lastCheckTime = 0;
-      if(TimeCurrent() - lastCheckTime > 300)
+      int checkInterval = isTesting ? 1800 : 300; // バックテスト時は30分間隔、通常時は5分間隔
+      
+      if(TimeCurrent() - lastCheckTime > checkInterval)
       {
-         CleanupAndRebuildGhostObjects(); // RebuildAllGhostObjectsの代わりに使用
+         CleanupAndRebuildGhostObjects();
          
          // リアルポジションとゴーストポジションがどちらもない場合は決済済みフラグをリセット
          if(position_count(OP_BUY) == 0 && position_count(OP_SELL) == 0 &&
@@ -500,7 +514,6 @@ void OnTickManager()
          {
             if(g_BuyGhostClosed || g_SellGhostClosed)
             {
-               Print("チェック時: ポジションが存在しないため決済済みフラグをリセットします");
                g_BuyGhostClosed = false;
                g_SellGhostClosed = false;
                SaveGhostPositionsToGlobal();
@@ -510,18 +523,23 @@ void OnTickManager()
          lastCheckTime = TimeCurrent();
       }
       
-      // OnTimerの機能も呼び出し
-      OnTimerHandler();
+      // OnTimerの機能も呼び出し（バックテスト時は頻度を下げる）
+      if(!isTesting || (isTesting && MathMod(Bars, 1000) == 0)) // バックテスト時は1000バー毎に実行
+      {
+         OnTimerHandler();
+      }
    }
 
-   // ここから下は変更なし
-   // 戦略ロジックを処理
+   // 戦略ロジックを処理 - これは常に必要なので実行
    ProcessStrategyLogic();
 
-   // GUIを更新
-   UpdateGUI();
+   // GUIを更新（バックテスト時は頻度を下げる）
+   if(!isTesting || (isTesting && MathMod(Bars, 1000) == 0)) // バックテスト時は1000バー毎に実行
+   {
+      UpdateGUI();
+   }
 
-   // 平均取得価格ラインの表示更新
+   // 平均取得価格ラインの表示更新（バックテスト時は頻度を下げる）
    if(AveragePriceLine == ON_MODE && g_AvgPriceVisible)
    {
       // Buy/Sellポジションがあるかチェック
@@ -536,7 +554,9 @@ void OnTickManager()
       else
       {// 通常の更新処理
          static datetime lastAvgPriceUpdateTime = 0;
-         if(TimeCurrent() - lastAvgPriceUpdateTime > 1) // 1秒間隔
+         int updateInterval = isTesting ? 60 : 1; // バックテスト時は60秒間隔、通常時は1秒間隔
+         
+         if(TimeCurrent() - lastAvgPriceUpdateTime > updateInterval)
          {
             if(buyPositions > 0)
                UpdateAveragePriceLines(0); // Buy側
@@ -572,7 +592,7 @@ void OnTickManager()
       CheckTrailingStopConditions(0); // Buy側
       CheckTrailingStopConditions(1); // Sell側
       
-      // ゴーストポジションのトレーリングストップ - 新規追加
+      // ゴーストポジションのトレーリングストップ
       CheckGhostTrailingStopConditions(0); // Buy側
       CheckGhostTrailingStopConditions(1); // Sell側
    }
@@ -586,9 +606,6 @@ void OnTickManager()
    // 指値決済の検出とゴーストリセット処理
    CheckLimitTakeProfitExecutions();
 }
-
-
-
 //+------------------------------------------------------------------+
 //| 特定方向のラインのみを削除                                        |
 //+------------------------------------------------------------------+
@@ -843,6 +860,7 @@ int InitializeEA()
    g_EnableGhostEntry = EnableGhostEntry;
    g_EnableTrailingStop = EnableTrailingStop;
    g_AutoTrading = EnableAutomaticTrading;
+   g_ShowPositionTable = EnablePositionTable;
 
    g_BuyClosedRecently = false;
    g_SellClosedRecently = false;
@@ -1086,19 +1104,17 @@ void ProcessRealEntries(int side)
       modeAllowed = (EntryMode == MODE_SELL_ONLY || EntryMode == MODE_BOTH);
    
    if(!modeAllowed) {
-      Print("ProcessRealEntries: エントリーモードにより ", direction, " 側はスキップします");
+     
       return;
    }
    
-   Print("ProcessRealEntries: ", direction, " エントリーモードチェック通過");
+   
    
    // 戦略シグナルチェック
    bool entrySignal = ShouldProcessRealEntry(side);
    
    if(entrySignal) {
-      Print("ProcessRealEntries: ", direction, " エントリーシグナル検出 - リアルエントリー実行");
+     
       ExecuteRealEntry(operationType, "インジケーターシグナル");
-   } else {
-      Print("ProcessRealEntries: ", direction, " エントリーシグナルなし - スキップ");
-   }
+   } 
 }

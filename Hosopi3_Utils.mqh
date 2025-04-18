@@ -157,13 +157,11 @@ bool IsInTimeRange(int current, int start, int end)
    return (current >= start || current < end);
 }
 
-// グローバル変数としてキャッシュを定義
+// Hosopi3_Utils.mqh に時間制限チェック用のキャッシュを追加
 bool g_InitialTimeAllowedCache[2] = {true, true}; // [0]=Buy, [1]=Sell
 datetime g_LastInitialTimeAllowedCheckTime[2] = {0, 0}; // [0]=Buy, [1]=Sell
 
-//+------------------------------------------------------------------+
-//| IsInitialEntryTimeAllowed - 初回エントリー用の時間チェック関数（キャッシュ対応版）|
-//+------------------------------------------------------------------+
+// IsInitialEntryTimeAllowed関数を高速化（キャッシュ対応版）
 bool IsInitialEntryTimeAllowed(int type)
 {
    // 処理対象のインデックスを決定
@@ -261,7 +259,6 @@ bool IsInitialEntryTimeAllowed(int type)
    
    return g_InitialTimeAllowedCache[typeIndex];
 }
-
 
 //+------------------------------------------------------------------+
 //| ロットテーブルの初期化 - 個別指定モードをより明確に処理            |
@@ -500,9 +497,6 @@ bool IsEntryAllowedByProtectionMode(int side)
    // 反対側にポジションがある場合は禁止
    if(realCount > 0 || ghostCount > 0)
    {
-      Print("ポジション保護モード: ", side == 0 ? "Buy" : "Sell", 
-            " エントリーは禁止されています（反対側に", realCount + ghostCount, 
-            "ポジションあり）");
       return false;
    }
    
@@ -536,7 +530,6 @@ bool IsCloseIntervalElapsed(int side)
          
          // インターバル時間が経過したのでフラグをリセット
          g_BuyClosedRecently = false;
-         Print("Buy側決済後インターバル終了: インターバル=", CloseInterval, "分");
       }
    }
    else // Sell側のチェック
@@ -556,7 +549,6 @@ bool IsCloseIntervalElapsed(int side)
          
          // インターバル時間が経過したのでフラグをリセット
          g_SellClosedRecently = false;
-         Print("Sell側決済後インターバル終了: インターバル=", CloseInterval, "分");
       }
    }
    
