@@ -1,5 +1,5 @@
 //+------------------------------------------------------------------+
-//|              Hosopi 3 - メイン管理用関数                           |
+//|              Hosopi 3 - メイン管理用関数 (MQL4/MQL5共通)          |
 //|                       Copyright 2025                             |
 //+------------------------------------------------------------------+
 #include "Hosopi3_Defines.mqh"
@@ -8,9 +8,8 @@
 #include "Hosopi3_GUI.mqh"
 #include "Hosopi3_Table.mqh"
 #include "Hosopi3_Ghost.mqh"
-
-
-
+#include "Hosopi3_TakeProfit.mqh"
+#include "Hosopi3_Notification.mqh"
 
 //+------------------------------------------------------------------+
 //| エントリー原因を記録するためのヘルパー関数                        |
@@ -61,10 +60,8 @@ void SaveEntryLogToFile(string logMessage)
    }
 }
 
-
-
 //+------------------------------------------------------------------+
-//| ExecuteRealEntry関数 - 初回エントリー時間制限対応版               |
+//| ExecuteRealEntry関数 (MQL4/MQL5共通)                             |
 //+------------------------------------------------------------------+
 void ExecuteRealEntry(int type, string entryReason)
 {
@@ -76,14 +73,16 @@ void ExecuteRealEntry(int type, string entryReason)
       
    if((GetAskPrice() - GetBidPrice()) / Point > MaxSpreadPoints && MaxSpreadPoints > 0)
    {
-      Print("スプレッドが大きすぎるため、リアルエントリーはスキップされました: ", (GetAskPrice() - GetBidPrice()) / Point, " > ", MaxSpreadPoints);
+      Print("スプレッドが大きすぎるため、リアルエントリーはスキップされました: ", 
+            (GetAskPrice() - GetBidPrice()) / Point, " > ", MaxSpreadPoints);
       return;
    }
       
    int existingCount = position_count(type);
    if(existingCount > 0)
    {
-      Print("既にリアルポジションが存在するため、リアルエントリーはスキップされました: ", existingCount, "ポジション");
+      Print("既にリアルポジションが存在するため、リアルエントリーはスキップされました: ", 
+            existingCount, "ポジション");
       return;
    }
    
@@ -96,7 +95,8 @@ void ExecuteRealEntry(int type, string entryReason)
       // 手動操作以外の時は、時間制限チェックを行う
       if(StringFind(entryReason, "手動") < 0 && !IsInitialEntryTimeAllowed(type))
       {
-         Print("ExecuteRealEntry: 初回エントリー時間制限により", type == OP_BUY ? "Buy" : "Sell", "側はスキップします");
+         Print("ExecuteRealEntry: 初回エントリー時間制限により", 
+               type == OP_BUY ? "Buy" : "Sell", "側はスキップします");
          return;
       }
    }
@@ -117,61 +117,8 @@ void ExecuteRealEntry(int type, string entryReason)
    Print("ExecuteRealEntry呼び出し: 方向=", type == OP_BUY ? "Buy" : "Sell", 
          ", 合計ポジション数=", totalPositionCount);
    
-   // ===== ロットサイズの選択ロジックを修正 =====
-   double lots;
-   
-   // UseInitialLotForRealEntryがONの場合は常に初期ロットを使用
-   if(UseInitialLotForRealEntry) {
-      lots = g_LotTable[0]; // 常に最初のロットを使用
-      Print("初期ロット設定有効: 初期ロット", DoubleToString(lots, 2), "を使用");
-   } 
-   // 合計ポジション数が0の場合も初期ロットを使用
-   else if(totalPositionCount == 0) {
-      lots = g_LotTable[0]; // 常に最初のロットを使用
-      Print("初回エントリー: 初期ロット", DoubleToString(lots, 2), "を使用");
-   } 
-   // 既存のポジションがある場合は最後のポジションのロットを参照
-   else {
-      // 最後のポジションのロットサイズを取得
-      double lastLotSize = GetLastCombinedPositionLot(type);
-      
-      if(IndividualLotEnabled == ON_MODE) {
-         // 個別指定モードの場合、合計ポジション数に対応したロットを使用
-         // ポジション数は1から始まるので、配列インデックスには-1が必要
-         int lotIndex = totalPositionCount;
-         
-         // 配列の範囲をチェック
-         if(lotIndex >= 0 && lotIndex < ArraySize(g_LotTable)) {
-            lots = g_LotTable[lotIndex];
-            Print("個別指定ロットモード: 合計ポジション数", totalPositionCount + 1, 
-                 "に対応するロット", DoubleToString(lots, 2), "を使用");
-         } else {
-            // 範囲外の場合は最後のロットを使用
-            lots = g_LotTable[ArraySize(g_LotTable) - 1];
-            Print("警告: 合計ポジション数が範囲外のため最大レベルのロット", DoubleToString(lots, 2), "を使用");
-         }
-      } else {
-         // マーチンゲールモードの場合
-         if(lastLotSize <= 0) {
-            // 最後のロットサイズが取得できなかった場合
-            lots = g_LotTable[0];
-            Print("警告: 最後のポジションのロットサイズを取得できませんでした。初期ロット", DoubleToString(lots, 2), "を使用します");
-         } else {
-            // 0.01ロットの場合のみ、かつマーチン倍率が1.3より大きい場合のみ特別処理
-            if(MathAbs(lastLotSize - 0.01) < 0.001 && LotMultiplier > 1.3) {
-               lots = 0.02;
-               Print("0.01ロット検出 + マーチン倍率>1.3: 次のロットを0.02に固定します");
-            } else {
-               // それ以外は通常のマーチンゲール計算
-               lots = lastLotSize * LotMultiplier;
-               lots = MathCeil(lots * 1000) / 1000; // 小数点以下3桁で切り上げ
-               Print("通常マーチンゲール計算: ベースロット=", DoubleToString(lastLotSize, 3),
-                   ", 倍率=", DoubleToString(LotMultiplier, 2),
-                   ", 次のロット=", DoubleToString(lots, 3));
-            }
-         }
-      }
-   }
+   // ロットサイズの選択
+   double lots = DetermineLotSize(type, totalPositionCount);
    
    Print("リアルエントリー実行: ", type == OP_BUY ? "Buy" : "Sell", 
          ", ロット=", DoubleToString(lots, 2));
@@ -187,20 +134,100 @@ void ExecuteRealEntry(int type, string entryReason)
             DoubleToString(lots, 2), ", 価格=", 
             DoubleToString(type == OP_BUY ? GetAskPrice() : GetBidPrice(), 5));
       
-      // 修正: ゴーストポジションはリセットしない
-      // ここでのリセット処理を削除し、コメントに置き換え
+      // ゴーストポジションは維持
       Print("リアルエントリー後もゴーストポジションは維持します");
+      
+      // エントリー通知
+      NotifyRealEntry(type, lots, type == OP_BUY ? GetAskPrice() : GetBidPrice(), entryReason);
    }
    else
    {
       Print("リアル", type == OP_BUY ? "Buy" : "Sell", "エントリーエラー: ", GetLastError());
+      NotifyError("リアルエントリー", GetLastError());
    }
 }
 
-
+//+------------------------------------------------------------------+
+//| ロットサイズを決定 (MQL4/MQL5共通)                               |
+//+------------------------------------------------------------------+
+double DetermineLotSize(int type, int totalPositionCount)
+{
+   double lots;
+   
+   // UseInitialLotForRealEntryがONの場合は常に初期ロットを使用
+   if(UseInitialLotForRealEntry)
+   {
+      lots = g_LotTable[0]; // 常に最初のロットを使用
+      Print("初期ロット設定有効: 初期ロット", DoubleToString(lots, 2), "を使用");
+   }
+   // 合計ポジション数が0の場合も初期ロットを使用
+   else if(totalPositionCount == 0)
+   {
+      lots = g_LotTable[0]; // 常に最初のロットを使用
+      Print("初回エントリー: 初期ロット", DoubleToString(lots, 2), "を使用");
+   }
+   // 既存のポジションがある場合は最後のポジションのロットを参照
+   else
+   {
+      // 最後のポジションのロットサイズを取得
+      double lastLotSize = GetLastCombinedPositionLot(type);
+      
+      if(IndividualLotEnabled == ON_MODE)
+      {
+         // 個別指定モードの場合
+         int lotIndex = totalPositionCount;
+         
+         // 配列の範囲をチェック
+         if(lotIndex >= 0 && lotIndex < ArraySize(g_LotTable))
+         {
+            lots = g_LotTable[lotIndex];
+            Print("個別指定ロットモード: 合計ポジション数", totalPositionCount + 1, 
+                 "に対応するロット", DoubleToString(lots, 2), "を使用");
+         }
+         else
+         {
+            // 範囲外の場合は最後のロットを使用
+            lots = g_LotTable[ArraySize(g_LotTable) - 1];
+            Print("警告: 合計ポジション数が範囲外のため最大レベルのロット", 
+                  DoubleToString(lots, 2), "を使用");
+         }
+      }
+      else
+      {
+         // マーチンゲールモードの場合
+         if(lastLotSize <= 0)
+         {
+            // 最後のロットサイズが取得できなかった場合
+            lots = g_LotTable[0];
+            Print("警告: 最後のポジションのロットサイズを取得できませんでした。初期ロット", 
+                  DoubleToString(lots, 2), "を使用します");
+         }
+         else
+         {
+            // 0.01ロットの場合のみ、かつマーチン倍率が1.3より大きい場合のみ特別処理
+            if(MathAbs(lastLotSize - 0.01) < 0.001 && LotMultiplier > 1.3)
+            {
+               lots = 0.02;
+               Print("0.01ロット検出 + マーチン倍率>1.3: 次のロットを0.02に固定します");
+            }
+            else
+            {
+               // それ以外は通常のマーチンゲール計算
+               lots = lastLotSize * LotMultiplier;
+               lots = MathCeil(lots * 1000) / 1000; // 小数点以下3桁で切り上げ
+               Print("通常マーチンゲール計算: ベースロット=", DoubleToString(lastLotSize, 3),
+                   ", 倍率=", DoubleToString(LotMultiplier, 2),
+                   ", 次のロット=", DoubleToString(lots, 3));
+            }
+         }
+      }
+   }
+   
+   return lots;
+}
 
 //+------------------------------------------------------------------+
-//| ExecuteRealNanpin関数 - ナンピンレベル廃止版                     |
+//| ExecuteRealNanpin関数 (MQL4/MQL5共通)                            |
 //+------------------------------------------------------------------+
 void ExecuteRealNanpin(int typeOrder)
 {
@@ -214,7 +241,8 @@ void ExecuteRealNanpin(int typeOrder)
    // スプレッドチェック
    if((GetAskPrice() - GetBidPrice()) / Point > MaxSpreadPoints && MaxSpreadPoints > 0)
    {
-      Print("スプレッドが大きすぎるため、リアルナンピンはスキップされました: ", (GetAskPrice() - GetBidPrice()) / Point, " > ", MaxSpreadPoints);
+      Print("スプレッドが大きすぎるため、リアルナンピンはスキップされました: ", 
+            (GetAskPrice() - GetBidPrice()) / Point, " > ", MaxSpreadPoints);
       return;
    }
    
@@ -235,49 +263,8 @@ void ExecuteRealNanpin(int typeOrder)
    // 合計ポジション数（ゴースト＋リアル）を取得
    int totalPositionCount = combined_position_count(typeOrder);
    
-   // ===== ロットサイズの選択ロジックを修正 =====
-   double lotsToUse;
-   
-   // 個別指定モードが有効な場合
-   if(IndividualLotEnabled == ON_MODE) {
-      // 合計ポジション数に対応する次のレベルのロットを使用
-      int nextLevel = totalPositionCount; // 次のポジションレベル
-      
-      // 配列の範囲を超えないようにチェック
-      if(nextLevel >= 0 && nextLevel < ArraySize(g_LotTable)) {
-         lotsToUse = g_LotTable[nextLevel];
-         Print("個別指定ロットモード: ナンピンレベル", nextLevel + 1, "のロット", DoubleToString(lotsToUse, 2), "を使用");
-      } else {
-         // 範囲外の場合は最後のロットを使用
-         lotsToUse = g_LotTable[ArraySize(g_LotTable)-1];
-         Print("警告: ナンピンレベルが範囲外のため最大レベルのロット", DoubleToString(lotsToUse, 2), "を使用");
-      }
-   }
-   else {
-      // マーチンゲールモードの場合は直前のポジションのロットに倍率を掛ける
-      // 最後のポジションのロットサイズを取得 - 新規関数使用！
-      double lastLotSize = GetLastCombinedPositionLot(typeOrder);
-      
-      // ロットサイズが取得できなかった場合
-      if(lastLotSize <= 0) {
-         Print("警告: 最後のポジションのロットサイズを取得できませんでした。デフォルトロットを使用します。");
-         lastLotSize = InitialLot;
-      }
-      
-      // 0.01ロットの場合のみ、かつマーチン倍率が1.3より大きい場合のみ特別処理
-      if(MathAbs(lastLotSize - 0.01) < 0.001 && LotMultiplier > 1.3) {
-         lotsToUse = 0.02;
-         Print("0.01ロット検出 + マーチン倍率>1.3:次のロットを0.02に固定します");
-      }
-      else {
-         // それ以外は通常のマーチンゲール計算
-         lotsToUse = lastLotSize * LotMultiplier;
-         lotsToUse = MathCeil(lotsToUse * 1000) / 1000; // 小数点以下3桁で切り上げ
-         Print("通常マーチンゲール計算: ベースロット=", DoubleToString(lastLotSize, 3),
-             ", 倍率=", DoubleToString(LotMultiplier, 2),
-             ", 次のロット=", DoubleToString(lotsToUse, 3));
-      }
-   }
+   // ロットサイズを決定
+   double lotsToUse = DetermineLotSize(typeOrder, totalPositionCount);
    
    Print("リアルナンピン実行: タイプ=", typeOrder == OP_BUY ? "Buy" : "Sell",
          ", ロット=", DoubleToString(lotsToUse, 3));
@@ -285,23 +272,28 @@ void ExecuteRealNanpin(int typeOrder)
    // MQL4/MQL5互換のposition_entry関数を使用
    bool entryResult = position_entry(typeOrder, lotsToUse, Slippage, MagicNumber, "Hosopi 3 EA Nanpin");
    
-   if(entryResult) {
+   if(entryResult)
+   {
       Print("リアル", typeOrder == OP_BUY ? "Buy" : "Sell", "ナンピン成功: ", 
             "ロット=", DoubleToString(lotsToUse, 3), ", 価格=", 
             DoubleToString(typeOrder == OP_BUY ? GetAskPrice() : GetBidPrice(), 5));
             
-      // 修正: ゴーストポジションはリセットしない
+      // ゴーストポジションは維持
       Print("リアルナンピン後もゴーストポジションは維持します");
+      
+      // ナンピン通知
+      NotifyRealEntry(typeOrder, lotsToUse, typeOrder == OP_BUY ? GetAskPrice() : GetBidPrice(), 
+                     "ナンピンエントリー (レベル " + IntegerToString(totalPositionCount + 1) + ")");
    }
-   else {
+   else
+   {
       Print("リアル", typeOrder == OP_BUY ? "Buy" : "Sell", "ナンピンエラー: ", GetLastError());
+      NotifyError("リアルナンピン", GetLastError());
    }
 }
 
-
-
 //+------------------------------------------------------------------+
-//| ExecuteDiscretionaryEntry関数 - 初回エントリー時間制限対応版      |
+//| ExecuteDiscretionaryEntry関数 (MQL4/MQL5共通)                    |
 //+------------------------------------------------------------------+
 void ExecuteDiscretionaryEntry(int typeOrder, double lotSize = 0)
 {
@@ -313,53 +305,33 @@ void ExecuteDiscretionaryEntry(int typeOrder, double lotSize = 0)
       
    if((GetAskPrice() - GetBidPrice()) / Point > MaxSpreadPoints && MaxSpreadPoints > 0)
    {
-      Print("スプレッドが大きすぎるため、裁量エントリーはスキップされました: ", (GetAskPrice() - GetBidPrice()) / Point, " > ", MaxSpreadPoints);
+      Print("スプレッドが大きすぎるため、裁量エントリーはスキップされました: ", 
+            (GetAskPrice() - GetBidPrice()) / Point, " > ", MaxSpreadPoints);
       return;
    }
       
    int existingCount = position_count(typeOrder);
    if(existingCount > 0)
    {
-      Print("既にリアルポジションが存在するため、裁量エントリーはスキップされました: ", existingCount, "ポジション");
+      Print("既にリアルポジションが存在するため、裁量エントリーはスキップされました: ", 
+            existingCount, "ポジション");
       return;
    }
    
    // 合計ポジション数（ゴースト+リアル）を取得
    int totalPositionCount = combined_position_count(typeOrder);
    
-   // 初回エントリーの場合は時間チェックを行う - ただし手動操作のため、常に許可する
-   // 手動操作による裁量エントリーなので、時間制限は適用しない
-   
    double lotsToUse;
    
-   if(lotSize > 0) {
+   if(lotSize > 0)
+   {
       // 明示的に指定されたロットサイズを使用
       lotsToUse = lotSize;
-   } else if(totalPositionCount > 0) {
-      // ポジションがある場合、次のレベルに対応するロットサイズを使用
-      if(IndividualLotEnabled == ON_MODE) {
-         // 個別指定モードの場合
-         int nextLevel = totalPositionCount;
-         if(nextLevel < ArraySize(g_LotTable)) {
-            lotsToUse = g_LotTable[nextLevel];
-         } else {
-            lotsToUse = g_LotTable[ArraySize(g_LotTable)-1];
-         }
-      } else {
-         // マーチンゲールモードの場合
-         double lastLotSize = GetLastCombinedPositionLot(typeOrder);
-         if(lastLotSize <= 0) {
-            lotsToUse = InitialLot;
-         } else {
-            lotsToUse = lastLotSize * LotMultiplier;
-            lotsToUse = MathCeil(lotsToUse * 1000) / 1000; // 小数点以下3桁で切り上げ
-         }
-      }
-      Print("既存ポジションに基づいたロットサイズを使用: ", DoubleToString(lotsToUse, 2));
-   } else {
-      // ポジションがない場合は初期ロットを使用
-      lotsToUse = g_LotTable[0];
-      Print("初期ロットサイズを使用: ", DoubleToString(lotsToUse, 2));
+   }
+   else
+   {
+      // ロットサイズを決定
+      lotsToUse = DetermineLotSize(typeOrder, totalPositionCount);
    }
    
    Print("裁量エントリー実行: ", typeOrder == OP_BUY ? "Buy" : "Sell", 
@@ -377,18 +349,22 @@ void ExecuteDiscretionaryEntry(int typeOrder, double lotSize = 0)
             DoubleToString(lotsToUse, 2), ", 価格=", 
             DoubleToString(typeOrder == OP_BUY ? GetAskPrice() : GetBidPrice(), 5));
       
-      // 修正: ゴーストポジションをリセットしない
+      // ゴーストポジションは維持
       Print("裁量エントリー後もゴーストポジションは維持します");
+      
+      // エントリー通知
+      NotifyRealEntry(typeOrder, lotsToUse, typeOrder == OP_BUY ? GetAskPrice() : GetBidPrice(), 
+                     "手動エントリー");
    }
    else
    {
       Print("裁量", typeOrder == OP_BUY ? "Buy" : "Sell", "エントリーエラー: ", GetLastError());
+      NotifyError("裁量エントリー", GetLastError());
    }
 }
 
-
 //+------------------------------------------------------------------+
-//| ExecuteEntryFromLevel関数 - 初回エントリー時間制限対応版          |
+//| ExecuteEntryFromLevel関数 (MQL4/MQL5共通)                        |
 //+------------------------------------------------------------------+
 void ExecuteEntryFromLevel(int type, int level)
 {
@@ -400,14 +376,16 @@ void ExecuteEntryFromLevel(int type, int level)
       
    if((GetAskPrice() - GetBidPrice()) / Point > MaxSpreadPoints && MaxSpreadPoints > 0)
    {
-      Print("スプレッドが大きすぎるため、レベル指定エントリーはスキップされました: ", (GetAskPrice() - GetBidPrice()) / Point, " > ", MaxSpreadPoints);
+      Print("スプレッドが大きすぎるため、レベル指定エントリーはスキップされました: ", 
+            (GetAskPrice() - GetBidPrice()) / Point, " > ", MaxSpreadPoints);
       return;
    }
       
    int existingCount = position_count(type);
    if(existingCount > 0)
    {
-      Print("既にリアルポジションが存在するため、レベル指定エントリーをスキップしました: ", existingCount, "ポジション");
+      Print("既にリアルポジションが存在するため、レベル指定エントリーをスキップしました: ", 
+            existingCount, "ポジション");
       return;
    }
    
@@ -416,23 +394,6 @@ void ExecuteEntryFromLevel(int type, int level)
    {
       Print("指定レベルが範囲外のため、レベル指定エントリーはスキップされました: ", level);
       return;
-   }
-   
-   // 合計ポジション数を取得
-   int totalPositionCount = combined_position_count(type);
-   
-   // 初回エントリーの場合のみ時間チェック
-   if(totalPositionCount == 0)
-   {
-      // レベル指定エントリーは手動操作なので、時間制限は適用しない
-      // ただし、念のため処理は残しておく（コメントアウト）
-      /*
-      if(!IsInitialEntryTimeAllowed(type))
-      {
-         Print("ExecuteEntryFromLevel: 初回エントリー時間制限により", type == OP_BUY ? "Buy" : "Sell", "側はスキップします");
-         return;
-      }
-      */
    }
    
    // ロット選択を明確化 - レベルは1始まりだが配列は0始まりなので調整
@@ -451,7 +412,8 @@ void ExecuteEntryFromLevel(int type, int level)
    LogEntryReason(type, "レベル指定エントリー", "手動選択: レベル" + IntegerToString(level));
    
    // MQL4/MQL5互換のposition_entry関数を使用
-   bool result = position_entry(type, lots, Slippage, MagicNumber, "Hosopi 3 EA Level " + IntegerToString(level));
+   bool result = position_entry(type, lots, Slippage, MagicNumber, 
+                               "Hosopi 3 EA Level " + IntegerToString(level));
    
    if(result)
    {
@@ -459,17 +421,23 @@ void ExecuteEntryFromLevel(int type, int level)
             DoubleToString(lots, 2), ", 価格=", 
             DoubleToString(type == OP_BUY ? GetAskPrice() : GetBidPrice(), 5));
       
-      // 修正: ゴーストポジションをリセットしない
+      // ゴーストポジションは維持
       Print("レベル指定エントリー後もゴーストポジションは維持します");
+      
+      // エントリー通知
+      NotifyRealEntry(type, lots, type == OP_BUY ? GetAskPrice() : GetBidPrice(), 
+                     "レベル指定エントリー (レベル " + IntegerToString(level) + ")");
    }
    else
    {
       Print("レベル", level, "からの", type == OP_BUY ? "Buy" : "Sell", "エントリーエラー: ", GetLastError());
+      NotifyError("レベル指定エントリー", GetLastError());
    }
 }
 
-
-// Hosopi3_Manager.mqh の OnTickManager関数内の最初の部分を修正 (バックテスト高速化対応)
+//+------------------------------------------------------------------+
+//| OnTickManager関数 (MQL4/MQL5共通)                                |
+//+------------------------------------------------------------------+
 void OnTickManager()
 {
    // バックテスト時の処理を最適化
@@ -478,7 +446,7 @@ void OnTickManager()
    // テーブル更新の処理
    if(TimeCurrent() >= g_LastUpdateTime + UpdateInterval)
    {
-      // テーブル表示が有効な場合は更新（バックテスト時も表示する）
+      // テーブル表示が有効な場合は更新
       if(EnablePositionTable)
       {
          UpdatePositionTable();
@@ -489,7 +457,7 @@ void OnTickManager()
       // ポジションがない場合のライン削除チェック
       CheckAndDeleteLinesIfNoPositions();
       
-      // 定期的にゴーストポジション情報を保存 (バックテスト時は頻度を下げる)
+      // 定期的にゴーストポジション情報を保存
       static datetime lastSaveTime = 0;
       int saveInterval = isTesting ? 300 : 60; // バックテスト時は5分間隔、通常時は1分間隔
       
@@ -500,7 +468,6 @@ void OnTickManager()
       }
       
       // 定期的にゴーストオブジェクトの整合性チェックと再構築
-      // バックテスト時は頻度を大幅に下げる
       static datetime lastCheckTime = 0;
       int checkInterval = isTesting ? 1800 : 300; // バックテスト時は30分間隔、通常時は5分間隔
       
@@ -524,22 +491,58 @@ void OnTickManager()
       }
       
       // OnTimerの機能も呼び出し（バックテスト時は頻度を下げる）
-      if(!isTesting || (isTesting && MathMod(Bars, 1000) == 0)) // バックテスト時は1000バー毎に実行
+      if(!isTesting || (isTesting && MathMod(Bars, 1000) == 0))
       {
          OnTimerHandler();
       }
    }
 
-   // 戦略ロジックを処理 - これは常に必要なので実行
+   // 戦略ロジックを処理
    ProcessStrategyLogic();
 
    // GUIを更新（バックテスト時は頻度を下げる）
-   if(!isTesting || (isTesting && MathMod(Bars, 1000) == 0)) // バックテスト時は1000バー毎に実行
+   if(!isTesting || (isTesting && MathMod(Bars, 1000) == 0))
    {
       UpdateGUI();
    }
 
-   // 平均取得価格ラインの表示更新（バックテスト時は頻度を下げる）
+   // 平均取得価格ラインの表示更新
+   UpdateAveragePriceLineDisplay(isTesting);
+   
+   // 利確条件の処理
+   if(TakeProfitMode != TP_OFF)
+   {
+      ManageTakeProfit(0); // Buy側
+      ManageTakeProfit(1); // Sell側
+   }
+   
+   // トレールストップ条件のチェック
+   if(EnableTrailingStop)
+   {
+      // リアルポジションのトレーリングストップ
+      CheckTrailingStopConditions(0); // Buy側
+      CheckTrailingStopConditions(1); // Sell側
+      
+      // ゴーストポジションのトレーリングストップ
+      CheckGhostTrailingStopConditions(0); // Buy側
+      CheckGhostTrailingStopConditions(1); // Sell側
+   }
+
+   // ポジション数に応じた建値決済機能を実行
+   CheckBreakEvenByPositions();
+
+   // リアルポジション数の変化をチェック
+   CheckPositionChanges();
+
+   // 指値決済の検出とゴーストリセット処理
+   CheckLimitTakeProfitExecutions();
+}
+
+//+------------------------------------------------------------------+
+//| 平均価格ラインの表示更新 (MQL4/MQL5共通)                         |
+//+------------------------------------------------------------------+
+void UpdateAveragePriceLineDisplay(bool isTesting)
+{
    if(AveragePriceLine == ON_MODE && g_AvgPriceVisible)
    {
       // Buy/Sellポジションがあるかチェック
@@ -552,7 +555,8 @@ void OnTickManager()
          DeleteAllLines();
       }
       else
-      {// 通常の更新処理
+      {
+         // 通常の更新処理
          static datetime lastAvgPriceUpdateTime = 0;
          int updateInterval = isTesting ? 60 : 1; // バックテスト時は60秒間隔、通常時は1秒間隔
          
@@ -577,44 +581,17 @@ void OnTickManager()
       // 表示設定オフの場合、すべてのラインを削除
       DeleteAllLines();
    }
-   
-   // 利確条件の処理（統合関数を使用）
-   if(TakeProfitMode != TP_OFF) // TPが有効なときだけ処理
-   {
-      ManageTakeProfit(0); // Buy側
-      ManageTakeProfit(1); // Sell側
-   }
-   
-   // トレールストップ条件のチェック（独立して動作）
-   if(EnableTrailingStop)
-   {
-      // リアルポジションのトレーリングストップ
-      CheckTrailingStopConditions(0); // Buy側
-      CheckTrailingStopConditions(1); // Sell側
-      
-      // ゴーストポジションのトレーリングストップ
-      CheckGhostTrailingStopConditions(0); // Buy側
-      CheckGhostTrailingStopConditions(1); // Sell側
-   }
-
-   // ポジション数に応じた建値決済機能を実行
-   CheckBreakEvenByPositions();
-
-   // リアルポジション数の変化をチェック
-   CheckPositionChanges();
-
-   // 指値決済の検出とゴーストリセット処理
-   CheckLimitTakeProfitExecutions();
 }
+
 //+------------------------------------------------------------------+
-//| 特定方向のラインのみを削除                                        |
+//| 特定方向のラインのみを削除 (MQL4/MQL5共通)                       |
 //+------------------------------------------------------------------+
 void DeleteSpecificLine(int side)
 {
    string direction = (side == 0) ? "Buy" : "Sell";
    
    // 平均価格ライン関連のオブジェクトを削除
-   string objects[6]; // 配列サイズを宣言
+   string objects[6];
    
    // 各要素に個別に値を代入
    objects[0] = g_ObjectPrefix + "AvgPrice" + direction;
@@ -637,11 +614,8 @@ void DeleteSpecificLine(int side)
    ChartRedraw();
 }
 
-
-
-
 //+------------------------------------------------------------------+
-//| CheckNanpinConditions関数 - ナンピンレベル廃止版                   |
+//| CheckNanpinConditions関数 (MQL4/MQL5共通)                        |
 //+------------------------------------------------------------------+
 void CheckNanpinConditions(int side)
 {
@@ -664,7 +638,8 @@ void CheckNanpinConditions(int side)
    if(realPositionCount <= 0 || realPositionCount >= (int)MaxPositions)
    {
       if(realPositionCount >= (int)MaxPositions)
-         Print("CheckNanpinConditions: 最大ポジション数(", (int)MaxPositions, ")に達しているため、ナンピンをスキップします");
+         Print("CheckNanpinConditions: 最大ポジション数(", (int)MaxPositions, 
+               ")に達しているため、ナンピンをスキップします");
       return;
    }
    
@@ -675,7 +650,7 @@ void CheckNanpinConditions(int side)
       return;
    }
    
-   // 最後のエントリー時間を取得（改良版）
+   // 最後のエントリー時間を取得
    datetime lastEntryTime = GetLastEntryTime(operationType);
    
    // 最後のエントリーがない場合はスキップ
@@ -686,9 +661,9 @@ void CheckNanpinConditions(int side)
    }
    
    // ナンピンインターバルの有効性をチェック
-   bool intervalOK = true; // デフォルトでOK
+   bool intervalOK = true;
    
-   if(NanpinInterval > 0) // インターバルが設定されている場合のみチェック
+   if(NanpinInterval > 0)
    {
       intervalOK = (TimeCurrent() - lastEntryTime >= NanpinInterval * 60);
       
@@ -716,10 +691,9 @@ void CheckNanpinConditions(int side)
    double currentPrice = (side == 0) ? GetBidPrice() : GetAskPrice();
    
    // 現在のレベルに対応するナンピン幅を取得
-   // 合計ポジション数を使用
    int nanpinSpread = g_NanpinSpreadTable[totalPositionCount - 1];
    
-   // デバッグ出力を強化（重要なパラメータをすべて表示）
+   // デバッグ出力
    string direction = (side == 0) ? "Buy" : "Sell";
    Print("CheckNanpinConditions 詳細: 方向=", direction, 
          ", リアルポジション数=", realPositionCount,
@@ -727,7 +701,8 @@ void CheckNanpinConditions(int side)
          ", 最後の価格=", DoubleToString(lastPrice, Digits),
          ", 現在価格=", DoubleToString(currentPrice, Digits),
          ", ナンピン幅=", nanpinSpread, "ポイント",
-         ", 差=", MathAbs((side == 0) ? (lastPrice - currentPrice) : (currentPrice - lastPrice)) / Point, "ポイント");
+         ", 差=", MathAbs((side == 0) ? (lastPrice - currentPrice) : (currentPrice - lastPrice)) / Point, 
+         "ポイント");
    
    // ナンピン条件の判定
    bool nanpinCondition = false;
@@ -747,12 +722,8 @@ void CheckNanpinConditions(int side)
    }
 }
 
-
-
-
-
 //+------------------------------------------------------------------+
-//| InitializeEA関数 - レイアウトパターン対応版                        |
+//| InitializeEA関数 (MQL4/MQL5共通)                                 |
 //+------------------------------------------------------------------+
 int InitializeEA()
 {
@@ -760,15 +731,20 @@ int InitializeEA()
    ResetTradingCaches();
 
    // アカウント番号を取得して保存
+#ifdef __MQL5__
+   g_AccountNumber = (int)AccountInfoInteger(ACCOUNT_LOGIN);
+#else
    g_AccountNumber = AccountNumber();
+#endif
    
-   // グローバル変数のプレフィックスを設定（通貨ペア＋マジックナンバー＋アカウント番号）
-   g_GlobalVarPrefix = Symbol() + "_" + IntegerToString(MagicNumber) + "_" + IntegerToString(g_AccountNumber) + "_Ghost_";
+   // グローバル変数のプレフィックスを設定
+   g_GlobalVarPrefix = Symbol() + "_" + IntegerToString(MagicNumber) + "_" + 
+                      IntegerToString(g_AccountNumber) + "_Ghost_";
    
    // オブジェクト名のプレフィックスを設定
    g_ObjectPrefix = IntegerToString(MagicNumber) + "_" + IntegerToString(g_AccountNumber) + "_";
    
-   // レイアウトパターンを適用 - 追加
+   // レイアウトパターンを適用
    ApplyLayoutPattern();
    Print("レイアウトパターンを初期化しました: ", GetLayoutPatternText());
    
@@ -796,7 +772,8 @@ int InitializeEA()
    
    // エントリーモードの確認と表示
    string entryModeStr = "";
-   switch(EntryMode) {
+   switch(EntryMode)
+   {
       case MODE_BUY_ONLY:
          entryModeStr = "Buy Only";
          break;
@@ -819,11 +796,12 @@ int InitializeEA()
    }
    Print(lotTableStr);
 
-   // リアルポジションがある場合のチェック（複数チャート対策）
+   // リアルポジションがある場合のチェック
    int buyPositions = position_count(OP_BUY);
    int sellPositions = position_count(OP_SELL);
 
-   if(buyPositions > 0 || sellPositions > 0) {
+   if(buyPositions > 0 || sellPositions > 0)
+   {
       Print("既にリアルポジションが存在します - Buy: ", buyPositions, ", Sell: ", sellPositions);
       
       // 既存のゴーストポジションをクリア
@@ -832,10 +810,13 @@ int InitializeEA()
       ResetGhost(OP_SELL);
       
       // 平均取得価格ラインは表示
-      if(AveragePriceLine == ON_MODE) {
+      if(AveragePriceLine == ON_MODE)
+      {
          g_AvgPriceVisible = true;
       }
-   } else {
+   }
+   else
+   {
       // バックテストでなければグローバル変数からゴーストポジション情報を読み込み
       if(!IsTesting())
       {
@@ -867,6 +848,7 @@ int InitializeEA()
    g_BuyClosedTime = 0;
    g_SellClosedTime = 0;
 
+   // GUI作成
    CreateGUI();
 
    // ポジションテーブルを作成
@@ -877,6 +859,7 @@ int InitializeEA()
 
    return(INIT_SUCCEEDED);
 }
+
 
 
 
@@ -922,19 +905,16 @@ void DeinitializeEA(const int reason)
    // 最後に明示的にすべてのゴースト関連オブジェクトを検索して削除 (追加)
    for(int i = ObjectsTotal() - 1; i >= 0; i--)
    {
-      string name = ObjectName(i);
+      string name = ObjectName(0, i);
       if(StringFind(name, g_ObjectPrefix) == 0 && StringFind(name, "Ghost") >= 0)
       {
-         ObjectDelete(name);
+         ObjectDelete(0, name);
       }
    }
    
    // チャートを再描画
    ChartRedraw();
 }
-
-
-
 
 //+------------------------------------------------------------------+
 //| チャートイベント関数                                               |
@@ -951,12 +931,6 @@ void HandleChartEvent(const int id,
    }
 }
 
-
-
-
-
-
-
 //+------------------------------------------------------------------+
 //| リアルエントリー用のGetLastPositionLot関数を追加                 |
 //+------------------------------------------------------------------+
@@ -965,6 +939,27 @@ double GetLastPositionLot(int type)
    double lastLotSize = 0;
    datetime lastOpenTime = 0;
    
+#ifdef __MQL5__
+   // MQL5の場合
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      if(PositionSelectByIndex(i))
+      {
+         if(PositionGetInteger(POSITION_TYPE) == type && 
+            PositionGetString(POSITION_SYMBOL) == Symbol() && 
+            PositionGetInteger(POSITION_MAGIC) == MagicNumber)
+         {
+            datetime openTime = (datetime)PositionGetInteger(POSITION_TIME);
+            if(openTime > lastOpenTime)
+            {
+               lastOpenTime = openTime;
+               lastLotSize = PositionGetDouble(POSITION_VOLUME);
+            }
+         }
+      }
+   }
+#else
+   // MQL4の場合
    for(int i = OrdersTotal() - 1; i >= 0; i--)
    {
       if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
@@ -980,11 +975,10 @@ double GetLastPositionLot(int type)
          }
       }
    }
+#endif
    
    return lastLotSize;
 }
-
-
 
 //+------------------------------------------------------------------+
 //| リアルポジション数変化を監視する関数 - 両建て強化対応版            |
@@ -1050,7 +1044,6 @@ void CheckPositionChanges()
    prevSellCount = currentSellCount;
 }
 
-
 //+------------------------------------------------------------------+
 //| ProcessRealEntries関数 - 初回エントリー時間制限対応版              |
 //+------------------------------------------------------------------+
@@ -1104,17 +1097,15 @@ void ProcessRealEntries(int side)
       modeAllowed = (EntryMode == MODE_SELL_ONLY || EntryMode == MODE_BOTH);
    
    if(!modeAllowed) {
-     
       return;
    }
-   
-   
    
    // 戦略シグナルチェック
    bool entrySignal = ShouldProcessRealEntry(side);
    
    if(entrySignal) {
-     
       ExecuteRealEntry(operationType, "インジケーターシグナル");
    } 
 }
+
+

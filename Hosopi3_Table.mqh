@@ -1,5 +1,5 @@
 //+------------------------------------------------------------------+
-//|                Hosopi 3 - テーブル表示関数                        |
+//|                Hosopi 3 - テーブル表示関数 (MQL4/MQL5共通)        |
 //|                       Copyright 2025                             |
 //+------------------------------------------------------------------+
 #include "Hosopi3_Defines.mqh"
@@ -8,7 +8,7 @@
 #include "Hosopi3_Ghost.mqh"
 
 //+------------------------------------------------------------------+
-//| ポジションテーブルを作成する - レイアウトパターン対応版           |
+//| ポジションテーブルを作成する (MQL4/MQL5共通)                     |
 //+------------------------------------------------------------------+
 void CreatePositionTable()
 {
@@ -23,7 +23,6 @@ void CreatePositionTable()
    int adjustedTableY = g_EffectiveTableY;
    
    // ヘッダー列のラベルと位置の修正
-   // 列の幅を明確に定義し、一貫した間隔で配置
    string headers[8] = {"No", "Type", "Lots", "Symbol", "Price", "OpenTime", "Level", "Profit"};
    int columnWidths[8] = {25, 45, 45, 90, 95, 140, 45, 90}; // 各列の幅
    int positions[8]; // 各列の開始位置
@@ -38,13 +37,45 @@ void CreatePositionTable()
    string tablePrefix = g_ObjectPrefix + "GhostTable_";
    
    // 背景の作成
+   CreateTableBackground(tablePrefix, adjustedTableX, adjustedTableY);
+   
+   // タイトルバーの作成
+   CreateTableTitle(tablePrefix, adjustedTableX, adjustedTableY);
+   
+   // ヘッダーの作成
+   CreateTableHeader(tablePrefix, adjustedTableX, adjustedTableY, headers, positions);
+   
+   // テーブルを更新
+   UpdatePositionTable();
+}
+
+//+------------------------------------------------------------------+
+//| テーブル背景を作成 (MQL4/MQL5共通)                               |
+//+------------------------------------------------------------------+
+void CreateTableBackground(string tablePrefix, int x, int y)
+{
    string bgName = tablePrefix + "BG";
+   
+#ifdef __MQL5__
+   ObjectCreate(0, bgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
+   ObjectSetInteger(0, bgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetInteger(0, bgName, OBJPROP_XDISTANCE, x);
+   ObjectSetInteger(0, bgName, OBJPROP_YDISTANCE, y);
+   ObjectSetInteger(0, bgName, OBJPROP_XSIZE, TABLE_WIDTH);
+   ObjectSetInteger(0, bgName, OBJPROP_YSIZE, TITLE_HEIGHT + TABLE_ROW_HEIGHT * 2);
+   ObjectSetInteger(0, bgName, OBJPROP_BGCOLOR, C'16,16,24');
+   ObjectSetInteger(0, bgName, OBJPROP_BORDER_TYPE, BORDER_FLAT);
+   ObjectSetInteger(0, bgName, OBJPROP_COLOR, C'64,64,96');
+   ObjectSetInteger(0, bgName, OBJPROP_WIDTH, 1);
+   ObjectSetInteger(0, bgName, OBJPROP_BACK, false);
+   ObjectSetInteger(0, bgName, OBJPROP_SELECTABLE, false);
+   ObjectSetInteger(0, bgName, OBJPROP_ZORDER, 0);
+#else
    ObjectCreate(bgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
    ObjectSet(bgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSet(bgName, OBJPROP_XDISTANCE, adjustedTableX);
-   ObjectSet(bgName, OBJPROP_YDISTANCE, adjustedTableY);
+   ObjectSet(bgName, OBJPROP_XDISTANCE, x);
+   ObjectSet(bgName, OBJPROP_YDISTANCE, y);
    ObjectSet(bgName, OBJPROP_XSIZE, TABLE_WIDTH);
-   // 最小サイズ（タイトル + ヘッダー + 「No positions」行）
    ObjectSet(bgName, OBJPROP_YSIZE, TITLE_HEIGHT + TABLE_ROW_HEIGHT * 2);
    ObjectSet(bgName, OBJPROP_BGCOLOR, C'16,16,24');
    ObjectSet(bgName, OBJPROP_BORDER_TYPE, BORDER_FLAT);
@@ -52,14 +83,38 @@ void CreatePositionTable()
    ObjectSet(bgName, OBJPROP_WIDTH, 1);
    ObjectSet(bgName, OBJPROP_BACK, false);
    ObjectSet(bgName, OBJPROP_SELECTABLE, false);
-   ObjectSetInteger(0, bgName, OBJPROP_ZORDER, 0);
+#endif
    
+   SaveObjectName(bgName, g_TableNames, g_TableObjectCount);
+}
+
+//+------------------------------------------------------------------+
+//| テーブルタイトルを作成 (MQL4/MQL5共通)                           |
+//+------------------------------------------------------------------+
+void CreateTableTitle(string tablePrefix, int x, int y)
+{
    // タイトル背景
    string titleBgName = tablePrefix + "TitleBG";
+   
+#ifdef __MQL5__
+   ObjectCreate(0, titleBgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
+   ObjectSetInteger(0, titleBgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetInteger(0, titleBgName, OBJPROP_XDISTANCE, x);
+   ObjectSetInteger(0, titleBgName, OBJPROP_YDISTANCE, y);
+   ObjectSetInteger(0, titleBgName, OBJPROP_XSIZE, TABLE_WIDTH);
+   ObjectSetInteger(0, titleBgName, OBJPROP_YSIZE, TITLE_HEIGHT);
+   ObjectSetInteger(0, titleBgName, OBJPROP_BGCOLOR, C'32,32,48');
+   ObjectSetInteger(0, titleBgName, OBJPROP_BORDER_TYPE, BORDER_FLAT);
+   ObjectSetInteger(0, titleBgName, OBJPROP_COLOR, C'32,32,48');
+   ObjectSetInteger(0, titleBgName, OBJPROP_WIDTH, 1);
+   ObjectSetInteger(0, titleBgName, OBJPROP_BACK, false);
+   ObjectSetInteger(0, titleBgName, OBJPROP_SELECTABLE, false);
+   ObjectSetInteger(0, titleBgName, OBJPROP_ZORDER, 1);
+#else
    ObjectCreate(titleBgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
    ObjectSet(titleBgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSet(titleBgName, OBJPROP_XDISTANCE, adjustedTableX);
-   ObjectSet(titleBgName, OBJPROP_YDISTANCE, adjustedTableY);
+   ObjectSet(titleBgName, OBJPROP_XDISTANCE, x);
+   ObjectSet(titleBgName, OBJPROP_YDISTANCE, y);
    ObjectSet(titleBgName, OBJPROP_XSIZE, TABLE_WIDTH);
    ObjectSet(titleBgName, OBJPROP_YSIZE, TITLE_HEIGHT);
    ObjectSet(titleBgName, OBJPROP_BGCOLOR, C'32,32,48');
@@ -68,24 +123,62 @@ void CreatePositionTable()
    ObjectSet(titleBgName, OBJPROP_WIDTH, 1);
    ObjectSet(titleBgName, OBJPROP_BACK, false);
    ObjectSet(titleBgName, OBJPROP_SELECTABLE, false);
-   ObjectSetInteger(0, titleBgName, OBJPROP_ZORDER, 1);
+#endif
    
    // タイトルテキスト
    string titleName = tablePrefix + "Title";
+   
+#ifdef __MQL5__
+   ObjectCreate(0, titleName, OBJ_LABEL, 0, 0, 0);
+   ObjectSetInteger(0, titleName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetInteger(0, titleName, OBJPROP_XDISTANCE, x + 10);
+   ObjectSetInteger(0, titleName, OBJPROP_YDISTANCE, y + 3);
+   ObjectSetString(0, titleName, OBJPROP_TEXT, GhostTableTitle);
+   ObjectSetString(0, titleName, OBJPROP_FONT, "MS Gothic");
+   ObjectSetInteger(0, titleName, OBJPROP_FONTSIZE, 7);
+   ObjectSetInteger(0, titleName, OBJPROP_COLOR, TABLE_TEXT_COLOR);
+   ObjectSetInteger(0, titleName, OBJPROP_SELECTABLE, false);
+   ObjectSetInteger(0, titleName, OBJPROP_ZORDER, 2);
+#else
    ObjectCreate(titleName, OBJ_LABEL, 0, 0, 0);
    ObjectSet(titleName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSet(titleName, OBJPROP_XDISTANCE, adjustedTableX + 10);
-   ObjectSet(titleName, OBJPROP_YDISTANCE, adjustedTableY + 3);
+   ObjectSet(titleName, OBJPROP_XDISTANCE, x + 10);
+   ObjectSet(titleName, OBJPROP_YDISTANCE, y + 3);
    ObjectSetText(titleName, GhostTableTitle, 7, "MS Gothic", TABLE_TEXT_COLOR);
    ObjectSet(titleName, OBJPROP_SELECTABLE, false);
-   ObjectSetInteger(0, titleName, OBJPROP_ZORDER, 2);
+#endif
    
+   SaveObjectName(titleBgName, g_TableNames, g_TableObjectCount);
+   SaveObjectName(titleName, g_TableNames, g_TableObjectCount);
+}
+
+//+------------------------------------------------------------------+
+//| テーブルヘッダーを作成 (MQL4/MQL5共通)                           |
+//+------------------------------------------------------------------+
+void CreateTableHeader(string tablePrefix, int x, int y, string &headers[], int &positions[])
+{
    // ヘッダー背景
    string headerBgName = tablePrefix + "HeaderBG";
+   
+#ifdef __MQL5__
+   ObjectCreate(0, headerBgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
+   ObjectSetInteger(0, headerBgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetInteger(0, headerBgName, OBJPROP_XDISTANCE, x);
+   ObjectSetInteger(0, headerBgName, OBJPROP_YDISTANCE, y + TITLE_HEIGHT);
+   ObjectSetInteger(0, headerBgName, OBJPROP_XSIZE, TABLE_WIDTH);
+   ObjectSetInteger(0, headerBgName, OBJPROP_YSIZE, TABLE_ROW_HEIGHT);
+   ObjectSetInteger(0, headerBgName, OBJPROP_BGCOLOR, TABLE_HEADER_BG);
+   ObjectSetInteger(0, headerBgName, OBJPROP_BORDER_TYPE, BORDER_FLAT);
+   ObjectSetInteger(0, headerBgName, OBJPROP_COLOR, TABLE_HEADER_BG);
+   ObjectSetInteger(0, headerBgName, OBJPROP_WIDTH, 1);
+   ObjectSetInteger(0, headerBgName, OBJPROP_BACK, false);
+   ObjectSetInteger(0, headerBgName, OBJPROP_SELECTABLE, false);
+   ObjectSetInteger(0, headerBgName, OBJPROP_ZORDER, 1);
+#else
    ObjectCreate(headerBgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
    ObjectSet(headerBgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSet(headerBgName, OBJPROP_XDISTANCE, adjustedTableX);
-   ObjectSet(headerBgName, OBJPROP_YDISTANCE, adjustedTableY + TITLE_HEIGHT);
+   ObjectSet(headerBgName, OBJPROP_XDISTANCE, x);
+   ObjectSet(headerBgName, OBJPROP_YDISTANCE, y + TITLE_HEIGHT);
    ObjectSet(headerBgName, OBJPROP_XSIZE, TABLE_WIDTH);
    ObjectSet(headerBgName, OBJPROP_YSIZE, TABLE_ROW_HEIGHT);
    ObjectSet(headerBgName, OBJPROP_BGCOLOR, TABLE_HEADER_BG);
@@ -94,43 +187,48 @@ void CreatePositionTable()
    ObjectSet(headerBgName, OBJPROP_WIDTH, 1);
    ObjectSet(headerBgName, OBJPROP_BACK, false);
    ObjectSet(headerBgName, OBJPROP_SELECTABLE, false);
-   ObjectSetInteger(0, headerBgName, OBJPROP_ZORDER, 1);
+#endif
    
    // ヘッダー列のラベルを作成
    for(int i = 0; i < 8; i++)
    {
       string name = tablePrefix + "Header_" + headers[i];
+      
+#ifdef __MQL5__
+      ObjectCreate(0, name, OBJ_LABEL, 0, 0, 0);
+      ObjectSetInteger(0, name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+      ObjectSetInteger(0, name, OBJPROP_XDISTANCE, x + positions[i]);
+      ObjectSetInteger(0, name, OBJPROP_YDISTANCE, y + TITLE_HEIGHT + 4);
+      ObjectSetString(0, name, OBJPROP_TEXT, headers[i]);
+      ObjectSetString(0, name, OBJPROP_FONT, "MS Gothic");
+      ObjectSetInteger(0, name, OBJPROP_FONTSIZE, 8);
+      ObjectSetInteger(0, name, OBJPROP_COLOR, TABLE_TEXT_COLOR);
+      ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
+      ObjectSetInteger(0, name, OBJPROP_ZORDER, 2);
+#else
       ObjectCreate(name, OBJ_LABEL, 0, 0, 0);
       ObjectSet(name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-      ObjectSet(name, OBJPROP_XDISTANCE, adjustedTableX + positions[i]);
-      ObjectSet(name, OBJPROP_YDISTANCE, adjustedTableY + TITLE_HEIGHT + 4);
+      ObjectSet(name, OBJPROP_XDISTANCE, x + positions[i]);
+      ObjectSet(name, OBJPROP_YDISTANCE, y + TITLE_HEIGHT + 4);
       ObjectSetText(name, headers[i], 8, "MS Gothic", TABLE_TEXT_COLOR);
       ObjectSet(name, OBJPROP_SELECTABLE, false);
-      ObjectSetInteger(0, name, OBJPROP_ZORDER, 2);
+#endif
       
-      // オブジェクト名を保存
       SaveObjectName(name, g_TableNames, g_TableObjectCount);
    }
    
-   // オブジェクト名を保存
-   SaveObjectName(bgName, g_TableNames, g_TableObjectCount);
-   SaveObjectName(titleBgName, g_TableNames, g_TableObjectCount);
-   SaveObjectName(titleName, g_TableNames, g_TableObjectCount);
    SaveObjectName(headerBgName, g_TableNames, g_TableObjectCount);
-   
-   // テーブルを更新
-   UpdatePositionTable();
 }
 
 //+------------------------------------------------------------------+
-//| ポジションテーブルを更新する - レイアウトパターン対応版           |
+//| ポジションテーブルを更新する (MQL4/MQL5共通)                     |
 //+------------------------------------------------------------------+
 void UpdatePositionTable()
 {
-
-      // バックテスト時は更新頻度を下げる
-      if(IsTesting() && MathMod(Bars, 20) != 0)
+   // バックテスト時は更新頻度を下げる
+   if(IsTesting() && MathMod(Bars, 20) != 0)
       return;
+      
    // レイアウトパターンを適用
    ApplyLayoutPattern();
    
@@ -138,20 +236,53 @@ void UpdatePositionTable()
    int adjustedTableX = g_EffectiveTableX;
    int adjustedTableY = g_EffectiveTableY;
    
-   // オブジェクト名にプレフィックスを追加（複数チャート対策）
+   // オブジェクト名にプレフィックスを追加
    string tablePrefix = g_ObjectPrefix + "GhostTable_";
    
    // 列の位置を定義
-   int columnWidths[8] = {25, 45, 45, 90, 95, 140, 45, 90}; // 各列の幅
-   int positions[8]; // 各列の開始位置
+   int columnWidths[8] = {25, 45, 45, 90, 95, 140, 45, 90};
+   int positions[8];
    
    // 各列の開始位置を計算
-   positions[0] = 5; // 最初の列は少し余白を取る
+   positions[0] = 5;
    for(int i = 1; i < 8; i++) {
       positions[i] = positions[i-1] + columnWidths[i-1];
    }
    
-   // 行オブジェクトをクリア（ヘッダーと背景は残す）
+   // 既存の行を削除
+   DeleteTableRows(tablePrefix);
+   
+   // ポジション情報を収集して表示
+   PositionInfo allPositions[];
+   int totalPositions = CollectAllPositions(allPositions);
+   
+   // データがない場合の処理
+   if(totalPositions == 0)
+   {
+      DisplayNoDataMessage(tablePrefix, adjustedTableX, adjustedTableY);
+      UpdateTableBackground(tablePrefix, TITLE_HEIGHT + TABLE_ROW_HEIGHT * 2);
+      ChartRedraw();
+      return;
+   }
+   
+   // ポジションを表示
+   int visibleRows = MathMin(totalPositions, MAX_VISIBLE_ROWS);
+   DisplayPositionRows(tablePrefix, adjustedTableX, adjustedTableY, allPositions, visibleRows, positions);
+   
+   // 合計損益を表示
+   DisplayTotalProfit(tablePrefix, adjustedTableX, adjustedTableY, visibleRows, positions);
+   
+   // 背景のサイズを調整
+   UpdateTableBackground(tablePrefix, TITLE_HEIGHT + TABLE_ROW_HEIGHT * (visibleRows + 2));
+   
+   ChartRedraw();
+}
+
+//+------------------------------------------------------------------+
+//| 既存の行を削除 (MQL4/MQL5共通)                                   |
+//+------------------------------------------------------------------+
+void DeleteTableRows(string tablePrefix)
+{
    int total = ObjectsTotal();
    for(int i = total - 1; i >= 0; i--)
    {
@@ -163,46 +294,113 @@ void UpdatePositionTable()
          ObjectDelete(name);
       }
    }
-   
-   // ゴーストポジションの表示
+}
+
+//+------------------------------------------------------------------+
+//| すべてのポジション情報を収集 (MQL4/MQL5共通)                     |
+//+------------------------------------------------------------------+
+int CollectAllPositions(PositionInfo &allPositions[])
+{
+   // ゴーストポジションの数
    int totalGhostPositions = g_GhostBuyCount + g_GhostSellCount;
-   
-   // 一時配列にすべてのポジション(ゴースト+リアル)を結合
-   PositionInfo allPositions[];
    
    // リアル注文の数をカウント
    int realBuyCount = 0;
    int realSellCount = 0;
    
    // リアル注文を数える
-   for(int i = OrdersTotal() - 1; i >= 0; i--) {
-      if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES)) {
-         if(OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber) {
+#ifdef __MQL5__
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      if(PositionSelectByTicket(PositionGetTicket(i)))
+      {
+         if(PositionGetString(POSITION_SYMBOL) == Symbol() && 
+            PositionGetInteger(POSITION_MAGIC) == MagicNumber)
+         {
+            if(PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY) realBuyCount++;
+            if(PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_SELL) realSellCount++;
+         }
+      }
+   }
+#else
+   for(int i = OrdersTotal() - 1; i >= 0; i--)
+   {
+      if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+      {
+         if(OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
+         {
             if(OrderType() == OP_BUY) realBuyCount++;
             if(OrderType() == OP_SELL) realSellCount++;
          }
       }
    }
+#endif
    
    // 全ポジション数を計算
    int totalPositions = totalGhostPositions + realBuyCount + realSellCount;
    ArrayResize(allPositions, totalPositions);
    
+   int index = 0;
+   
    // Buy ゴーストポジションをコピー
-   for(int i = 0; i < g_GhostBuyCount; i++) {
-      allPositions[i] = g_GhostBuyPositions[i];
+   for(int i = 0; i < g_GhostBuyCount; i++)
+   {
+      allPositions[index] = g_GhostBuyPositions[i];
+      index++;
    }
    
    // Sell ゴーストポジションをコピー
-   for(int i = 0; i < g_GhostSellCount; i++) {
-      allPositions[g_GhostBuyCount + i] = g_GhostSellPositions[i];
+   for(int i = 0; i < g_GhostSellCount; i++)
+   {
+      allPositions[index] = g_GhostSellPositions[i];
+      index++;
    }
    
-   // リアル注文を配列に追加
-   int nextIndex = totalGhostPositions;
-   for(int i = OrdersTotal() - 1; i >= 0; i--) {
-      if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES)) {
-         if(OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber) {
+   // リアル注文を追加
+   AddRealPositions(allPositions, index);
+   
+   // ポジションをソート
+   SortPositions(allPositions, totalPositions);
+   
+   return totalPositions;
+}
+
+//+------------------------------------------------------------------+
+//| リアルポジションを追加 (MQL4/MQL5共通)                           |
+//+------------------------------------------------------------------+
+void AddRealPositions(PositionInfo &allPositions[], int &index)
+{
+#ifdef __MQL5__
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      ulong ticket = PositionGetTicket(i);
+      if(PositionSelectByTicket(ticket))
+      {
+         if(PositionGetString(POSITION_SYMBOL) == Symbol() && 
+            PositionGetInteger(POSITION_MAGIC) == MagicNumber)
+         {
+            PositionInfo pos;
+            pos.type = (int)PositionGetInteger(POSITION_TYPE);
+            pos.lots = PositionGetDouble(POSITION_VOLUME);
+            pos.symbol = PositionGetString(POSITION_SYMBOL);
+            pos.price = PositionGetDouble(POSITION_PRICE_OPEN);
+            pos.profit = PositionGetDouble(POSITION_PROFIT);
+            pos.ticket = (int)ticket;
+            pos.openTime = (datetime)PositionGetInteger(POSITION_TIME);
+            pos.isGhost = false;
+            pos.level = 0;
+            
+            allPositions[index++] = pos;
+         }
+      }
+   }
+#else
+   for(int i = OrdersTotal() - 1; i >= 0; i--)
+   {
+      if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+      {
+         if(OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
+         {
             PositionInfo pos;
             pos.type = OrderType();
             pos.lots = OrderLots();
@@ -212,476 +410,387 @@ void UpdatePositionTable()
             pos.ticket = OrderTicket();
             pos.openTime = OrderOpenTime();
             pos.isGhost = false;
-            pos.level = 0; // 一時的に0に設定、後で計算
+            pos.level = 0;
             
-            allPositions[nextIndex++] = pos;
+            allPositions[index++] = pos;
          }
       }
    }
+#endif
+}
+
+//+------------------------------------------------------------------+
+//| ポジションをソート (MQL4/MQL5共通)                               |
+//+------------------------------------------------------------------+
+void SortPositions(PositionInfo &positions[], int count)
+{
+   // レベルを計算
+   CalculatePositionLevels(positions, count);
    
-   // 各ポジションのレベルを計算
-   int buyCount = 0;
-   int sellCount = 0;
-   
-   for(int i = 0; i < totalPositions; i++) {
-      if(allPositions[i].type == OP_BUY) {
-         // Buy側ポジションのレベルを時系列の順番で計算
-         int orderRank = 1; // 1から始める（表示用）
-         for(int j = 0; j < totalPositions; j++) {
-            if(allPositions[j].type == OP_BUY) {
-               if(allPositions[j].openTime < allPositions[i].openTime) {
-                  orderRank++;
-               }
-            }
-         }
-         allPositions[i].level = orderRank - 1; // 0ベースに調整（内部用）
-         buyCount++;
-      } else { // OP_SELL
-         // Sell側ポジションのレベルを時系列の順番で計算
-         int orderRank = 1; // 1から始める（表示用）
-         for(int j = 0; j < totalPositions; j++) {
-            if(allPositions[j].type == OP_SELL) {
-               if(allPositions[j].openTime < allPositions[i].openTime) {
-                  orderRank++;
-               }
-            }
-         }
-         allPositions[i].level = orderRank - 1; // 0ベースに調整（内部用）
-         sellCount++;
-      }
-   }
-   
-   // 修正: ポジションを種別ごとにまとめ、ロット数で昇順ソート
-   PositionInfo sortedPositions[];
-   ArrayResize(sortedPositions, totalPositions);
-   int sortedCount = 0;
-   
-   // BUY側のゴーストポジションをロット数の昇順にソート
-   for(int i = 0; i < 100; i++) { // 安全のため十分大きな回数を使用
-      double minLot = 999999.0;
-      int minIndex = -1;
-      
-      for(int j = 0; j < totalPositions; j++) {
-         if(allPositions[j].type == OP_BUY && allPositions[j].isGhost && allPositions[j].lots < minLot) {
-            bool alreadySorted = false;
-            for(int k = 0; k < sortedCount; k++) {
-               if(sortedPositions[k].ticket == allPositions[j].ticket && 
-                  sortedPositions[k].openTime == allPositions[j].openTime &&
-                  sortedPositions[k].price == allPositions[j].price &&
-                  sortedPositions[k].type == allPositions[j].type) {
-                  alreadySorted = true;
-                  break;
-               }
-            }
-            
-            if(!alreadySorted) {
-               minLot = allPositions[j].lots;
-               minIndex = j;
-            }
-         }
-      }
-      
-      if(minIndex >= 0) {
-         sortedPositions[sortedCount++] = allPositions[minIndex];
-      } else {
-         break; // すべてのBUYゴーストをソート完了
-      }
-   }
-   
-   // BUY側のリアルポジションをロット数の昇順にソート
-   for(int i = 0; i < 100; i++) { // 安全のため十分大きな回数を使用
-      double minLot = 999999.0;
-      int minIndex = -1;
-      
-      for(int j = 0; j < totalPositions; j++) {
-         if(allPositions[j].type == OP_BUY && !allPositions[j].isGhost && allPositions[j].lots < minLot) {
-            bool alreadySorted = false;
-            for(int k = 0; k < sortedCount; k++) {
-               if(sortedPositions[k].ticket == allPositions[j].ticket && 
-                  sortedPositions[k].openTime == allPositions[j].openTime &&
-                  sortedPositions[k].price == allPositions[j].price &&
-                  sortedPositions[k].type == allPositions[j].type) {
-                  alreadySorted = true;
-                  break;
-               }
-            }
-            
-            if(!alreadySorted) {
-               minLot = allPositions[j].lots;
-               minIndex = j;
-            }
-         }
-      }
-      
-      if(minIndex >= 0) {
-         sortedPositions[sortedCount++] = allPositions[minIndex];
-      } else {
-         break; // すべてのBUYリアルをソート完了
-      }
-   }
-   
-   // SELL側のゴーストポジションをロット数の昇順にソート
-   for(int i = 0; i < 100; i++) { // 安全のため十分大きな回数を使用
-      double minLot = 999999.0;
-      int minIndex = -1;
-      
-      for(int j = 0; j < totalPositions; j++) {
-         if(allPositions[j].type == OP_SELL && allPositions[j].isGhost && allPositions[j].lots < minLot) {
-            bool alreadySorted = false;
-            for(int k = 0; k < sortedCount; k++) {
-               if(sortedPositions[k].ticket == allPositions[j].ticket && 
-                  sortedPositions[k].openTime == allPositions[j].openTime &&
-                  sortedPositions[k].price == allPositions[j].price &&
-                  sortedPositions[k].type == allPositions[j].type) {
-                  alreadySorted = true;
-                  break;
-               }
-            }
-            
-            if(!alreadySorted) {
-               minLot = allPositions[j].lots;
-               minIndex = j;
-            }
-         }
-      }
-      
-      if(minIndex >= 0) {
-         sortedPositions[sortedCount++] = allPositions[minIndex];
-      } else {
-         break; // すべてのSELLゴーストをソート完了
-      }
-   }
-   
-   // SELL側のリアルポジションをロット数の昇順にソート
-   for(int i = 0; i < 100; i++) { // 安全のため十分大きな回数を使用
-      double minLot = 999999.0;
-      int minIndex = -1;
-      
-      for(int j = 0; j < totalPositions; j++) {
-         if(allPositions[j].type == OP_SELL && !allPositions[j].isGhost && allPositions[j].lots < minLot) {
-            bool alreadySorted = false;
-            for(int k = 0; k < sortedCount; k++) {
-               if(sortedPositions[k].ticket == allPositions[j].ticket && 
-                  sortedPositions[k].openTime == allPositions[j].openTime &&
-                  sortedPositions[k].price == allPositions[j].price &&
-                  sortedPositions[k].type == allPositions[j].type) {
-                  alreadySorted = true;
-                  break;
-               }
-            }
-            
-            if(!alreadySorted) {
-               minLot = allPositions[j].lots;
-               minIndex = j;
-            }
-         }
-      }
-      
-      if(minIndex >= 0) {
-         sortedPositions[sortedCount++] = allPositions[minIndex];
-      } else {
-         break; // すべてのSELLリアルをソート完了
-      }
-   }
-   
-   // ArrayCopyの代わりに手動でコピー
-   if(sortedCount > 0) {
-      for(int i = 0; i < sortedCount; i++) {
-         allPositions[i].type = sortedPositions[i].type;
-         allPositions[i].lots = sortedPositions[i].lots;
-         allPositions[i].symbol = sortedPositions[i].symbol;
-         allPositions[i].price = sortedPositions[i].price;
-         allPositions[i].profit = sortedPositions[i].profit;
-         allPositions[i].ticket = sortedPositions[i].ticket;
-         allPositions[i].openTime = sortedPositions[i].openTime;
-         allPositions[i].isGhost = sortedPositions[i].isGhost;
-         allPositions[i].level = sortedPositions[i].level;
-         allPositions[i].stopLoss = sortedPositions[i].stopLoss;
-      }
-   }
-   
-   // データがない場合のメッセージ
-   if(totalPositions == 0)
+   // ロット数でソート（バブルソート）
+   for(int i = 0; i < count - 1; i++)
    {
-      string noDataName = tablePrefix + "Row_NoData";
-      ObjectCreate(noDataName, OBJ_LABEL, 0, 0, 0);
-      ObjectSet(noDataName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-      ObjectSet(noDataName, OBJPROP_XDISTANCE, adjustedTableX + 10);
-      ObjectSet(noDataName, OBJPROP_YDISTANCE, adjustedTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT + 10);
-      ObjectSetText(noDataName, "No positions", 8, "MS Gothic", TABLE_TEXT_COLOR);
-      ObjectSet(noDataName, OBJPROP_SELECTABLE, false);
-      ObjectSetInteger(0, noDataName, OBJPROP_ZORDER, 2);
-      
-      // オブジェクト名を保存
-      SaveObjectName(noDataName, g_TableNames, g_TableObjectCount);
-      
-      // 背景のサイズを最小化
-      string bgName = tablePrefix + "BG";
-      if(ObjectFind(bgName) >= 0)
+      for(int j = 0; j < count - i - 1; j++)
       {
-         ObjectSet(bgName, OBJPROP_YSIZE, TITLE_HEIGHT + TABLE_ROW_HEIGHT * 2);
+         bool swap = false;
+         
+         // まずタイプでグループ化（Buy -> Sell）
+         if(positions[j].type > positions[j+1].type)
+         {
+            swap = true;
+         }
+         // 同じタイプ内では、ゴースト -> リアルの順
+         else if(positions[j].type == positions[j+1].type)
+         {
+            if(!positions[j].isGhost && positions[j+1].isGhost)
+            {
+               swap = true;
+            }
+            // 同じカテゴリ内ではロット数の昇順
+            else if(positions[j].isGhost == positions[j+1].isGhost)
+            {
+               if(positions[j].lots > positions[j+1].lots)
+               {
+                  swap = true;
+               }
+            }
+         }
+         
+         if(swap)
+         {
+            PositionInfo temp = positions[j];
+            positions[j] = positions[j+1];
+            positions[j+1] = temp;
+         }
       }
-      
-      ChartRedraw();
-      return;
    }
+}
+
+//+------------------------------------------------------------------+
+//| ポジションレベルを計算 (MQL4/MQL5共通)                           |
+//+------------------------------------------------------------------+
+void CalculatePositionLevels(PositionInfo &positions[], int count)
+{
+   for(int i = 0; i < count; i++)
+   {
+      if(positions[i].type == OP_BUY)
+      {
+         int orderRank = 1;
+         for(int j = 0; j < count; j++)
+         {
+            if(positions[j].type == OP_BUY)
+            {
+               if(positions[j].openTime < positions[i].openTime)
+               {
+                  orderRank++;
+               }
+            }
+         }
+         positions[i].level = orderRank - 1;
+      }
+      else
+      {
+         int orderRank = 1;
+         for(int j = 0; j < count; j++)
+         {
+            if(positions[j].type == OP_SELL)
+            {
+               if(positions[j].openTime < positions[i].openTime)
+               {
+                  orderRank++;
+               }
+            }
+         }
+         positions[i].level = orderRank - 1;
+      }
+   }
+}
+
+//+------------------------------------------------------------------+
+//| データなしメッセージを表示 (MQL4/MQL5共通)                       |
+//+------------------------------------------------------------------+
+void DisplayNoDataMessage(string tablePrefix, int x, int y)
+{
+   string noDataName = tablePrefix + "Row_NoData";
    
-   // 表示する最大行数を計算
-   int visibleRows = MathMin(totalPositions, MAX_VISIBLE_ROWS);
+#ifdef __MQL5__
+   ObjectCreate(0, noDataName, OBJ_LABEL, 0, 0, 0);
+   ObjectSetInteger(0, noDataName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetInteger(0, noDataName, OBJPROP_XDISTANCE, x + 10);
+   ObjectSetInteger(0, noDataName, OBJPROP_YDISTANCE, y + TITLE_HEIGHT + TABLE_ROW_HEIGHT + 10);
+   ObjectSetString(0, noDataName, OBJPROP_TEXT, "No positions");
+   ObjectSetString(0, noDataName, OBJPROP_FONT, "MS Gothic");
+   ObjectSetInteger(0, noDataName, OBJPROP_FONTSIZE, 8);
+   ObjectSetInteger(0, noDataName, OBJPROP_COLOR, TABLE_TEXT_COLOR);
+   ObjectSetInteger(0, noDataName, OBJPROP_SELECTABLE, false);
+   ObjectSetInteger(0, noDataName, OBJPROP_ZORDER, 2);
+#else
+   ObjectCreate(noDataName, OBJ_LABEL, 0, 0, 0);
+   ObjectSet(noDataName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSet(noDataName, OBJPROP_XDISTANCE, x + 10);
+   ObjectSet(noDataName, OBJPROP_YDISTANCE, y + TITLE_HEIGHT + TABLE_ROW_HEIGHT + 10);
+   ObjectSetText(noDataName, "No positions", 8, "MS Gothic", TABLE_TEXT_COLOR);
+   ObjectSet(noDataName, OBJPROP_SELECTABLE, false);
+#endif
    
-   // 各行のテーブルデータを表示
+   SaveObjectName(noDataName, g_TableNames, g_TableObjectCount);
+}
+
+//+------------------------------------------------------------------+
+//| ポジション行を表示 (MQL4/MQL5共通)                               |
+//+------------------------------------------------------------------+
+void DisplayPositionRows(string tablePrefix, int x, int y, PositionInfo &positions[], 
+                        int visibleRows, int &columnPositions[])
+{
    for(int i = 0; i < visibleRows; i++)
    {
-      // 行の位置計算 - ヘッダーの下から順に配置
-      int rowY = adjustedTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (i + 1);
+      int rowY = y + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (i + 1);
       color rowBg = (i % 2 == 0) ? TABLE_ROW_BG1 : TABLE_ROW_BG2;
       
       // 行の背景
-      string rowBgName = tablePrefix + "Row_" + IntegerToString(i) + "_BG";
-      ObjectCreate(rowBgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
-      ObjectSet(rowBgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-      ObjectSet(rowBgName, OBJPROP_XDISTANCE, adjustedTableX);
-      ObjectSet(rowBgName, OBJPROP_YDISTANCE, rowY);
-      ObjectSet(rowBgName, OBJPROP_XSIZE, TABLE_WIDTH);
-      ObjectSet(rowBgName, OBJPROP_YSIZE, TABLE_ROW_HEIGHT);
-      ObjectSet(rowBgName, OBJPROP_BGCOLOR, rowBg);
-      ObjectSet(rowBgName, OBJPROP_BORDER_TYPE, BORDER_FLAT);
-      ObjectSet(rowBgName, OBJPROP_COLOR, rowBg);
-      ObjectSet(rowBgName, OBJPROP_WIDTH, 1);
-      ObjectSet(rowBgName, OBJPROP_BACK, false);
-      ObjectSet(rowBgName, OBJPROP_SELECTABLE, false);
-      ObjectSetInteger(0, rowBgName, OBJPROP_ZORDER, 1);
+      CreateRowBackground(tablePrefix, i, x, rowY, rowBg);
       
-      // ゴーストかリアルかで文字色を決定
-      color textColorToUse = allPositions[i].isGhost ? TABLE_GHOST_COLOR : TABLE_TEXT_COLOR;
+      // 行のデータ
+      DisplayRowData(tablePrefix, i, x, rowY, positions[i], columnPositions);
+   }
+}
+
+//+------------------------------------------------------------------+
+//| 行の背景を作成 (MQL4/MQL5共通)                                   |
+//+------------------------------------------------------------------+
+void CreateRowBackground(string tablePrefix, int row, int x, int y, color bgColor)
+{
+   string rowBgName = tablePrefix + "Row_" + IntegerToString(row) + "_BG";
+   
+#ifdef __MQL5__
+   ObjectCreate(0, rowBgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
+   ObjectSetInteger(0, rowBgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetInteger(0, rowBgName, OBJPROP_XDISTANCE, x);
+   ObjectSetInteger(0, rowBgName, OBJPROP_YDISTANCE, y);
+   ObjectSetInteger(0, rowBgName, OBJPROP_XSIZE, TABLE_WIDTH);
+   ObjectSetInteger(0, rowBgName, OBJPROP_YSIZE, TABLE_ROW_HEIGHT);
+   ObjectSetInteger(0, rowBgName, OBJPROP_BGCOLOR, bgColor);
+   ObjectSetInteger(0, rowBgName, OBJPROP_BORDER_TYPE, BORDER_FLAT);
+   ObjectSetInteger(0, rowBgName, OBJPROP_COLOR, bgColor);
+   ObjectSetInteger(0, rowBgName, OBJPROP_WIDTH, 1);
+   ObjectSetInteger(0, rowBgName, OBJPROP_BACK, false);
+   ObjectSetInteger(0, rowBgName, OBJPROP_SELECTABLE, false);
+   ObjectSetInteger(0, rowBgName, OBJPROP_ZORDER, 1);
+#else
+   ObjectCreate(rowBgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
+   ObjectSet(rowBgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSet(rowBgName, OBJPROP_XDISTANCE, x);
+   ObjectSet(rowBgName, OBJPROP_YDISTANCE, y);
+   ObjectSet(rowBgName, OBJPROP_XSIZE, TABLE_WIDTH);
+   ObjectSet(rowBgName, OBJPROP_YSIZE, TABLE_ROW_HEIGHT);
+   ObjectSet(rowBgName, OBJPROP_BGCOLOR, bgColor);
+   ObjectSet(rowBgName, OBJPROP_BORDER_TYPE, BORDER_FLAT);
+   ObjectSet(rowBgName, OBJPROP_COLOR, bgColor);
+   ObjectSet(rowBgName, OBJPROP_WIDTH, 1);
+   ObjectSet(rowBgName, OBJPROP_BACK, false);
+   ObjectSet(rowBgName, OBJPROP_SELECTABLE, false);
+#endif
+   
+   SaveObjectName(rowBgName, g_TableNames, g_TableObjectCount);
+}
+
+//+------------------------------------------------------------------+
+//| 行のデータを表示 (MQL4/MQL5共通)                                 |
+//+------------------------------------------------------------------+
+void DisplayRowData(string tablePrefix, int row, int x, int y, PositionInfo &pos, int &positions[])
+{
+   string rowPrefix = tablePrefix + "Row_" + IntegerToString(row);
+   color textColorToUse = pos.isGhost ? TABLE_GHOST_COLOR : TABLE_TEXT_COLOR;
+   
+   // No.
+   CreateTableCell(rowPrefix + "_No", IntegerToString(row + 1), x + positions[0], y + 4, textColorToUse);
+   
+   // Type
+   string typeText = (pos.type == OP_BUY) ? "Buy" : "Sell";
+   if(pos.isGhost) typeText = "G " + typeText;
+   
+   color typeColor = (pos.type == OP_BUY) ? TABLE_BUY_COLOR : TABLE_SELL_COLOR;
+   if(pos.isGhost)
+   {
+      typeColor = (pos.type == OP_BUY) ? 
+                  ColorDarken(TABLE_BUY_COLOR, 60) : ColorDarken(TABLE_SELL_COLOR, 60);
+   }
+   
+   CreateTableCell(rowPrefix + "_Type", typeText, x + positions[1], y + 4, typeColor);
+   
+   // Lots
+   CreateTableCell(rowPrefix + "_Lots", DoubleToString(pos.lots, 2), x + positions[2], y + 4, textColorToUse);
+   
+   // Symbol
+   CreateTableCell(rowPrefix + "_Symbol", pos.symbol, x + positions[3], y + 4, textColorToUse);
+   
+   // Price
+   string priceStr = FormatPrice(pos.symbol, pos.price);
+   CreateTableCell(rowPrefix + "_Price", priceStr, x + positions[4], y + 4, textColorToUse);
+   
+   // OpenTime
+   string timeStr = TimeToString(pos.openTime, TIME_DATE|TIME_MINUTES);
+   CreateTableCell(rowPrefix + "_OpenTime", timeStr, x + positions[5], y + 4, textColorToUse);
+   
+   // Level
+   CreateTableCell(rowPrefix + "_Level", IntegerToString(pos.level + 1), x + positions[6], y + 4, textColorToUse);
+   
+   // Profit
+   double profit = CalculatePositionProfit(pos);
+   color profitColor = profit >= 0 ? clrLime : clrRed;
+   if(pos.isGhost)
+   {
+      profitColor = profit >= 0 ? clrForestGreen : clrFireBrick;
+   }
+   
+   CreateTableCell(rowPrefix + "_Profit", DoubleToStr(profit, 2), x + positions[7], y + 4, profitColor);
+}
+
+//+------------------------------------------------------------------+
+//| テーブルセルを作成 (MQL4/MQL5共通)                               |
+//+------------------------------------------------------------------+
+void CreateTableCell(string name, string text, int x, int y, color textColor)
+{
+#ifdef __MQL5__
+   ObjectCreate(0, name, OBJ_LABEL, 0, 0, 0);
+   ObjectSetInteger(0, name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetInteger(0, name, OBJPROP_XDISTANCE, x);
+   ObjectSetInteger(0, name, OBJPROP_YDISTANCE, y);
+   ObjectSetString(0, name, OBJPROP_TEXT, text);
+   ObjectSetString(0, name, OBJPROP_FONT, "MS Gothic");
+   ObjectSetInteger(0, name, OBJPROP_FONTSIZE, 8);
+   ObjectSetInteger(0, name, OBJPROP_COLOR, textColor);
+   ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
+   ObjectSetInteger(0, name, OBJPROP_ZORDER, 3);
+#else
+   ObjectCreate(name, OBJ_LABEL, 0, 0, 0);
+   ObjectSet(name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSet(name, OBJPROP_XDISTANCE, x);
+   ObjectSet(name, OBJPROP_YDISTANCE, y);
+   ObjectSetText(name, text, 8, "MS Gothic", textColor);
+   ObjectSet(name, OBJPROP_SELECTABLE, false);
+#endif
+   
+   SaveObjectName(name, g_TableNames, g_TableObjectCount);
+}
+
+//+------------------------------------------------------------------+
+//| 価格をフォーマット (MQL4/MQL5共通)                               |
+//+------------------------------------------------------------------+
+string FormatPrice(string symbol, double price)
+{
+   if(StringFind(symbol, "JPY") >= 0)
+      return DoubleToString(price, 3);
+   else if(StringFind(symbol, "XAU") >= 0)
+      return DoubleToString(price, 2);
+   else
+      return DoubleToString(price, 5);
+}
+
+//+------------------------------------------------------------------+
+//| ポジション損益を計算 (MQL4/MQL5共通)                             |
+//+------------------------------------------------------------------+
+double CalculatePositionProfit(PositionInfo &pos)
+{
+   if(pos.isGhost)
+   {
+      // ゴーストの場合は仮想損益を計算
+      double currentPrice = (pos.type == OP_BUY) ? GetBidPrice() : GetAskPrice();
+      double tickValue = 0;
       
-      // No.
-      string noName = tablePrefix + "Row_" + IntegerToString(i) + "_No";
-      ObjectCreate(noName, OBJ_LABEL, 0, 0, 0);
-      ObjectSet(noName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-      ObjectSet(noName, OBJPROP_XDISTANCE, adjustedTableX + positions[0]);
-      ObjectSet(noName, OBJPROP_YDISTANCE, rowY + 4);
-      ObjectSetText(noName, IntegerToString(i+1), 8, "MS Gothic", textColorToUse);
-      ObjectSet(noName, OBJPROP_SELECTABLE, false);
-      ObjectSetInteger(0, noName, OBJPROP_ZORDER, 3);
+#ifdef __MQL5__
+      tickValue = SymbolInfoDouble(Symbol(), SYMBOL_TRADE_TICK_VALUE);
+#else
+      tickValue = MarketInfo(Symbol(), MODE_TICKVALUE);
+#endif
       
-      // Type
-      string typeText = (allPositions[i].type == OP_BUY) ? "Buy" : "Sell";
-      
-      // タイプがGhostの場合はGhostであることを示す
-      if(allPositions[i].isGhost) {
-         typeText = "G " + typeText; // G for Ghost
+      if(pos.type == OP_BUY)
+      {
+         return (currentPrice - pos.price) * pos.lots * tickValue / Point;
       }
-      
-      color typeColor = (allPositions[i].type == OP_BUY) ? TABLE_BUY_COLOR : TABLE_SELL_COLOR;
-      if(allPositions[i].isGhost) {
-         // ゴーストの場合は少し暗い色に
-         typeColor = (allPositions[i].type == OP_BUY) ? 
-                     ColorDarken(TABLE_BUY_COLOR, 60) : ColorDarken(TABLE_SELL_COLOR, 60);
-      }
-      
-      string typeName = tablePrefix + "Row_" + IntegerToString(i) + "_Type";
-      ObjectCreate(typeName, OBJ_LABEL, 0, 0, 0);
-      ObjectSet(typeName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-      ObjectSet(typeName, OBJPROP_XDISTANCE, adjustedTableX + positions[1]);
-      ObjectSet(typeName, OBJPROP_YDISTANCE, rowY + 4);
-      ObjectSetText(typeName, typeText, 8, "MS Gothic", typeColor);
-      ObjectSet(typeName, OBJPROP_SELECTABLE, false);
-      ObjectSetInteger(0, typeName, OBJPROP_ZORDER, 3);
-      
-      // Lots
-      string lotsName = tablePrefix + "Row_" + IntegerToString(i) + "_Lots";
-      ObjectCreate(lotsName, OBJ_LABEL, 0, 0, 0);
-      ObjectSet(lotsName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-      ObjectSet(lotsName, OBJPROP_XDISTANCE, adjustedTableX + positions[2]);
-      ObjectSet(lotsName, OBJPROP_YDISTANCE, rowY + 4);
-      ObjectSetText(lotsName, DoubleToString(allPositions[i].lots, 2), 8, "MS Gothic", textColorToUse);
-      ObjectSet(lotsName, OBJPROP_SELECTABLE, false);
-      ObjectSetInteger(0, lotsName, OBJPROP_ZORDER, 3);
-      
-      // Symbol
-      string symbolName = tablePrefix + "Row_" + IntegerToString(i) + "_Symbol";
-      ObjectCreate(symbolName, OBJ_LABEL, 0, 0, 0);
-      ObjectSet(symbolName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-      ObjectSet(symbolName, OBJPROP_XDISTANCE, adjustedTableX + positions[3]);
-      ObjectSet(symbolName, OBJPROP_YDISTANCE, rowY + 4);
-      ObjectSetText(symbolName, allPositions[i].symbol, 8, "MS Gothic", textColorToUse);
-      ObjectSet(symbolName, OBJPROP_SELECTABLE, false);
-      ObjectSetInteger(0, symbolName, OBJPROP_ZORDER, 3);
-      
-      // Price
-      string priceStr = "";
-      if(StringFind(allPositions[i].symbol, "JPY") >= 0)
-         priceStr = DoubleToString(allPositions[i].price, 3);
-      else if(StringFind(allPositions[i].symbol, "XAU") >= 0)
-         priceStr = DoubleToString(allPositions[i].price, 2);
       else
-         priceStr = DoubleToString(allPositions[i].price, 5);
-         
-      string priceName = tablePrefix + "Row_" + IntegerToString(i) + "_Price";
-      ObjectCreate(priceName, OBJ_LABEL, 0, 0, 0);
-      ObjectSet(priceName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-      ObjectSet(priceName, OBJPROP_XDISTANCE, adjustedTableX + positions[4]);
-      ObjectSet(priceName, OBJPROP_YDISTANCE, rowY + 4);
-      ObjectSetText(priceName, priceStr, 8, "MS Gothic", textColorToUse);
-      ObjectSet(priceName, OBJPROP_SELECTABLE, false);
-      ObjectSetInteger(0, priceName, OBJPROP_ZORDER, 3);
-      
-      // OpenTime
-      string timeStr = TimeToString(allPositions[i].openTime, TIME_DATE|TIME_MINUTES);
-      string timeName = tablePrefix + "Row_" + IntegerToString(i) + "_OpenTime";
-      ObjectCreate(timeName, OBJ_LABEL, 0, 0, 0);
-      ObjectSet(timeName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-      ObjectSet(timeName, OBJPROP_XDISTANCE, adjustedTableX + positions[5]);
-      ObjectSet(timeName, OBJPROP_YDISTANCE, rowY + 4);
-      ObjectSetText(timeName, timeStr, 8, "MS Gothic", textColorToUse);
-      ObjectSet(timeName, OBJPROP_SELECTABLE, false);
-      ObjectSetInteger(0, timeName, OBJPROP_ZORDER, 3);
-      
-      // Level - 修正: レベルは1から始まる表示に変更
-      string levelName = tablePrefix + "Row_" + IntegerToString(i) + "_Level";
-      ObjectCreate(levelName, OBJ_LABEL, 0, 0, 0);
-      ObjectSet(levelName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-      ObjectSet(levelName, OBJPROP_XDISTANCE, adjustedTableX + positions[6]);
-      ObjectSet(levelName, OBJPROP_YDISTANCE, rowY + 4);
-      ObjectSetText(levelName, IntegerToString(allPositions[i].level + 1), 8, "MS Gothic", textColorToUse);
-      ObjectSet(levelName, OBJPROP_SELECTABLE, false);
-      ObjectSetInteger(0, levelName, OBJPROP_ZORDER, 3);
-      
-      // Profit
-      string profitName = tablePrefix + "Row_" + IntegerToString(i) + "_Profit";
-      ObjectCreate(profitName, OBJ_LABEL, 0, 0, 0);
-      ObjectSet(profitName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-      ObjectSet(profitName, OBJPROP_XDISTANCE, adjustedTableX + positions[7]);
-      ObjectSet(profitName, OBJPROP_YDISTANCE, rowY + 4);
-      
-      // 損益の計算
-      double profit = 0;
-      if(allPositions[i].isGhost) {
-         // ゴーストの場合は仮想損益を計算
-         if(allPositions[i].type == OP_BUY) {
-            profit = (GetBidPrice() - allPositions[i].price) * allPositions[i].lots * MarketInfo(Symbol(), MODE_TICKVALUE) / Point;
-         } else {
-            profit = (allPositions[i].price - GetAskPrice()) * allPositions[i].lots * MarketInfo(Symbol(), MODE_TICKVALUE) / Point;
-         }
-      } else {
-         // リアルポジションの場合は実際の損益を取得
-         for(int j = OrdersTotal() - 1; j >= 0; j--) {
-            if(OrderSelect(j, SELECT_BY_POS, MODE_TRADES)) {
-               if(OrderTicket() == allPositions[i].ticket) {
-                  profit = OrderProfit() + OrderSwap() + OrderCommission();
-                  break;
-               }
+      {
+         return (pos.price - currentPrice) * pos.lots * tickValue / Point;
+      }
+   }
+   else
+   {
+      // リアルポジションの場合は実際の損益を取得
+#ifdef __MQL5__
+      if(PositionSelectByTicket(pos.ticket))
+      {
+         return PositionGetDouble(POSITION_PROFIT) + PositionGetDouble(POSITION_SWAP);
+      }
+#else
+      for(int i = OrdersTotal() - 1; i >= 0; i--)
+      {
+         if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+         {
+            if(OrderTicket() == pos.ticket)
+            {
+               return OrderProfit() + OrderSwap() + OrderCommission();
             }
          }
       }
-      
-      // 損益表示の色
-      color profitColor = profit >= 0 ? clrLime : clrRed;
-      if(allPositions[i].isGhost) {
-         // ゴーストの場合は暗い色に
-         profitColor = profit >= 0 ? clrForestGreen : clrFireBrick;
-      }
-      
-      ObjectSetText(profitName, DoubleToStr(profit, 2) + "", 8, "MS Gothic", profitColor);
-      ObjectSet(profitName, OBJPROP_SELECTABLE, false);
-      ObjectSetInteger(0, profitName, OBJPROP_ZORDER, 3);
-      
-      // オブジェクト名を保存
-      SaveObjectName(rowBgName, g_TableNames, g_TableObjectCount);
-      SaveObjectName(noName, g_TableNames, g_TableObjectCount);
-      SaveObjectName(typeName, g_TableNames, g_TableObjectCount);
-      SaveObjectName(lotsName, g_TableNames, g_TableObjectCount);
-      SaveObjectName(symbolName, g_TableNames, g_TableObjectCount);
-      SaveObjectName(priceName, g_TableNames, g_TableObjectCount);
-      SaveObjectName(timeName, g_TableNames, g_TableObjectCount);
-      SaveObjectName(levelName, g_TableNames, g_TableObjectCount);
-      SaveObjectName(profitName, g_TableNames, g_TableObjectCount);
+#endif
    }
    
-   // 合計損益の計算と表示
+   return 0;
+}
+
+//+------------------------------------------------------------------+
+//| 合計損益を表示 (MQL4/MQL5共通)                                   |
+//+------------------------------------------------------------------+
+void DisplayTotalProfit(string tablePrefix, int x, int y, int visibleRows, int &positions[])
+{
+   // 合計損益の計算
    double totalBuyProfit = CalculateCombinedProfit(OP_BUY);
    double totalSellProfit = CalculateCombinedProfit(OP_SELL);
    double totalProfit = totalBuyProfit + totalSellProfit;
    
-   // 合計損益行の背景
-   string totalRowBgName = tablePrefix + "Row_Total_BG";
-   ObjectCreate(totalRowBgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
-   ObjectSet(totalRowBgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSet(totalRowBgName, OBJPROP_XDISTANCE, adjustedTableX);
-   ObjectSet(totalRowBgName, OBJPROP_YDISTANCE, adjustedTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (visibleRows + 1));
-   ObjectSet(totalRowBgName, OBJPROP_XSIZE, TABLE_WIDTH);
-   ObjectSet(totalRowBgName, OBJPROP_YSIZE, TABLE_ROW_HEIGHT);
-   ObjectSet(totalRowBgName, OBJPROP_BGCOLOR, C'48,48,64');
-   ObjectSet(totalRowBgName, OBJPROP_BORDER_TYPE, BORDER_FLAT);
-   ObjectSet(totalRowBgName, OBJPROP_COLOR, C'48,48,64');
-   ObjectSet(totalRowBgName, OBJPROP_WIDTH, 1);
-   ObjectSet(totalRowBgName, OBJPROP_BACK, false);
-   ObjectSet(totalRowBgName, OBJPROP_SELECTABLE, false);
-   ObjectSetInteger(0, totalRowBgName, OBJPROP_ZORDER, 1);
+   int totalRowY = y + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (visibleRows + 1);
+   
+   // 合計行の背景
+   CreateRowBackground(tablePrefix + "_Total", 0, x, totalRowY, C'48,48,64');
    
    // 合計テキスト
-   string totalTextName = tablePrefix + "Row_Total_Text";
-   ObjectCreate(totalTextName, OBJ_LABEL, 0, 0, 0);
-   ObjectSet(totalTextName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSet(totalTextName, OBJPROP_XDISTANCE, adjustedTableX + positions[0]);
-   ObjectSet(totalTextName, OBJPROP_YDISTANCE, adjustedTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (visibleRows + 1) + 4);
-   ObjectSetText(totalTextName, "TOTAL:", 8, "MS Gothic Bold", TABLE_TEXT_COLOR);
-   ObjectSet(totalTextName, OBJPROP_SELECTABLE, false);
-   ObjectSetInteger(0, totalTextName, OBJPROP_ZORDER, 3);
+   CreateTableCell(tablePrefix + "Row_Total_Text", "TOTAL:", x + positions[0], totalRowY + 4, TABLE_TEXT_COLOR);
    
    // Buy合計
-   string buyTotalName = tablePrefix + "Row_BuyTotal";
-   ObjectCreate(buyTotalName, OBJ_LABEL, 0, 0, 0);
-   ObjectSet(buyTotalName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSet(buyTotalName, OBJPROP_XDISTANCE, adjustedTableX + positions[2]);
-   ObjectSet(buyTotalName, OBJPROP_YDISTANCE, adjustedTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (visibleRows + 1) + 4);
    color buyColor = totalBuyProfit >= 0 ? clrLime : clrRed;
-   ObjectSetText(buyTotalName, "BUY: " + DoubleToStr(totalBuyProfit, 2) + "", 8, "MS Gothic", buyColor);
-   ObjectSet(buyTotalName, OBJPROP_SELECTABLE, false);
-   ObjectSetInteger(0, buyTotalName, OBJPROP_ZORDER, 3);
+   CreateTableCell(tablePrefix + "Row_BuyTotal", "BUY: " + DoubleToStr(totalBuyProfit, 2), 
+                   x + positions[2], totalRowY + 4, buyColor);
    
    // Sell合計
-   string sellTotalName = tablePrefix + "Row_SellTotal";
-   ObjectCreate(sellTotalName, OBJ_LABEL, 0, 0, 0);
-   ObjectSet(sellTotalName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSet(sellTotalName, OBJPROP_XDISTANCE, adjustedTableX + positions[4]);
-   ObjectSet(sellTotalName, OBJPROP_YDISTANCE, adjustedTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (visibleRows + 1) + 4);
    color sellColor = totalSellProfit >= 0 ? clrLime : clrRed;
-   ObjectSetText(sellTotalName, "SELL: " +DoubleToStr(totalSellProfit, 2) + "", 8, "MS Gothic", sellColor);
-   ObjectSet(sellTotalName, OBJPROP_SELECTABLE, false);
-   ObjectSetInteger(0, sellTotalName, OBJPROP_ZORDER, 3);
+   CreateTableCell(tablePrefix + "Row_SellTotal", "SELL: " + DoubleToStr(totalSellProfit, 2),
+                   x + positions[4], totalRowY + 4, sellColor);
    
    // 総合計
-   string netTotalName = tablePrefix + "Row_NetTotal";
-   ObjectCreate(netTotalName, OBJ_LABEL, 0, 0, 0);
-   ObjectSet(netTotalName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSet(netTotalName, OBJPROP_XDISTANCE, adjustedTableX + positions[7]);
-   ObjectSet(netTotalName, OBJPROP_YDISTANCE, adjustedTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (visibleRows + 1) + 4);
    color totalColor = totalProfit >= 0 ? clrLime : clrRed;
-   ObjectSetText(netTotalName, "NET: " + DoubleToStr(totalProfit, 2) + "", 8, "MS Gothic Bold", totalColor);
-   ObjectSet(netTotalName, OBJPROP_SELECTABLE, false);
-   ObjectSetInteger(0, netTotalName, OBJPROP_ZORDER, 3);
-   
-   // オブジェクト名を保存
-   SaveObjectName(totalRowBgName, g_TableNames, g_TableObjectCount);
-   SaveObjectName(totalTextName, g_TableNames, g_TableObjectCount);
-   SaveObjectName(buyTotalName, g_TableNames, g_TableObjectCount);
-   SaveObjectName(sellTotalName, g_TableNames, g_TableObjectCount);
-   SaveObjectName(netTotalName, g_TableNames, g_TableObjectCount);
-   
-   // 背景のサイズを調整
+   CreateTableCell(tablePrefix + "Row_NetTotal", "NET: " + DoubleToStr(totalProfit, 2),
+                   x + positions[7], totalRowY + 4, totalColor);
+}
+
+//+------------------------------------------------------------------+
+//| テーブル背景を更新 (MQL4/MQL5共通)                               |
+//+------------------------------------------------------------------+
+void UpdateTableBackground(string tablePrefix, int height)
+{
    string bgName = tablePrefix + "BG";
+   
    if(ObjectFind(bgName) >= 0)
    {
-      int bgHeight = TITLE_HEIGHT + TABLE_ROW_HEIGHT * (visibleRows + 2);
-      ObjectSet(bgName, OBJPROP_YSIZE, bgHeight);
+#ifdef __MQL5__
+      ObjectSetInteger(0, bgName, OBJPROP_YSIZE, height);
+#else
+      ObjectSet(bgName, OBJPROP_YSIZE, height);
+#endif
    }
-   
-   ChartRedraw();
 }
+
 //+------------------------------------------------------------------+
-//| ポジションテーブルを削除する                                       |
+//| ポジションテーブルを削除する (MQL4/MQL5共通)                     |
 //+------------------------------------------------------------------+
 void DeletePositionTable()
 {
@@ -692,226 +801,5 @@ void DeletePositionTable()
    }
    
    g_TableObjectCount = 0;
-   ChartRedraw(); // チャートを再描画
-}
-
-
-
-
-//+------------------------------------------------------------------+
-//| カスタム色テーブルを表示するための補助関数                         |
-//+------------------------------------------------------------------+
-void ShowColorLegend()
-{
-string tablePrefix = g_ObjectPrefix + "Legend_";
-int legendX = PanelX + PANEL_WIDTH + 10;
-int legendY = PanelY;
-int legendWidth = 150;
-int legendHeight = 120;
-int rowHeight = 20;
-
-// 背景
-string bgName = tablePrefix + "BG";
-ObjectCreate(bgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
-ObjectSet(bgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-ObjectSet(bgName, OBJPROP_XDISTANCE, legendX);
-ObjectSet(bgName, OBJPROP_YDISTANCE, legendY);
-ObjectSet(bgName, OBJPROP_XSIZE, legendWidth);
-ObjectSet(bgName, OBJPROP_YSIZE, legendHeight);
-ObjectSet(bgName, OBJPROP_BGCOLOR, C'16,16,24');
-ObjectSet(bgName, OBJPROP_BORDER_TYPE, BORDER_FLAT);
-ObjectSet(bgName, OBJPROP_COLOR, C'64,64,96');
-ObjectSet(bgName, OBJPROP_WIDTH, 1);
-ObjectSet(bgName, OBJPROP_BACK, false);
-ObjectSet(bgName, OBJPROP_SELECTABLE, false);
-
-// タイトル背景
-string titleBgName = tablePrefix + "TitleBG";
-ObjectCreate(titleBgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
-ObjectSet(titleBgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-ObjectSet(titleBgName, OBJPROP_XDISTANCE, legendX);
-ObjectSet(titleBgName, OBJPROP_YDISTANCE, legendY);
-ObjectSet(titleBgName, OBJPROP_XSIZE, legendWidth);
-ObjectSet(titleBgName, OBJPROP_YSIZE, rowHeight);
-ObjectSet(titleBgName, OBJPROP_BGCOLOR, C'32,32,48');
-ObjectSet(titleBgName, OBJPROP_BORDER_TYPE, BORDER_FLAT);
-ObjectSet(titleBgName, OBJPROP_COLOR, C'32,32,48');
-ObjectSet(titleBgName, OBJPROP_WIDTH, 1);
-ObjectSet(titleBgName, OBJPROP_BACK, false);
-ObjectSet(titleBgName, OBJPROP_SELECTABLE, false);
-
-// タイトルテキスト
-string titleName = tablePrefix + "Title";
-ObjectCreate(titleName, OBJ_LABEL, 0, 0, 0);
-ObjectSet(titleName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-ObjectSet(titleName, OBJPROP_XDISTANCE, legendX + 10);
-ObjectSet(titleName, OBJPROP_YDISTANCE, legendY + 4);
-ObjectSetText(titleName, "Legend", 8, "Arial Bold", TABLE_TEXT_COLOR);
-ObjectSet(titleName, OBJPROP_SELECTABLE, false);
-
-// 凡例項目
-string items[4];
-color itemColors[4];
-
-// 配列の初期化を別途行う（定数式による初期化ではなく、実行時に値を設定）
-items[0] = "リアル Buy";
-items[1] = "リアル Sell";
-items[2] = "ゴースト Buy";
-items[3] = "ゴースト Sell";
-
-itemColors[0] = TABLE_BUY_COLOR;
-itemColors[1] = TABLE_SELL_COLOR;
-itemColors[2] = ColorDarken(TABLE_BUY_COLOR, 60);
-itemColors[3] = ColorDarken(TABLE_SELL_COLOR, 60);
-
-for(int i = 0; i < 4; i++)
-{
-   // 行背景
-   string rowBgName = tablePrefix + "Row" + IntegerToString(i) + "_BG";
-   ObjectCreate(rowBgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
-   ObjectSet(rowBgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSet(rowBgName, OBJPROP_XDISTANCE, legendX);
-   ObjectSet(rowBgName, OBJPROP_YDISTANCE, legendY + rowHeight * (i + 1));
-   ObjectSet(rowBgName, OBJPROP_XSIZE, legendWidth);
-   ObjectSet(rowBgName, OBJPROP_YSIZE, rowHeight);
-   ObjectSet(rowBgName, OBJPROP_BGCOLOR, (i % 2 == 0) ? TABLE_ROW_BG1 : TABLE_ROW_BG2);
-   ObjectSet(rowBgName, OBJPROP_BORDER_TYPE, BORDER_FLAT);
-   ObjectSet(rowBgName, OBJPROP_COLOR, (i % 2 == 0) ? TABLE_ROW_BG1 : TABLE_ROW_BG2);
-   ObjectSet(rowBgName, OBJPROP_WIDTH, 1);
-   ObjectSet(rowBgName, OBJPROP_BACK, false);
-   ObjectSet(rowBgName, OBJPROP_SELECTABLE, false);
-   
-   // 色サンプル
-   string colorBoxName = tablePrefix + "Row" + IntegerToString(i) + "_Color";
-   ObjectCreate(colorBoxName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
-   ObjectSet(colorBoxName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSet(colorBoxName, OBJPROP_XDISTANCE, legendX + 10);
-   ObjectSet(colorBoxName, OBJPROP_YDISTANCE, legendY + rowHeight * (i + 1) + 4);
-   ObjectSet(colorBoxName, OBJPROP_XSIZE, 12);
-   ObjectSet(colorBoxName, OBJPROP_YSIZE, 12);
-   ObjectSet(colorBoxName, OBJPROP_BGCOLOR, itemColors[i]);
-   ObjectSet(colorBoxName, OBJPROP_BORDER_TYPE, BORDER_FLAT);
-   ObjectSet(colorBoxName, OBJPROP_COLOR, itemColors[i]);
-   ObjectSet(colorBoxName, OBJPROP_WIDTH, 1);
-   ObjectSet(colorBoxName, OBJPROP_BACK, false);
-   ObjectSet(colorBoxName, OBJPROP_SELECTABLE, false);
-   
-   // テキスト
-   string textName = tablePrefix + "Row" + IntegerToString(i) + "_Text";
-   ObjectCreate(textName, OBJ_LABEL, 0, 0, 0);
-   ObjectSet(textName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSet(textName, OBJPROP_XDISTANCE, legendX + 30);
-   ObjectSet(textName, OBJPROP_YDISTANCE, legendY + rowHeight * (i + 1) + 4);
-   ObjectSetText(textName, items[i], 8, "Arial", TABLE_TEXT_COLOR);
-   ObjectSet(textName, OBJPROP_SELECTABLE, false);
-   
-   // オブジェクト名を保存（必要に応じて）
-   SaveObjectName(rowBgName, g_TableNames, g_TableObjectCount);
-   SaveObjectName(colorBoxName, g_TableNames, g_TableObjectCount);
-   SaveObjectName(textName, g_TableNames, g_TableObjectCount);
-}
-
-// 凡例オブジェクト名を保存
-SaveObjectName(bgName, g_TableNames, g_TableObjectCount);
-SaveObjectName(titleBgName, g_TableNames, g_TableObjectCount);
-SaveObjectName(titleName, g_TableNames, g_TableObjectCount);
-}
-
-//+------------------------------------------------------------------+
-//| ポジション情報表示のための補助関数 - ポップアップスタイル          |
-//+------------------------------------------------------------------+
-void ShowPositionDetails(int index, PositionInfo &pos)
-{
-string tablePrefix = g_ObjectPrefix + "Details_";
-int detailsX = 200;
-int detailsY = 200;
-int detailsWidth = 300;
-int rowHeight = 20;
-int padding = 10;
-
-// 詳細情報を構築
-string details = "";
-details += "Type: " + (pos.type == OP_BUY ? "Buy" : "Sell") + (pos.isGhost ? " (Ghost)" : " (Real)") + "\n";
-details += "Symbol: " + pos.symbol + "\n";
-details += "Lots: " + DoubleToString(pos.lots, 2) + "\n";
-details += "Price: " + DoubleToString(pos.price, Digits) + "\n";
-details += "Open Time: " + TimeToString(pos.openTime, TIME_DATE|TIME_SECONDS) + "\n";
-details += "Level: " + IntegerToString(pos.level + 1) + "\n";
-
-// 現在値と損益を計算
-double currentPrice = (pos.type == OP_BUY) ? GetBidPrice() : GetAskPrice();
-double profit = 0;
-
-if(pos.isGhost) {
-   // ゴーストの場合は仮想損益を計算
-   if(pos.type == OP_BUY) {
-      profit = (GetBidPrice() - pos.price) * pos.lots * MarketInfo(Symbol(), MODE_TICKVALUE) / Point;
-   } else {
-      profit = (pos.price - GetAskPrice()) * pos.lots * MarketInfo(Symbol(), MODE_TICKVALUE) / Point;
-   }
-} else {
-   // リアルポジションの場合は実際の損益を取得
-   if(OrderSelect(pos.ticket, SELECT_BY_TICKET)) {
-      profit = OrderProfit() + OrderSwap() + OrderCommission();
-   }
-}
-
-details += "Current Price: " + DoubleToString(currentPrice, Digits) + "\n";
-details += "Profit: " + DoubleToString(profit, 2) + "\n";
-
-// 追加の詳細情報（必要に応じて）
-if(!pos.isGhost && OrderSelect(pos.ticket, SELECT_BY_TICKET)) {
-   details += "Swap: " + DoubleToString(OrderSwap(), 2) + "\n";
-   details += "Commission: " + DoubleToString(OrderCommission(), 2) + "\n";
-}
-
-// ポップアップウィンドウを表示
-string title = "Position Details - " + (pos.type == OP_BUY ? "Buy" : "Sell") + " #" + IntegerToString(index + 1);
-int lines = StringFindCount(details, "\n") + 1;
-int detailsHeight = lines * rowHeight + padding * 2;
-
-// メッセージボックスとして表示
-MessageBox(details, title, MB_ICONINFORMATION);
-}
-
-//+------------------------------------------------------------------+
-//| 文字列内の特定の文字のカウント - 補助関数                        |
-//+------------------------------------------------------------------+
-int StringFindCount(string str, string find)
-{
-int count = 0;
-int pos = 0;
-
-while((pos = StringFind(str, find, pos)) != -1)
-{
-   count++;
-   pos++;
-}
-
-return count;
-}
-
-//+------------------------------------------------------------------+
-//| Hosopi 3のテーブル設定ダイアログを表示                            |
-//+------------------------------------------------------------------+
-void ShowTableSettingsDialog()
-{
-// ダイアログタイトル
-string title = "Hosopi 3 - テーブル設定";
-
-// ダイアログ内容を構築
-string message = "現在のテーブル設定:\n\n";
-
-message += "テーブルタイトル: " + GhostTableTitle + "\n";
-message += "テーブルX座標: " + IntegerToString(GhostTableX) + "\n";
-message += "テーブルY座標: " + IntegerToString(GhostTableY) + "\n";
-message += "更新間隔: " + IntegerToString(UpdateInterval) + "秒\n\n";
-
-message += "表示設定:\n";
-message += "Ghost情報表示: " + (GhostInfoDisplay == ON_MODE ? "ON" : "OFF") + "\n";
-message += "ポジションサイン表示: " + (PositionSignDisplay == ON_MODE ? "ON" : "OFF") + "\n";
-message += "平均取得価格ライン表示: " + (AveragePriceLine == ON_MODE ? "ON" : "OFF") + "\n";
-
-// メッセージボックスを表示
-MessageBox(message, title, MB_ICONINFORMATION);
+   ChartRedraw();
 }
