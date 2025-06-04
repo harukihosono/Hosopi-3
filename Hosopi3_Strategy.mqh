@@ -1695,7 +1695,6 @@ return strategyDetails;
 }
 
 
-// ProcessStrategyLogic関数を最適化する
 void ProcessStrategyLogic()
 {
    // バックテスト時のログ出力を最小限にする
@@ -1721,8 +1720,11 @@ void ProcessStrategyLogic()
       useGhostMode = false;
    }
 
+   // 【セクション: 常時エントリー戦略チェック】
+   bool isConstantEntryActive = IsConstantEntryEnabled();
+
    // 【セクション: 既存ポジションの管理】
-   if(hasRealBuy || hasRealSell)
+   if((hasRealBuy || hasRealSell) && !isConstantEntryActive)  // 常時エントリーの場合は除外
    {
       // ナンピン機能が有効な場合のみナンピン条件をチェック
       if(EnableNanpin)
@@ -1744,36 +1746,75 @@ void ProcessStrategyLogic()
          g_UseEvenOddHoursEntry = false;
       }
 
-      // ゴーストモードがONの場合
-      if(useGhostMode && EnableGhostEntry)
+      // 常時エントリー戦略の場合は、各方向個別にチェック
+      if(isConstantEntryActive)
       {
-         // エントリーモードに基づいてゴーストエントリー処理
-         if(EntryMode == MODE_BUY_ONLY || EntryMode == MODE_BOTH)
+         // Buy側のエントリー処理（既存ポジションがあってもチェック）
+         if((EntryMode == MODE_BUY_ONLY || EntryMode == MODE_BOTH) && !hasRealBuy)
          {
-            ProcessGhostEntries(0); // Buy側
+            if(useGhostMode && EnableGhostEntry)
+            {
+               ProcessGhostEntries(0); // Buy側
+            }
+            else
+            {
+               ProcessRealEntries(0); // Buy側
+            }
          }
 
-         if(EntryMode == MODE_SELL_ONLY || EntryMode == MODE_BOTH)
+         // Sell側のエントリー処理（既存ポジションがあってもチェック）
+         if((EntryMode == MODE_SELL_ONLY || EntryMode == MODE_BOTH) && !hasRealSell)
          {
-            ProcessGhostEntries(1); // Sell側
+            if(useGhostMode && EnableGhostEntry)
+            {
+               ProcessGhostEntries(1); // Sell側
+            }
+            else
+            {
+               ProcessRealEntries(1); // Sell側
+            }
+         }
+         
+         // ナンピン処理も行う
+         if(EnableNanpin)
+         {
+            if(hasRealBuy) CheckNanpinConditions(0);
+            if(hasRealSell) CheckNanpinConditions(1);
          }
       }
       else
       {
-         // エントリーモードに基づいてリアルエントリー処理
-         if(EntryMode == MODE_BUY_ONLY || EntryMode == MODE_BOTH)
+         // 通常のエントリー処理（既存のコード）
+         // ゴーストモードがONの場合
+         if(useGhostMode && EnableGhostEntry)
          {
-            ProcessRealEntries(0); // Buy側
-         }
+            // エントリーモードに基づいてゴーストエントリー処理
+            if(EntryMode == MODE_BUY_ONLY || EntryMode == MODE_BOTH)
+            {
+               ProcessGhostEntries(0); // Buy側
+            }
 
-         if(EntryMode == MODE_SELL_ONLY || EntryMode == MODE_BOTH)
+            if(EntryMode == MODE_SELL_ONLY || EntryMode == MODE_BOTH)
+            {
+               ProcessGhostEntries(1); // Sell側
+            }
+         }
+         else
          {
-            ProcessRealEntries(1); // Sell側
+            // エントリーモードに基づいてリアルエントリー処理
+            if(EntryMode == MODE_BUY_ONLY || EntryMode == MODE_BOTH)
+            {
+               ProcessRealEntries(0); // Buy側
+            }
+
+            if(EntryMode == MODE_SELL_ONLY || EntryMode == MODE_BOTH)
+            {
+               ProcessRealEntries(1); // Sell側
+            }
          }
       }
    }
 }
-
 //+------------------------------------------------------------------+
 //| 常時エントリー戦略のタイプ定義                                    |
 //+------------------------------------------------------------------+
@@ -1878,4 +1919,31 @@ else
 state += " (間隔制限なし)";
 
 return state;
+}
+
+
+//+------------------------------------------------------------------+
+//| 常時エントリー戦略が有効かどうかを判定                           |
+//+------------------------------------------------------------------+
+bool IsConstantEntryEnabled()
+{
+   return ConstantEntryStrategy != CONSTANT_ENTRY_DISABLED;
+}
+
+//+------------------------------------------------------------------+
+//| 常時エントリー戦略でBuy側が有効かチェック                         |
+//+------------------------------------------------------------------+
+bool IsConstantEntryBuyEnabled()
+{
+   return (ConstantEntryStrategy == CONSTANT_ENTRY_LONG || 
+           ConstantEntryStrategy == CONSTANT_ENTRY_BOTH);
+}
+
+//+------------------------------------------------------------------+
+//| 常時エントリー戦略でSell側が有効かチェック                        |
+//+------------------------------------------------------------------+
+bool IsConstantEntrySellEnabled()
+{
+   return (ConstantEntryStrategy == CONSTANT_ENTRY_SHORT || 
+           ConstantEntryStrategy == CONSTANT_ENTRY_BOTH);
 }

@@ -1068,10 +1068,9 @@ void ProcessRealEntries(int side)
       return;
    }
    
-   // ポジション保護モードのチェック
-   if(!IsEntryAllowedByProtectionMode(side))
-   {
-      Print("ProcessRealEntries: ポジション保護モードにより", direction, "側はスキップします");
+   // 常時エントリー戦略でない場合のみ、既存ポジションチェックを行う
+   if(existingCount > 0 && !IsConstantEntryEnabled()) {
+      Print("ProcessRealEntries: 既に", direction, "リアルポジションが存在するため、新規エントリーはスキップします");
       return;
    }
    

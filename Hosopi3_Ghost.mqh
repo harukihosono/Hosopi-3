@@ -2012,40 +2012,38 @@ void ProcessGhostEntries(int side)
 {
    string direction = (side == 0) ? "Buy" : "Sell";
   
+   // 常時エントリー戦略が有効かチェック
+   bool isConstantEntryActive = (ConstantEntryStrategy != CONSTANT_ENTRY_DISABLED);
 
    // リアルポジションがある場合はスキップ - 同一タイプのみチェックに変更
    int operationType = (side == 0) ? OP_BUY : OP_SELL;
    int existingCount = position_count(operationType);
 
-   if(existingCount > 0) {
-      
+   // 常時エントリー戦略でない場合のみ、既存ポジションチェックを行う
+   if(existingCount > 0 && !isConstantEntryActive) {
       return;
    }
 
    // ポジション保護モードのチェック
    if(!IsEntryAllowedByProtectionMode(side))
    {
-      
       return;
    }
    
    // 決済後インターバルチェック
    if(!IsCloseIntervalElapsed(side))
    {
-      
       return;
    }
    
    // ゴーストモードチェック
    if(!g_GhostMode) {
-      
       return;
    }
 
    // 決済済みフラグのチェック
    bool closedFlag = (operationType == OP_BUY) ? g_BuyGhostClosed : g_SellGhostClosed;
    if(closedFlag) {
-      
       return;
    }
 
@@ -2057,41 +2055,33 @@ void ProcessGhostEntries(int side)
       modeAllowed = (EntryMode == MODE_SELL_ONLY || EntryMode == MODE_BOTH);
 
    if(!modeAllowed) {
-      
       return;
    }
-
-   
 
    // ゴーストポジションの状態チェック
    int ghostCount = ghost_position_count(operationType);
    int totalPositionCount = combined_position_count(operationType);
 
-   
-
    // 新規エントリー条件
-   if(ghostCount == 0 && position_count(operationType) == 0)
+   if(ghostCount == 0 && existingCount == 0)  // 修正：同方向のリアルポジションのみチェック
    {
       // 初回エントリーの場合のみ時間チェックを追加
       if(!IsInitialEntryTimeAllowed(operationType))
       {
-         
          return;
       }
       
       // エントリー条件: インジケーターまたは時間
       bool indicatorSignal = CheckIndicatorSignals(side);
       
-      // 方向フィルタリングをここで適用 (追加)
+      // 方向フィルタリングをここで適用
       bool directionAllowed = false;
       if(side == 0) // Buy
          directionAllowed = (EntryMode == MODE_BUY_ONLY || EntryMode == MODE_BOTH);
       else // Sell
          directionAllowed = (EntryMode == MODE_SELL_ONLY || EntryMode == MODE_BOTH);
       
-      
-      
-      // いずれかの条件が満たされればエントリー (修正)
+      // いずれかの条件が満たされればエントリー
       bool shouldEnter = indicatorSignal && directionAllowed;
       
       string reason = "";
@@ -2099,17 +2089,14 @@ void ProcessGhostEntries(int side)
       if(directionAllowed) reason += "方向OK ";
       
       if(shouldEnter) {
-        
          InitializeGhostPosition(operationType, reason);
       } 
    }
    // ナンピン条件チェック - ここは時間制限の影響を受けない
    else if(ghostCount > 0 && EnableNanpin) {
-      
       CheckGhostNanpinCondition(operationType);
    }
 }
-
 
 
 //+------------------------------------------------------------------+
