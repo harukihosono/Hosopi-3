@@ -121,10 +121,6 @@ enum NANPIN_SKIP {
  #define MODE_TRADES MODE_TRADES
  #define SELECT_BY_POS 0
  #define SELECT_BY_TICKET 1
- #define MODE_SMA MA_SMA
- #define MODE_EMA MA_EMA
- #define MODE_SMMA MA_SMMA
- #define MODE_LWMA MA_LWMA
  #define PRICE_CLOSE PRICE_CLOSE
  #endif
  
