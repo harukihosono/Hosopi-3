@@ -24,6 +24,18 @@ double GetBidPrice()
    return last_tick.bid;
 }
 
+// MQL5での有効証拠金取得
+double GetAccountEquity()
+{
+   return AccountInfoDouble(ACCOUNT_EQUITY);
+}
+
+// MQL5でのテスト中判定
+bool IsTestingMode()
+{
+   return MQLInfoInteger(MQL_TESTER) || MQLInfoInteger(MQL_VISUAL_MODE);
+}
+
 #else
 // MQL4での価格取得関数
 double GetAskPrice()
@@ -35,9 +47,19 @@ double GetBidPrice()
 {
    return Bid;
 }
+
+// MQL4での有効証拠金取得
+double GetAccountEquity()
+{
+   return AccountEquity();
+}
+
+// MQL4でのテスト中判定
+bool IsTestingMode()
+{
+   return IsTesting();
+}
 #endif
-
-
 
 // IsEquitySufficientCached 関数の高速化（バックテスト時のキャッシュ期間延長）
 bool IsEquitySufficientCached()
@@ -49,7 +71,7 @@ bool IsEquitySufficientCached()
    datetime currentTime = TimeCurrent();
    
    // バックテスト中の場合は、より長い間隔でキャッシュを利用
-   int cacheInterval = IsTesting() ? 3600 : 60; // バックテスト中は1時間、通常は1分
+   int cacheInterval = IsTestingMode() ? 3600 : 60; // バックテスト中は1時間、通常は1分
    
    // 前回のチェックから一定時間経過していない場合はキャッシュを使用
    if(currentTime - g_LastEquityCheckTime < cacheInterval)
@@ -61,7 +83,7 @@ bool IsEquitySufficientCached()
    g_LastEquityCheckTime = currentTime;
    
    // 現在の有効証拠金を取得
-   double currentEquity = AccountEquity();
+   double currentEquity = GetAccountEquity();
    
    // 最低有効証拠金チェック
    g_EquitySufficientCache = (currentEquity >= MinimumEquity);
@@ -74,8 +96,6 @@ bool IsEquitySufficientCached()
    
    return g_EquitySufficientCache;
 }
-
-
 
 //+------------------------------------------------------------------+
 //| ポジションエントリー関数（最適化版）                               |
@@ -347,28 +367,44 @@ double GetLastPositionPrice(int type)
    double lastPrice = 0;
    datetime lastTime = 0;
    
-   
-   
-   // このEAが管理するポジションのみを対象に
+   #ifdef __MQL5__
+   // MQL5でのポジション価格取得
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      ulong ticket = PositionGetTicket(i);
+      if(ticket > 0)
+      {
+         if(PositionGetString(POSITION_SYMBOL) == Symbol() &&
+            PositionGetInteger(POSITION_MAGIC) == MagicNumber &&
+            PositionGetInteger(POSITION_TYPE) == (type == 0 ? POSITION_TYPE_BUY : POSITION_TYPE_SELL))
+         {
+            datetime openTime = (datetime)PositionGetInteger(POSITION_TIME);
+            if(openTime > lastTime)
+            {
+               lastTime = openTime;
+               lastPrice = PositionGetDouble(POSITION_PRICE_OPEN);
+            }
+         }
+      }
+   }
+   #else
+   // MQL4でのポジション価格取得
    for(int i = OrdersTotal() - 1; i >= 0; i--)
    {
       if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
       {
          if(OrderType() == type && OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
          {
-                      
             // 最も新しいポジションを探す
             if(OrderOpenTime() > lastTime)
             {
                lastTime = OrderOpenTime();
                lastPrice = OrderOpenPrice();
-               
             }
          }
       }
    }
-   
- 
+   #endif
    
    return lastPrice;
 }

@@ -1,8 +1,135 @@
 //+------------------------------------------------------------------+
 //|                 Hosopi 3 - ユーティリティ関数                     |
 //|                         Copyright 2025                           |
+//|                    MQL4/MQL5 共通化バージョン                     |
 //+------------------------------------------------------------------+
 #include "Hosopi3_Defines.mqh"
+
+//+------------------------------------------------------------------+
+//| MQL4/MQL5 互換性のための定義                                      |
+//+------------------------------------------------------------------+
+#ifdef __MQL5__
+   #include <Trade\Trade.mqh>
+   #include <Trade\PositionInfo.mqh>
+   #include <Trade\OrderInfo.mqh>
+   CTrade         g_trade;
+   CPositionInfo  g_position;
+   COrderInfo     g_order;
+   
+   // MQL4互換の定義
+   #define OP_BUY  POSITION_TYPE_BUY
+   #define OP_SELL POSITION_TYPE_SELL
+   #define MODE_TRADES 0
+   #define SELECT_BY_POS 0
+   
+   // MQL5用の時間関数ラッパー
+   int TimeMonth(datetime time)
+   {
+      MqlDateTime dt;
+      TimeToStruct(time, dt);
+      return dt.mon;
+   }
+   
+   int TimeDay(datetime time)
+   {
+      MqlDateTime dt;
+      TimeToStruct(time, dt);
+      return dt.day;
+   }
+   
+   int TimeYear(datetime time)
+   {
+      MqlDateTime dt;
+      TimeToStruct(time, dt);
+      return dt.year;
+   }
+   
+   int TimeHour(datetime time)
+   {
+      MqlDateTime dt;
+      TimeToStruct(time, dt);
+      return dt.hour;
+   }
+   
+   int TimeMinute(datetime time)
+   {
+      MqlDateTime dt;
+      TimeToStruct(time, dt);
+      return dt.min;
+   }
+   
+   int TimeDayOfWeek(datetime time)
+   {
+      MqlDateTime dt;
+      TimeToStruct(time, dt);
+      return dt.day_of_week;
+   }
+   
+   // IsTesting関数のラッパー
+   bool IsTesting()
+   {
+      return (bool)MQLInfoInteger(MQL_TESTER);
+   }
+   
+   // MQL5用のOrdersTotal関数
+   int OrdersTotal_MQL5()
+   {
+      return PositionsTotal();
+   }
+   
+   // MQL5用のOrderSelect関数
+   bool OrderSelect_MQL5(int index, int select, int pool)
+   {
+      return g_position.SelectByIndex(index);
+   }
+   
+   // MQL5用のOrderType関数
+   int OrderType_MQL5()
+   {
+      return (int)g_position.PositionType();
+   }
+   
+   // MQL5用のOrderSymbol関数
+   string OrderSymbol_MQL5()
+   {
+      return g_position.Symbol();
+   }
+   
+   // MQL5用のOrderMagicNumber関数
+   long OrderMagicNumber_MQL5()
+   {
+      return g_position.Magic();
+   }
+   
+   // MQL5用のOrderOpenTime関数
+   datetime OrderOpenTime_MQL5()
+   {
+      return g_position.Time();
+   }
+   
+   // MQL5用のOrderLots関数
+   double OrderLots_MQL5()
+   {
+      return g_position.Volume();
+   }
+   
+   // MQL5用のOrderOpenPrice関数
+   double OrderOpenPrice_MQL5()
+   {
+      return g_position.PriceOpen();
+   }
+   
+   // 関数の再定義
+   #define OrdersTotal() OrdersTotal_MQL5()
+   #define OrderSelect(index, select, pool) OrderSelect_MQL5(index, select, pool)
+   #define OrderType() OrderType_MQL5()
+   #define OrderSymbol() OrderSymbol_MQL5()
+   #define OrderMagicNumber() OrderMagicNumber_MQL5()
+   #define OrderOpenTime() OrderOpenTime_MQL5()
+   #define OrderLots() OrderLots_MQL5()
+   #define OrderOpenPrice() OrderOpenPrice_MQL5()
+   
+#endif
 
 //+------------------------------------------------------------------+
 //| グローバル変数初期化                                              |
@@ -85,7 +212,10 @@ bool is_summer()
    if(month == 3)
    {
       // 3月の第2日曜日を計算
-      int firstSunday = (7 - TimeDay(StringToTime(StringFormat("%d.%d.1", TimeYear(now), month))) % 7) % 7 + 1;
+      string dateStr = StringFormat("%d.%d.1", TimeYear(now), month);
+      datetime firstDay = StringToTime(dateStr);
+      int firstDayOfWeek = TimeDayOfWeek(firstDay);
+      int firstSunday = (7 - firstDayOfWeek) % 7 + 1;
       int secondSunday = firstSunday + 7;
       
       if(day >= secondSunday)
@@ -97,7 +227,10 @@ bool is_summer()
    if(month == 11)
    {
       // 11月の第1日曜日を計算
-      int firstSunday = (7 - TimeDay(StringToTime(StringFormat("%d.%d.1", TimeYear(now), month))) % 7) % 7 + 1;
+      string dateStr = StringFormat("%d.%d.1", TimeYear(now), month);
+      datetime firstDay = StringToTime(dateStr);
+      int firstDayOfWeek = TimeDayOfWeek(firstDay);
+      int firstSunday = (7 - firstDayOfWeek) % 7 + 1;
       
       if(day < firstSunday)
       {
@@ -108,8 +241,6 @@ bool is_summer()
    
    return false;
 }
-
-
 
 //+------------------------------------------------------------------+
 //| オブジェクト名を保存                                               |
@@ -128,7 +259,7 @@ void SaveObjectName(string name, string &nameArray[], int &counter)
 //+------------------------------------------------------------------+
 color ColorDarken(color clr, int percent)
 {
-   // MQL4で色を分解・合成するための関数
+   // 色を分解・合成するための関数
    int r = (clr & 0xFF0000) >> 16;
    int g = (clr & 0x00FF00) >> 8;
    int b = (clr & 0x0000FF);
@@ -348,7 +479,6 @@ void InitializeLotTable()
    }
 }
 
-
 void InitializeNanpinSpreadTable()
 {
    // 個別指定が有効な場合
@@ -475,7 +605,6 @@ double CalculateRealAveragePrice(int type)
       return 0;
 }
 
-
 //+------------------------------------------------------------------+
 //| ポジション保護モードの確認関数 - 両建て強化対応版                 |
 //+------------------------------------------------------------------+
@@ -502,6 +631,7 @@ bool IsEntryAllowedByProtectionMode(int side)
    
    return true;
 }
+
 //+------------------------------------------------------------------+
 //| 決済後インターバルチェック関数                                    |
 //+------------------------------------------------------------------+
@@ -554,6 +684,7 @@ bool IsCloseIntervalElapsed(int side)
    
    return true;
 }
+
 //+------------------------------------------------------------------+
 //| ポジション保護モードのテキスト取得関数                             |
 //+------------------------------------------------------------------+
