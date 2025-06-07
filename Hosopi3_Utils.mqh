@@ -15,120 +15,6 @@
    CTrade         g_trade;
    CPositionInfo  g_position;
    COrderInfo     g_order;
-   
-   // MQL4互換の定義
-   #define OP_BUY  POSITION_TYPE_BUY
-   #define OP_SELL POSITION_TYPE_SELL
-   #define MODE_TRADES 0
-   #define SELECT_BY_POS 0
-   
-   // MQL5用の時間関数ラッパー
-   int TimeMonth(datetime time)
-   {
-      MqlDateTime dt;
-      TimeToStruct(time, dt);
-      return dt.mon;
-   }
-   
-   int TimeDay(datetime time)
-   {
-      MqlDateTime dt;
-      TimeToStruct(time, dt);
-      return dt.day;
-   }
-   
-   int TimeYear(datetime time)
-   {
-      MqlDateTime dt;
-      TimeToStruct(time, dt);
-      return dt.year;
-   }
-   
-   int TimeHour(datetime time)
-   {
-      MqlDateTime dt;
-      TimeToStruct(time, dt);
-      return dt.hour;
-   }
-   
-   int TimeMinute(datetime time)
-   {
-      MqlDateTime dt;
-      TimeToStruct(time, dt);
-      return dt.min;
-   }
-   
-   int TimeDayOfWeek(datetime time)
-   {
-      MqlDateTime dt;
-      TimeToStruct(time, dt);
-      return dt.day_of_week;
-   }
-   
-   // IsTesting関数のラッパー
-   bool IsTesting()
-   {
-      return (bool)MQLInfoInteger(MQL_TESTER);
-   }
-   
-   // MQL5用のOrdersTotal関数
-   int OrdersTotal_MQL5()
-   {
-      return PositionsTotal();
-   }
-   
-   // MQL5用のOrderSelect関数
-   bool OrderSelect_MQL5(int index, int select, int pool)
-   {
-      return g_position.SelectByIndex(index);
-   }
-   
-   // MQL5用のOrderType関数
-   int OrderType_MQL5()
-   {
-      return (int)g_position.PositionType();
-   }
-   
-   // MQL5用のOrderSymbol関数
-   string OrderSymbol_MQL5()
-   {
-      return g_position.Symbol();
-   }
-   
-   // MQL5用のOrderMagicNumber関数
-   long OrderMagicNumber_MQL5()
-   {
-      return g_position.Magic();
-   }
-   
-   // MQL5用のOrderOpenTime関数
-   datetime OrderOpenTime_MQL5()
-   {
-      return g_position.Time();
-   }
-   
-   // MQL5用のOrderLots関数
-   double OrderLots_MQL5()
-   {
-      return g_position.Volume();
-   }
-   
-   // MQL5用のOrderOpenPrice関数
-   double OrderOpenPrice_MQL5()
-   {
-      return g_position.PriceOpen();
-   }
-   
-   // 関数の再定義
-   #define OrdersTotal() OrdersTotal_MQL5()
-   #define OrderSelect(index, select, pool) OrderSelect_MQL5(index, select, pool)
-   #define OrderType() OrderType_MQL5()
-   #define OrderSymbol() OrderSymbol_MQL5()
-   #define OrderMagicNumber() OrderMagicNumber_MQL5()
-   #define OrderOpenTime() OrderOpenTime_MQL5()
-   #define OrderLots() OrderLots_MQL5()
-   #define OrderOpenPrice() OrderOpenPrice_MQL5()
-   
 #endif
 
 //+------------------------------------------------------------------+
@@ -196,8 +82,20 @@ datetime GetJapanTime()
 bool is_summer()
 {
    datetime now = TimeCurrent();
+   
+#ifdef __MQL5__
+   MqlDateTime dt;
+   TimeToStruct(now, dt);
+   int month = dt.mon;
+   int day = dt.day;
+   int year = dt.year;
+   int dayOfWeek = dt.day_of_week;
+#else
    int month = TimeMonth(now);
    int day = TimeDay(now);
+   int year = TimeYear(now);
+   int dayOfWeek = TimeDayOfWeek(now);
+#endif
    
    if(month < 3 || month > 11)
    {
@@ -212,9 +110,17 @@ bool is_summer()
    if(month == 3)
    {
       // 3月の第2日曜日を計算
-      string dateStr = StringFormat("%d.%d.1", TimeYear(now), month);
+      string dateStr = StringFormat("%d.%d.1", year, month);
       datetime firstDay = StringToTime(dateStr);
+      
+#ifdef __MQL5__
+      MqlDateTime firstDayDt;
+      TimeToStruct(firstDay, firstDayDt);
+      int firstDayOfWeek = firstDayDt.day_of_week;
+#else
       int firstDayOfWeek = TimeDayOfWeek(firstDay);
+#endif
+      
       int firstSunday = (7 - firstDayOfWeek) % 7 + 1;
       int secondSunday = firstSunday + 7;
       
@@ -227,9 +133,17 @@ bool is_summer()
    if(month == 11)
    {
       // 11月の第1日曜日を計算
-      string dateStr = StringFormat("%d.%d.1", TimeYear(now), month);
+      string dateStr = StringFormat("%d.%d.1", year, month);
       datetime firstDay = StringToTime(dateStr);
+      
+#ifdef __MQL5__
+      MqlDateTime firstDayDt;
+      TimeToStruct(firstDay, firstDayDt);
+      int firstDayOfWeek = firstDayDt.day_of_week;
+#else
       int firstDayOfWeek = TimeDayOfWeek(firstDay);
+#endif
+      
       int firstSunday = (7 - firstDayOfWeek) % 7 + 1;
       
       if(day < firstSunday)
@@ -288,11 +202,9 @@ bool IsInTimeRange(int current, int start, int end)
    return (current >= start || current < end);
 }
 
-// Hosopi3_Utils.mqh に時間制限チェック用のキャッシュを追加
-bool g_InitialTimeAllowedCache[2] = {true, true}; // [0]=Buy, [1]=Sell
-datetime g_LastInitialTimeAllowedCheckTime[2] = {0, 0}; // [0]=Buy, [1]=Sell
-
-// IsInitialEntryTimeAllowed関数を高速化（キャッシュ対応版）
+//+------------------------------------------------------------------+
+//| IsInitialEntryTimeAllowed関数を高速化（キャッシュ対応版）        |
+//+------------------------------------------------------------------+
 bool IsInitialEntryTimeAllowed(int type)
 {
    // 処理対象のインデックスを決定
@@ -302,7 +214,11 @@ bool IsInitialEntryTimeAllowed(int type)
    datetime currentTime = TimeCurrent();
    
    // バックテスト中の場合は、より長い間隔でキャッシュを利用
-   int cacheInterval = IsTesting() ? 3600 : 60; // バックテスト中は1時間、通常は1分
+#ifdef __MQL5__
+   int cacheInterval = (bool)MQLInfoInteger(MQL_TESTER) ? 3600 : 60;
+#else
+   int cacheInterval = IsTesting() ? 3600 : 60;
+#endif
    
    // 前回のチェックから一定時間経過していない場合はキャッシュを使用
    if(currentTime - g_LastInitialTimeAllowedCheckTime[typeIndex] < cacheInterval)
@@ -313,11 +229,20 @@ bool IsInitialEntryTimeAllowed(int type)
    // 時間が経過したら再チェック
    g_LastInitialTimeAllowedCheckTime[typeIndex] = currentTime;
    
-   // ここから下は元の時間チェックロジック
-   
    // 日本時間取得
    datetime jpTime = calculate_time();
+   
+#ifdef __MQL5__
+   MqlDateTime dt;
+   TimeToStruct(jpTime, dt);
+   int dayOfWeek = dt.day_of_week;
+   int hour = dt.hour;
+   int minute = dt.min;
+#else
    int dayOfWeek = TimeDayOfWeek(jpTime);
+   int hour = TimeHour(jpTime);
+   int minute = TimeMinute(jpTime);
+#endif
    
    // 曜日の有効/無効チェック
    switch(dayOfWeek) {
@@ -331,7 +256,7 @@ bool IsInitialEntryTimeAllowed(int type)
    }
    
    // 現在時刻（分換算）
-   int currentMinutes = TimeHour(jpTime) * 60 + TimeMinute(jpTime);
+   int currentMinutes = hour * 60 + minute;
    
    // 共通設定の時間範囲
    int commonStart = 0, commonEnd = 0;
@@ -392,7 +317,7 @@ bool IsInitialEntryTimeAllowed(int type)
 }
 
 //+------------------------------------------------------------------+
-//| ロットテーブルの初期化 - 個別指定モードをより明確に処理            |
+//| ロットテーブルの初期化                                            |
 //+------------------------------------------------------------------+
 void InitializeLotTable()
 {
@@ -479,6 +404,9 @@ void InitializeLotTable()
    }
 }
 
+//+------------------------------------------------------------------+
+//| ナンピン幅テーブルの初期化                                        |
+//+------------------------------------------------------------------+
 void InitializeNanpinSpreadTable()
 {
    // 個別指定が有効な場合
@@ -544,6 +472,21 @@ datetime GetLastEntryTime(int type)
    datetime lastTime = 0;
    
    // まずリアルポジションの最終エントリー時間を確認
+#ifdef __MQL5__
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      if(g_position.SelectByIndex(i))
+      {
+         if(g_position.PositionType() == (ENUM_POSITION_TYPE)type && 
+            g_position.Symbol() == Symbol() && 
+            g_position.Magic() == MagicNumber)
+         {
+            if(g_position.Time() > lastTime)
+               lastTime = g_position.Time();
+         }
+      }
+   }
+#else
    for(int i = OrdersTotal() - 1; i >= 0; i--)
    {
       if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
@@ -555,6 +498,7 @@ datetime GetLastEntryTime(int type)
          }
       }
    }
+#endif
 
    // リアルポジションがない場合や、ゴーストポジションがある場合は、ゴーストポジションの時間も確認
    if(type == OP_BUY)
@@ -586,6 +530,21 @@ double CalculateRealAveragePrice(int type)
    double weightedPrice = 0;
 
    // リアルポジションの合計
+#ifdef __MQL5__
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      if(g_position.SelectByIndex(i))
+      {
+         if(g_position.PositionType() == (ENUM_POSITION_TYPE)type && 
+            g_position.Symbol() == Symbol() && 
+            g_position.Magic() == MagicNumber)
+         {
+            totalLots += g_position.Volume();
+            weightedPrice += g_position.PriceOpen() * g_position.Volume();
+         }
+      }
+   }
+#else
    for(int i = OrdersTotal() - 1; i >= 0; i--)
    {
       if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
@@ -597,6 +556,7 @@ double CalculateRealAveragePrice(int type)
          }
       }
    }
+#endif
 
    // 平均取得価格を計算
    if(totalLots > 0)
@@ -606,7 +566,7 @@ double CalculateRealAveragePrice(int type)
 }
 
 //+------------------------------------------------------------------+
-//| ポジション保護モードの確認関数 - 両建て強化対応版                 |
+//| ポジション保護モードの確認関数                                    |
 //+------------------------------------------------------------------+
 bool IsEntryAllowedByProtectionMode(int side)
 {
@@ -697,7 +657,7 @@ string GetProtectionModeText()
 }
 
 //+------------------------------------------------------------------+
-//| 平均取得価格計算関数 - ナンピンレベル廃止対応版                    |
+//| 平均取得価格計算関数                                              |
 //+------------------------------------------------------------------+
 double CalculateCombinedAveragePrice(int type)
 {
@@ -718,6 +678,21 @@ double CalculateCombinedAveragePrice(int type)
    double weightedPrice = 0;
 
    // リアルポジションの合計
+#ifdef __MQL5__
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      if(g_position.SelectByIndex(i))
+      {
+         if(g_position.PositionType() == (ENUM_POSITION_TYPE)type && 
+            g_position.Symbol() == Symbol() && 
+            g_position.Magic() == MagicNumber)
+         {
+            totalLots += g_position.Volume();
+            weightedPrice += g_position.PriceOpen() * g_position.Volume();
+         }
+      }
+   }
+#else
    for(int i = OrdersTotal() - 1; i >= 0; i--)
    {
       if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
@@ -729,6 +704,7 @@ double CalculateCombinedAveragePrice(int type)
          }
       }
    }
+#endif
 
    // リアルポジションがない場合はゴーストポジションのみで計算
    if(realPositionCount == 0)
@@ -789,4 +765,67 @@ double CalculateCombinedAveragePrice(int type)
       return weightedPrice / totalLots;
    else
       return 0;
+}
+
+//+------------------------------------------------------------------+
+//| ポジション数をカウントする関数（position_count用）               |
+//+------------------------------------------------------------------+
+int position_count(int type)
+{
+   int count = 0;
+   
+#ifdef __MQL5__
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      if(g_position.SelectByIndex(i))
+      {
+         if(g_position.PositionType() == (ENUM_POSITION_TYPE)type && 
+            g_position.Symbol() == Symbol() && 
+            g_position.Magic() == MagicNumber)
+         {
+            count++;
+         }
+      }
+   }
+#else
+   for(int i = OrdersTotal() - 1; i >= 0; i--)
+   {
+      if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+      {
+         if(OrderType() == type && OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
+         {
+            count++;
+         }
+      }
+   }
+#endif
+   
+   return count;
+}
+
+//+------------------------------------------------------------------+
+//| ゴーストポジション数をカウントする関数                            |
+//+------------------------------------------------------------------+
+int ghost_position_count(int type)
+{
+   int count = 0;
+   
+   if(type == OP_BUY)
+   {
+      for(int i = 0; i < g_GhostBuyCount; i++)
+      {
+         if(g_GhostBuyPositions[i].isGhost)
+            count++;
+      }
+   }
+   else if(type == OP_SELL)
+   {
+      for(int i = 0; i < g_GhostSellCount; i++)
+      {
+         if(g_GhostSellPositions[i].isGhost)
+            count++;
+      }
+   }
+   
+   return count;
 }

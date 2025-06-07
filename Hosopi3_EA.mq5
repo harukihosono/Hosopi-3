@@ -105,6 +105,20 @@ input int BreakEvenMinPositions = 3;             // 最低ポジション数
 
 // ======== 基本設定 ========
 sinput string Comment_Basic = ""; //+--- 基本設定 ---+
+// ======== MQL5専用設定 ========
+#ifdef __MQL5__
+sinput string Comment_MQL5_Settings = ""; //+--- MQL5専用設定 ---+
+
+// オーダーフィリングモードの列挙型
+enum FILLING_MODE
+{
+   FILLING_FOK = ORDER_FILLING_FOK,           // Fill or Kill (全量約定または全キャンセル)
+   FILLING_IOC = ORDER_FILLING_IOC,           // Immediate or Cancel (即時約定、残りキャンセル)
+   FILLING_RETURN = ORDER_FILLING_RETURN      // Return (残量を指値として残す)
+};
+
+input FILLING_MODE OrderFillingType = FILLING_FOK; // オーダーフィリングモード
+#endif
 input int MagicNumber = 99899;      // マジックナンバー
 input string PanelTitle = "Hosopi 3 EA"; // パネルタイトル
 input int PanelX = 20;     // パネルX座標
