@@ -48,7 +48,7 @@ void NotifyGhostEntry(int type, double lots, double price, int level)
    string message = "Hosopi 3: ゴースト" + typeStr + "エントリー" +
                     " | レベル: " + IntegerToString(level + 1) +
                     " | ロット: " + DoubleToString(lots, 2) +
-                    " | 価格: " + DoubleToString(price, Digits);
+                    " | 価格: " + DoubleToString(price, _Digits);
    
    // 通知送信
    SendGhostNotification(message, EnableGhostAlertNotification, EnableGhostPushNotification);

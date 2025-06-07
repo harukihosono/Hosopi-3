@@ -92,18 +92,63 @@ void CheckTrailingStopConditions(int side)
    // トレールトリガー価格とオフセット価格を計算
    double triggerPrice, stopPrice;
    
+   // Point値を取得
+   double pointValue = GetPointValue();
+   
    if(side == 0) // Buy
    {
       // トレールトリガー: 平均価格 + トリガーポイント
-      triggerPrice = avgPrice + TrailingTrigger * Point;
+      triggerPrice = avgPrice + TrailingTrigger * pointValue;
       
       // 現在価格がトリガー以上の場合のみトレーリング
       if(currentPrice >= triggerPrice)
       {
          // ストップ価格: 現在価格 - オフセット
-         stopPrice = currentPrice - TrailingOffset * Point;
+         stopPrice = currentPrice - TrailingOffset * pointValue;
          
          // 各ポジションの決済条件をチェック
+#ifdef __MQL5__
+         for(int i = PositionsTotal() - 1; i >= 0; i--)
+         {
+            ulong ticket = PositionGetTicket(i);
+            if(ticket > 0)
+            {
+               if(PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY && 
+                  PositionGetString(POSITION_SYMBOL) == Symbol() && 
+                  PositionGetInteger(POSITION_MAGIC) == MagicNumber)
+               {
+                  // 現在のストップロスを確認
+                  double currentSL = PositionGetDouble(POSITION_SL);
+                  
+                  // ストップロスが設定されていないか、または新しいストップが現在より高い場合
+                  if(currentSL == 0 || stopPrice > currentSL)
+                  {
+                     // ストップロスを修正
+                     MqlTradeRequest request;
+                     MqlTradeResult result;
+                     ZeroMemory(request);
+                     ZeroMemory(result);
+                     
+                     request.action = TRADE_ACTION_SLTP;
+                     request.position = ticket;
+                     request.symbol = Symbol();
+                     request.sl = stopPrice;
+                     request.tp = PositionGetDouble(POSITION_TP);
+                     request.type_filling = (ENUM_ORDER_TYPE_FILLING)OrderFillingType;
+                     
+                     if(OrderSend(request, result))
+                     {
+                        // 成功
+                     }
+                     else
+                     {
+                        Print("Buy トレールストップ更新エラー: ", result.retcode);
+                     }
+                  }
+               }
+            }
+         }
+#else // MQL4
          for(int i = OrdersTotal() - 1; i >= 0; i--)
          {
             if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
@@ -130,20 +175,63 @@ void CheckTrailingStopConditions(int side)
                }
             }
          }
+#endif
       }
    }
    else // Sell
    {
       // トレールトリガー: 平均価格 - トリガーポイント
-      triggerPrice = avgPrice - TrailingTrigger * Point;
+      triggerPrice = avgPrice - TrailingTrigger * pointValue;
       
       // 現在価格がトリガー以下の場合のみトレーリング
       if(currentPrice <= triggerPrice)
       {
          // ストップ価格: 現在価格 + オフセット
-         stopPrice = currentPrice + TrailingOffset * Point;
+         stopPrice = currentPrice + TrailingOffset * pointValue;
          
          // 各ポジションの決済条件をチェック
+#ifdef __MQL5__
+         for(int i = PositionsTotal() - 1; i >= 0; i--)
+         {
+            ulong ticket = PositionGetTicket(i);
+            if(ticket > 0)
+            {
+               if(PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_SELL && 
+                  PositionGetString(POSITION_SYMBOL) == Symbol() && 
+                  PositionGetInteger(POSITION_MAGIC) == MagicNumber)
+               {
+                  // 現在のストップロスを確認
+                  double currentSL = PositionGetDouble(POSITION_SL);
+                  
+                  // ストップロスが設定されていないか、または新しいストップが現在より低い場合
+                  if(currentSL == 0 || stopPrice < currentSL)
+                  {
+                     // ストップロスを修正
+                     MqlTradeRequest request;
+                     MqlTradeResult result;
+                     ZeroMemory(request);
+                     ZeroMemory(result);
+                     
+                     request.action = TRADE_ACTION_SLTP;
+                     request.position = ticket;
+                     request.symbol = Symbol();
+                     request.sl = stopPrice;
+                     request.tp = PositionGetDouble(POSITION_TP);
+                     request.type_filling = (ENUM_ORDER_TYPE_FILLING)OrderFillingType;
+                     
+                     if(OrderSend(request, result))
+                     {
+                        // 成功
+                     }
+                     else
+                     {
+                        Print("Sell トレールストップ更新エラー: ", result.retcode);
+                     }
+                  }
+               }
+            }
+         }
+#else // MQL4
          for(int i = OrdersTotal() - 1; i >= 0; i--)
          {
             if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
@@ -170,6 +258,7 @@ void CheckTrailingStopConditions(int side)
                }
             }
          }
+#endif
       }
    }
 }
@@ -204,16 +293,19 @@ void CheckGhostTrailingStopConditions(int side)
    // トレールトリガー価格とオフセット価格を計算
    double triggerPrice, stopPrice;
    
+   // Point値を取得
+   double pointValue = GetPointValue();
+   
    if(side == 0) // Buy
    {
       // トレールトリガー: 平均価格 + トリガーポイント
-      triggerPrice = avgPrice + TrailingTrigger * Point;
+      triggerPrice = avgPrice + TrailingTrigger * pointValue;
       
       // 現在価格がトリガー以上の場合のみトレーリング
       if(currentPrice >= triggerPrice)
       {
          // ストップ価格: 現在価格 - オフセット
-         stopPrice = currentPrice - TrailingOffset * Point;
+         stopPrice = currentPrice - TrailingOffset * pointValue;
          
          // 各ゴーストポジションのストップロスを更新
          for(int i = 0; i < g_GhostBuyCount; i++)
@@ -229,9 +321,9 @@ void CheckGhostTrailingStopConditions(int side)
                   // ストップロスを更新
                   g_GhostBuyPositions[i].stopLoss = stopPrice;
                   Print("ゴーストBuy トレールストップ更新: レベル=", g_GhostBuyPositions[i].level + 1, 
-                       ", 平均価格=", DoubleToString(avgPrice, Digits),
-                       ", 現在価格=", DoubleToString(currentPrice, Digits),
-                       ", 新ストップ=", DoubleToString(stopPrice, Digits));
+                       ", 平均価格=", DoubleToString(avgPrice, GetDigitsValue()),
+                       ", 現在価格=", DoubleToString(currentPrice, GetDigitsValue()),
+                       ", 新ストップ=", DoubleToString(stopPrice, GetDigitsValue()));
                }
             }
          }
@@ -243,13 +335,13 @@ void CheckGhostTrailingStopConditions(int side)
    else // Sell
    {
       // トレールトリガー: 平均価格 - トリガーポイント
-      triggerPrice = avgPrice - TrailingTrigger * Point;
+      triggerPrice = avgPrice - TrailingTrigger * pointValue;
       
       // 現在価格がトリガー以下の場合のみトレーリング
       if(currentPrice <= triggerPrice)
       {
          // ストップ価格: 現在価格 + オフセット
-         stopPrice = currentPrice + TrailingOffset * Point;
+         stopPrice = currentPrice + TrailingOffset * pointValue;
          
          // 各ゴーストポジションのストップロスを更新
          for(int i = 0; i < g_GhostSellCount; i++)
@@ -265,9 +357,9 @@ void CheckGhostTrailingStopConditions(int side)
                   // ストップロスを更新
                   g_GhostSellPositions[i].stopLoss = stopPrice;
                   Print("ゴーストSell トレールストップ更新: レベル=", g_GhostSellPositions[i].level + 1, 
-                       ", 平均価格=", DoubleToString(avgPrice, Digits),
-                       ", 現在価格=", DoubleToString(currentPrice, Digits),
-                       ", 新ストップ=", DoubleToString(stopPrice, Digits));
+                       ", 平均価格=", DoubleToString(avgPrice, GetDigitsValue()),
+                       ", 現在価格=", DoubleToString(currentPrice, GetDigitsValue()),
+                       ", 新ストップ=", DoubleToString(stopPrice, GetDigitsValue()));
                }
             }
          }
@@ -320,33 +412,36 @@ void ManageTakeProfit(int side)
    int totalPositions = positionCount + ghostCount;
    int tpPoints = GetTakeProfitPointsByPositionCount(totalPositions);
 
+   // Point値を取得
+   double pointValue = GetPointValue();
+
    // TP価格の計算（ロット加重平均の価格から指定ポイント離れた価格）
    double tpPrice = (side == 0) ? 
-                  avgPrice + tpPoints * Point : 
-                  avgPrice - tpPoints * Point;
+                  avgPrice + tpPoints * pointValue : 
+                  avgPrice - tpPoints * pointValue;
 
    // ======== 指値決済処理（LIMIT） ========
    if(TakeProfitMode == TP_LIMIT)
    {
       // シンボルの最小ストップレベルを取得
-      int minStopLevel = (int)MarketInfo(Symbol(), MODE_STOPLEVEL);
+      int minStopLevel = GetMinStopLevel();
       
       // 最小ストップレベルを考慮してTP価格を調整
-      double minAllowedTPDistance = minStopLevel * Point;
+      double minAllowedTPDistance = minStopLevel * pointValue;
       
       // Buy注文の場合、TPは現在Bid価格より十分高くなければならない
       if(side == 0 && tpPrice - currentPrice < minAllowedTPDistance)
       {
          tpPrice = currentPrice + minAllowedTPDistance;
          Print("警告: リミットTP価格が最小ストップレベルに近すぎるため調整しました: ",
-               DoubleToString(tpPrice, Digits));
+               DoubleToString(tpPrice, GetDigitsValue()));
       }
       // Sell注文の場合、TPは現在Ask価格より十分低くなければならない
       else if(side == 1 && currentPrice - tpPrice < minAllowedTPDistance)
       {
          tpPrice = currentPrice - minAllowedTPDistance;
          Print("警告: リミットTP価格が最小ストップレベルに近すぎるため調整しました: ",
-               DoubleToString(tpPrice, Digits));
+               DoubleToString(tpPrice, GetDigitsValue()));
       }
       
       // ゴーストポジションのみの場合の処理
@@ -369,9 +464,9 @@ void ManageTakeProfit(int side)
          // 利確条件が満たされた場合
          if(tpCondition)
          {
-            Print(direction, "ゴーストのみで利確条件成立: 平均価格=", DoubleToString(avgPrice, Digits),
-                  ", TP価格=", DoubleToString(tpPrice, Digits),
-                  ", 現在価格=", DoubleToString(currentPrice, Digits));
+            Print(direction, "ゴーストのみで利確条件成立: 平均価格=", DoubleToString(avgPrice, GetDigitsValue()),
+                  ", TP価格=", DoubleToString(tpPrice, GetDigitsValue()),
+                  ", 現在価格=", DoubleToString(currentPrice, GetDigitsValue()));
             
             // 決済前に利益を計算
             double ghostProfit = CalculateGhostProfit(operationType);
@@ -417,6 +512,56 @@ void ManageTakeProfit(int side)
       // リアルポジションがある場合は通常の指値設定
       if(positionCount > 0)
       {
+#ifdef __MQL5__
+         // MQL5用の処理
+         for(int i = PositionsTotal() - 1; i >= 0; i--)
+         {
+            ulong ticket = PositionGetTicket(i);
+            if(ticket > 0)
+            {
+               if(PositionGetInteger(POSITION_TYPE) == ((operationType == OP_BUY) ? POSITION_TYPE_BUY : POSITION_TYPE_SELL) && 
+                  PositionGetString(POSITION_SYMBOL) == Symbol() && 
+                  PositionGetInteger(POSITION_MAGIC) == MagicNumber)
+               {
+                  // 現在のストップロス価格を取得
+                  double currentSL = PositionGetDouble(POSITION_SL);
+                  
+                  // 現在のテイクプロフィット価格を取得
+                  double currentTP = PositionGetDouble(POSITION_TP);
+                  
+                  // 新しいTPとの差が小さい場合はスキップ
+                  if(MathAbs(currentTP - tpPrice) < pointValue * 2)
+                     continue;
+                  
+                  // リミット価格を更新
+                  MqlTradeRequest request;
+                  MqlTradeResult result;
+                  ZeroMemory(request);
+                  ZeroMemory(result);
+                  
+                  request.action = TRADE_ACTION_SLTP;
+                  request.position = ticket;
+                  request.symbol = Symbol();
+                  request.sl = currentSL;
+                  request.tp = tpPrice;
+                  request.type_filling = (ENUM_ORDER_TYPE_FILLING)OrderFillingType;
+                  
+                  if(OrderSend(request, result))
+                  {
+                     Print("リミット決済を設定しました: ", ticket, 
+                           ", 方向=", direction, 
+                           ", TP=", DoubleToString(tpPrice, GetDigitsValue()));
+                  }
+                  else
+                  {
+                     Print("リミット決済の設定に失敗: ", ticket, 
+                           ", エラー=", result.retcode, 
+                           ", 最小ストップレベル=", minStopLevel);
+                  }
+               }
+            }
+         }
+#else // MQL4
          // 各ポジションにリミット注文を設定
          for(int i = OrdersTotal() - 1; i >= 0; i--)
          {
@@ -431,7 +576,7 @@ void ManageTakeProfit(int side)
                   double currentTP = OrderTakeProfit();
                   
                   // 新しいTPとの差が小さい場合はスキップ
-                  if(MathAbs(currentTP - tpPrice) < Point * 2)
+                  if(MathAbs(currentTP - tpPrice) < pointValue * 2)
                      continue;
                   
                   // リミット価格を更新（ストップロスはそのまま）
@@ -448,7 +593,7 @@ void ManageTakeProfit(int side)
                   {
                      Print("リミット決済を設定しました: ", OrderTicket(), 
                            ", 方向=", direction, 
-                           ", TP=", DoubleToString(tpPrice, Digits));
+                           ", TP=", DoubleToString(tpPrice, GetDigitsValue()));
                   }
                   else
                   {
@@ -459,6 +604,7 @@ void ManageTakeProfit(int side)
                }
             }
          }
+#endif
       }
    }
    // ======== 成行決済処理（MARKET） ========
@@ -481,9 +627,9 @@ void ManageTakeProfit(int side)
       // 利確条件が満たされた場合
       if(tpCondition)
       {
-         Print(direction, "利確条件成立: 平均価格=", DoubleToString(avgPrice, Digits),
-               ", TP価格=", DoubleToString(tpPrice, Digits),
-               ", 現在価格=", DoubleToString(currentPrice, Digits));
+         Print(direction, "利確条件成立: 平均価格=", DoubleToString(avgPrice, GetDigitsValue()),
+               ", TP価格=", DoubleToString(tpPrice, GetDigitsValue()),
+               ", 現在価格=", DoubleToString(currentPrice, GetDigitsValue()));
          
          // ゴーストポジションの処理
          double ghostProfit = 0;
@@ -540,18 +686,28 @@ void ManageTakeProfit(int side)
 
    // TP価格ラインの表示 (どの利確モードでも表示)
    string lineName = "TPLine" + ((side == 0) ? "Buy" : "Sell");
+#ifdef __MQL5__
+   if(ObjectFind(0, g_ObjectPrefix + lineName) >= 0)
+      ObjectDelete(0, g_ObjectPrefix + lineName);
+#else
    if(ObjectFind(g_ObjectPrefix + lineName) >= 0)
       ObjectDelete(g_ObjectPrefix + lineName);
+#endif
       
    CreateHorizontalLine(g_ObjectPrefix + lineName, tpPrice, TakeProfitLineColor, STYLE_DASH, 1);
    
    // ラベルも表示
    string labelName = "TPLabel" + ((side == 0) ? "Buy" : "Sell");
+#ifdef __MQL5__
+   if(ObjectFind(0, g_ObjectPrefix + labelName) >= 0)
+      ObjectDelete(0, g_ObjectPrefix + labelName);
+#else
    if(ObjectFind(g_ObjectPrefix + labelName) >= 0)
       ObjectDelete(g_ObjectPrefix + labelName);
+#endif
       
    string labelText = (TakeProfitMode == TP_LIMIT ? "Limit" : "Market") + " TP: " + 
-                     DoubleToString(tpPrice, Digits) + " (" + 
+                     DoubleToString(tpPrice, GetDigitsValue()) + " (" + 
                      (side == 0 ? "+" : "-") + IntegerToString(tpPoints) + "pt)";
    CreatePriceLabel(g_ObjectPrefix + labelName, labelText, tpPrice, TakeProfitLineColor, side == 0);
 }
@@ -582,6 +738,40 @@ void CheckBreakEvenByPositions()
       // 現在の総損益を計算
       double totalBuyProfit = 0;
       
+#ifdef __MQL5__
+      // MQL5用の処理
+      for(int i = PositionsTotal() - 1; i >= 0; i--)
+      {
+         ulong ticket = PositionGetTicket(i);
+         if(ticket > 0)
+         {
+            if(PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY && 
+               PositionGetString(POSITION_SYMBOL) == Symbol() && 
+               PositionGetInteger(POSITION_MAGIC) == MagicNumber)
+            {
+               // 損益 + スワップを合計（手数料は直接計算）
+               totalBuyProfit += PositionGetDouble(POSITION_PROFIT) + 
+                               PositionGetDouble(POSITION_SWAP);
+               
+               // 手数料を別途計算（オープン時とクローズ時の両方を考慮）
+               double commission = 0;
+               if(HistorySelectByPosition(PositionGetInteger(POSITION_IDENTIFIER)))
+               {
+                  int dealsTotal = HistoryDealsTotal();
+                  for(int j = 0; j < dealsTotal; j++)
+                  {
+                     ulong dealTicket = HistoryDealGetTicket(j);
+                     if(dealTicket > 0)
+                     {
+                        commission += HistoryDealGetDouble(dealTicket, DEAL_COMMISSION);
+                     }
+                  }
+               }
+               totalBuyProfit += commission;
+            }
+         }
+      }
+#else // MQL4
       // すべてのBuyポジションの損益を合計
       for(int i = OrdersTotal() - 1; i >= 0; i--)
       {
@@ -594,6 +784,7 @@ void CheckBreakEvenByPositions()
             }
          }
       }
+#endif
       
       // 設定した建値以上なら決済
       if(totalBuyProfit >= BreakEvenProfit)
@@ -622,6 +813,40 @@ void CheckBreakEvenByPositions()
       // 現在の総損益を計算
       double totalSellProfit = 0;
       
+#ifdef __MQL5__
+      // MQL5用の処理
+      for(int i = PositionsTotal() - 1; i >= 0; i--)
+      {
+         ulong ticket = PositionGetTicket(i);
+         if(ticket > 0)
+         {
+            if(PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_SELL && 
+               PositionGetString(POSITION_SYMBOL) == Symbol() && 
+               PositionGetInteger(POSITION_MAGIC) == MagicNumber)
+            {
+               // 損益 + スワップを合計（手数料は直接計算）
+               totalSellProfit += PositionGetDouble(POSITION_PROFIT) + 
+                                PositionGetDouble(POSITION_SWAP);
+               
+               // 手数料を別途計算（オープン時とクローズ時の両方を考慮）
+               double commission = 0;
+               if(HistorySelectByPosition(PositionGetInteger(POSITION_IDENTIFIER)))
+               {
+                  int dealsTotal = HistoryDealsTotal();
+                  for(int j = 0; j < dealsTotal; j++)
+                  {
+                     ulong dealTicket = HistoryDealGetTicket(j);
+                     if(dealTicket > 0)
+                     {
+                        commission += HistoryDealGetDouble(dealTicket, DEAL_COMMISSION);
+                     }
+                  }
+               }
+               totalSellProfit += commission;
+            }
+         }
+      }
+#else // MQL4
       // すべてのSellポジションの損益を合計
       for(int i = OrdersTotal() - 1; i >= 0; i--)
       {
@@ -634,6 +859,7 @@ void CheckBreakEvenByPositions()
             }
          }
       }
+#endif
       
       // 設定した建値以上なら決済
       if(totalSellProfit >= BreakEvenProfit)
@@ -652,4 +878,40 @@ void CheckBreakEvenByPositions()
          CleanupLinesOnClose(1);
       }
    }
+}
+
+//+------------------------------------------------------------------+
+//| Point値を取得する関数                                             |
+//+------------------------------------------------------------------+
+double GetPointValue()
+{
+#ifdef __MQL5__
+   return SymbolInfoDouble(Symbol(), SYMBOL_POINT);
+#else
+   return Point;
+#endif
+}
+
+//+------------------------------------------------------------------+
+//| Digits値を取得する関数                                            |
+//+------------------------------------------------------------------+
+int GetDigitsValue()
+{
+#ifdef __MQL5__
+   return (int)SymbolInfoInteger(Symbol(), SYMBOL_DIGITS);
+#else
+   return Digits;
+#endif
+}
+
+//+------------------------------------------------------------------+
+//| 最小ストップレベルを取得する関数                                  |
+//+------------------------------------------------------------------+
+int GetMinStopLevel()
+{
+#ifdef __MQL5__
+   return (int)SymbolInfoInteger(Symbol(), SYMBOL_TRADE_STOPS_LEVEL);
+#else
+   return (int)MarketInfo(Symbol(), MODE_STOPLEVEL);
+#endif
 }

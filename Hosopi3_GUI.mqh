@@ -1,4 +1,3 @@
-
 //+------------------------------------------------------------------+
 //|                   Hosopi 3 - GUI関連関数                         |
 //|                         Copyright 2025                           |
@@ -247,7 +246,11 @@ void CreateGUI()
    
    // パネルの高さを調整
    panelHeight = row8Y + BUTTON_HEIGHT + PANEL_MARGIN - adjustedPanelY;
-   ObjectSet(g_ObjectPrefix + "MainPanel" + "BG", OBJPROP_YSIZE, panelHeight);
+   #ifdef __MQL5__
+      ObjectSetInteger(0, g_ObjectPrefix + "MainPanel" + "BG", OBJPROP_YSIZE, panelHeight);
+   #else
+      ObjectSet(g_ObjectPrefix + "MainPanel" + "BG", OBJPROP_YSIZE, panelHeight);
+   #endif
    
    ChartRedraw(); // チャートを再描画
 }
@@ -260,13 +263,24 @@ void CreateLabel(string name, string text, int x, int y, color textColor)
    // オブジェクト名にプレフィックスを追加（複数チャート対策）
    string objectName = g_ObjectPrefix + name;
    
-   ObjectCreate(objectName, OBJ_LABEL, 0, 0, 0);
-   ObjectSet(objectName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSet(objectName, OBJPROP_XDISTANCE, x);
-   ObjectSet(objectName, OBJPROP_YDISTANCE, y);
-   // MS ゴシックフォントを使用
-   ObjectSetText(objectName, text, 9, "MS Gothic", textColor);
-   ObjectSet(objectName, OBJPROP_SELECTABLE, false);
+   #ifdef __MQL5__
+      ObjectCreate(0, objectName, OBJ_LABEL, 0, 0, 0);
+      ObjectSetInteger(0, objectName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+      ObjectSetInteger(0, objectName, OBJPROP_XDISTANCE, x);
+      ObjectSetInteger(0, objectName, OBJPROP_YDISTANCE, y);
+      ObjectSetString(0, objectName, OBJPROP_TEXT, text);
+      ObjectSetString(0, objectName, OBJPROP_FONT, "MS Gothic");
+      ObjectSetInteger(0, objectName, OBJPROP_FONTSIZE, 9);
+      ObjectSetInteger(0, objectName, OBJPROP_COLOR, textColor);
+      ObjectSetInteger(0, objectName, OBJPROP_SELECTABLE, false);
+   #else
+      ObjectCreate(objectName, OBJ_LABEL, 0, 0, 0);
+      ObjectSet(objectName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+      ObjectSet(objectName, OBJPROP_XDISTANCE, x);
+      ObjectSet(objectName, OBJPROP_YDISTANCE, y);
+      ObjectSetText(objectName, text, 9, "MS Gothic", textColor);
+      ObjectSet(objectName, OBJPROP_SELECTABLE, false);
+   #endif
    
    // オブジェクト名を保存
    SaveObjectName(objectName, g_PanelNames, g_PanelObjectCount);
@@ -282,18 +296,34 @@ void CreatePanel(string name, int x, int y, int width, int height, color bgColor
    
    // パネル背景
    string bgName = objectName + "BG";
-   ObjectCreate(bgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
-   ObjectSet(bgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSet(bgName, OBJPROP_XDISTANCE, x);
-   ObjectSet(bgName, OBJPROP_YDISTANCE, y);
-   ObjectSet(bgName, OBJPROP_XSIZE, width);
-   ObjectSet(bgName, OBJPROP_YSIZE, height);
-   ObjectSet(bgName, OBJPROP_BGCOLOR, bgColor);
-   ObjectSet(bgName, OBJPROP_BORDER_TYPE, BORDER_FLAT);
-   ObjectSet(bgName, OBJPROP_COLOR, borderColor);
-   ObjectSet(bgName, OBJPROP_WIDTH, PANEL_BORDER_WIDTH);
-   ObjectSet(bgName, OBJPROP_BACK, false);
-   ObjectSet(bgName, OBJPROP_SELECTABLE, false);
+   
+   #ifdef __MQL5__
+      ObjectCreate(0, bgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
+      ObjectSetInteger(0, bgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+      ObjectSetInteger(0, bgName, OBJPROP_XDISTANCE, x);
+      ObjectSetInteger(0, bgName, OBJPROP_YDISTANCE, y);
+      ObjectSetInteger(0, bgName, OBJPROP_XSIZE, width);
+      ObjectSetInteger(0, bgName, OBJPROP_YSIZE, height);
+      ObjectSetInteger(0, bgName, OBJPROP_BGCOLOR, bgColor);
+      ObjectSetInteger(0, bgName, OBJPROP_BORDER_TYPE, BORDER_FLAT);
+      ObjectSetInteger(0, bgName, OBJPROP_COLOR, borderColor);
+      ObjectSetInteger(0, bgName, OBJPROP_WIDTH, PANEL_BORDER_WIDTH);
+      ObjectSetInteger(0, bgName, OBJPROP_BACK, false);
+      ObjectSetInteger(0, bgName, OBJPROP_SELECTABLE, false);
+   #else
+      ObjectCreate(bgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
+      ObjectSet(bgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+      ObjectSet(bgName, OBJPROP_XDISTANCE, x);
+      ObjectSet(bgName, OBJPROP_YDISTANCE, y);
+      ObjectSet(bgName, OBJPROP_XSIZE, width);
+      ObjectSet(bgName, OBJPROP_YSIZE, height);
+      ObjectSet(bgName, OBJPROP_BGCOLOR, bgColor);
+      ObjectSet(bgName, OBJPROP_BORDER_TYPE, BORDER_FLAT);
+      ObjectSet(bgName, OBJPROP_COLOR, borderColor);
+      ObjectSet(bgName, OBJPROP_WIDTH, PANEL_BORDER_WIDTH);
+      ObjectSet(bgName, OBJPROP_BACK, false);
+      ObjectSet(bgName, OBJPROP_SELECTABLE, false);
+   #endif
    
    // オブジェクト名を保存
    SaveObjectName(bgName, g_PanelNames, g_PanelObjectCount);
@@ -309,26 +339,54 @@ void CreateTitleBar(string name, int x, int y, int width, int height, color bgCo
    
    // タイトルバー背景
    string bgName = objectName + "BG";
-   ObjectCreate(bgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
-   ObjectSet(bgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSet(bgName, OBJPROP_XDISTANCE, x);
-   ObjectSet(bgName, OBJPROP_YDISTANCE, y);
-   ObjectSet(bgName, OBJPROP_XSIZE, width);
-   ObjectSet(bgName, OBJPROP_YSIZE, height);
-   ObjectSet(bgName, OBJPROP_BGCOLOR, bgColor);
-   ObjectSet(bgName, OBJPROP_BORDER_TYPE, BORDER_FLAT);
-   ObjectSet(bgName, OBJPROP_COLOR, bgColor);
-   ObjectSet(bgName, OBJPROP_BACK, false);
-   ObjectSet(bgName, OBJPROP_SELECTABLE, false);
+   
+   #ifdef __MQL5__
+      ObjectCreate(0, bgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
+      ObjectSetInteger(0, bgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+      ObjectSetInteger(0, bgName, OBJPROP_XDISTANCE, x);
+      ObjectSetInteger(0, bgName, OBJPROP_YDISTANCE, y);
+      ObjectSetInteger(0, bgName, OBJPROP_XSIZE, width);
+      ObjectSetInteger(0, bgName, OBJPROP_YSIZE, height);
+      ObjectSetInteger(0, bgName, OBJPROP_BGCOLOR, bgColor);
+      ObjectSetInteger(0, bgName, OBJPROP_BORDER_TYPE, BORDER_FLAT);
+      ObjectSetInteger(0, bgName, OBJPROP_COLOR, bgColor);
+      ObjectSetInteger(0, bgName, OBJPROP_BACK, false);
+      ObjectSetInteger(0, bgName, OBJPROP_SELECTABLE, false);
+   #else
+      ObjectCreate(bgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
+      ObjectSet(bgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+      ObjectSet(bgName, OBJPROP_XDISTANCE, x);
+      ObjectSet(bgName, OBJPROP_YDISTANCE, y);
+      ObjectSet(bgName, OBJPROP_XSIZE, width);
+      ObjectSet(bgName, OBJPROP_YSIZE, height);
+      ObjectSet(bgName, OBJPROP_BGCOLOR, bgColor);
+      ObjectSet(bgName, OBJPROP_BORDER_TYPE, BORDER_FLAT);
+      ObjectSet(bgName, OBJPROP_COLOR, bgColor);
+      ObjectSet(bgName, OBJPROP_BACK, false);
+      ObjectSet(bgName, OBJPROP_SELECTABLE, false);
+   #endif
    
    // タイトルテキスト
    string textName = objectName + "Text";
-   ObjectCreate(textName, OBJ_LABEL, 0, 0, 0);
-   ObjectSet(textName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSet(textName, OBJPROP_XDISTANCE, x + 10);
-   ObjectSet(textName, OBJPROP_YDISTANCE, y + 8);
-   ObjectSetText(textName, title, 10, "Arial", COLOR_TITLE_TEXT);
-   ObjectSet(textName, OBJPROP_SELECTABLE, false);
+   
+   #ifdef __MQL5__
+      ObjectCreate(0, textName, OBJ_LABEL, 0, 0, 0);
+      ObjectSetInteger(0, textName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+      ObjectSetInteger(0, textName, OBJPROP_XDISTANCE, x + 10);
+      ObjectSetInteger(0, textName, OBJPROP_YDISTANCE, y + 8);
+      ObjectSetString(0, textName, OBJPROP_TEXT, title);
+      ObjectSetString(0, textName, OBJPROP_FONT, "Arial");
+      ObjectSetInteger(0, textName, OBJPROP_FONTSIZE, 10);
+      ObjectSetInteger(0, textName, OBJPROP_COLOR, COLOR_TITLE_TEXT);
+      ObjectSetInteger(0, textName, OBJPROP_SELECTABLE, false);
+   #else
+      ObjectCreate(textName, OBJ_LABEL, 0, 0, 0);
+      ObjectSet(textName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+      ObjectSet(textName, OBJPROP_XDISTANCE, x + 10);
+      ObjectSet(textName, OBJPROP_YDISTANCE, y + 8);
+      ObjectSetText(textName, title, 10, "Arial", COLOR_TITLE_TEXT);
+      ObjectSet(textName, OBJPROP_SELECTABLE, false);
+   #endif
    
    // オブジェクト名を保存
    SaveObjectName(bgName, g_PanelNames, g_PanelObjectCount);
@@ -345,32 +403,63 @@ void CreateButton(string name, string text, int x, int y, int width, int height,
    
    // ボタン背景
    string bgName = objectName + "BG";
-   ObjectCreate(bgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
-   ObjectSet(bgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSet(bgName, OBJPROP_XDISTANCE, x);
-   ObjectSet(bgName, OBJPROP_YDISTANCE, y);
-   ObjectSet(bgName, OBJPROP_XSIZE, width);
-   ObjectSet(bgName, OBJPROP_YSIZE, height);
-   ObjectSet(bgName, OBJPROP_BGCOLOR, bgColor);
-   ObjectSet(bgName, OBJPROP_BORDER_TYPE, BORDER_FLAT);
-   ObjectSet(bgName, OBJPROP_COLOR, ColorDarken(bgColor, 20));
-   ObjectSet(bgName, OBJPROP_WIDTH, 1);
-   ObjectSet(bgName, OBJPROP_BACK, false);
-   ObjectSet(bgName, OBJPROP_SELECTABLE, false);
+   
+   #ifdef __MQL5__
+      ObjectCreate(0, bgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
+      ObjectSetInteger(0, bgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+      ObjectSetInteger(0, bgName, OBJPROP_XDISTANCE, x);
+      ObjectSetInteger(0, bgName, OBJPROP_YDISTANCE, y);
+      ObjectSetInteger(0, bgName, OBJPROP_XSIZE, width);
+      ObjectSetInteger(0, bgName, OBJPROP_YSIZE, height);
+      ObjectSetInteger(0, bgName, OBJPROP_BGCOLOR, bgColor);
+      ObjectSetInteger(0, bgName, OBJPROP_BORDER_TYPE, BORDER_FLAT);
+      ObjectSetInteger(0, bgName, OBJPROP_COLOR, ColorDarken(bgColor, 20));
+      ObjectSetInteger(0, bgName, OBJPROP_WIDTH, 1);
+      ObjectSetInteger(0, bgName, OBJPROP_BACK, false);
+      ObjectSetInteger(0, bgName, OBJPROP_SELECTABLE, false);
+   #else
+      ObjectCreate(bgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
+      ObjectSet(bgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+      ObjectSet(bgName, OBJPROP_XDISTANCE, x);
+      ObjectSet(bgName, OBJPROP_YDISTANCE, y);
+      ObjectSet(bgName, OBJPROP_XSIZE, width);
+      ObjectSet(bgName, OBJPROP_YSIZE, height);
+      ObjectSet(bgName, OBJPROP_BGCOLOR, bgColor);
+      ObjectSet(bgName, OBJPROP_BORDER_TYPE, BORDER_FLAT);
+      ObjectSet(bgName, OBJPROP_COLOR, ColorDarken(bgColor, 20));
+      ObjectSet(bgName, OBJPROP_WIDTH, 1);
+      ObjectSet(bgName, OBJPROP_BACK, false);
+      ObjectSet(bgName, OBJPROP_SELECTABLE, false);
+   #endif
    
    // ボタン本体
-   ObjectCreate(objectName, OBJ_BUTTON, 0, 0, 0);
-   ObjectSet(objectName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSet(objectName, OBJPROP_XDISTANCE, x);
-   ObjectSet(objectName, OBJPROP_YDISTANCE, y);
-   ObjectSet(objectName, OBJPROP_XSIZE, width);
-   ObjectSet(objectName, OBJPROP_YSIZE, height);
-   // MS ゴシックフォントを使用
-   ObjectSetText(objectName, text, 9, "MS Gothic", textColor);
-   ObjectSet(objectName, OBJPROP_BGCOLOR, bgColor);
-   ObjectSet(objectName, OBJPROP_BORDER_COLOR, ColorDarken(bgColor, 20));
-   ObjectSet(objectName, OBJPROP_COLOR, textColor);
-   ObjectSet(objectName, OBJPROP_SELECTABLE, false);
+   #ifdef __MQL5__
+      ObjectCreate(0, objectName, OBJ_BUTTON, 0, 0, 0);
+      ObjectSetInteger(0, objectName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+      ObjectSetInteger(0, objectName, OBJPROP_XDISTANCE, x);
+      ObjectSetInteger(0, objectName, OBJPROP_YDISTANCE, y);
+      ObjectSetInteger(0, objectName, OBJPROP_XSIZE, width);
+      ObjectSetInteger(0, objectName, OBJPROP_YSIZE, height);
+      ObjectSetString(0, objectName, OBJPROP_TEXT, text);
+      ObjectSetString(0, objectName, OBJPROP_FONT, "MS Gothic");
+      ObjectSetInteger(0, objectName, OBJPROP_FONTSIZE, 9);
+      ObjectSetInteger(0, objectName, OBJPROP_COLOR, textColor);
+      ObjectSetInteger(0, objectName, OBJPROP_BGCOLOR, bgColor);
+      ObjectSetInteger(0, objectName, OBJPROP_BORDER_COLOR, ColorDarken(bgColor, 20));
+      ObjectSetInteger(0, objectName, OBJPROP_SELECTABLE, false);
+   #else
+      ObjectCreate(objectName, OBJ_BUTTON, 0, 0, 0);
+      ObjectSet(objectName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+      ObjectSet(objectName, OBJPROP_XDISTANCE, x);
+      ObjectSet(objectName, OBJPROP_YDISTANCE, y);
+      ObjectSet(objectName, OBJPROP_XSIZE, width);
+      ObjectSet(objectName, OBJPROP_YSIZE, height);
+      ObjectSetText(objectName, text, 9, "MS Gothic", textColor);
+      ObjectSet(objectName, OBJPROP_BGCOLOR, bgColor);
+      ObjectSet(objectName, OBJPROP_BORDER_COLOR, ColorDarken(bgColor, 20));
+      ObjectSet(objectName, OBJPROP_COLOR, textColor);
+      ObjectSet(objectName, OBJPROP_SELECTABLE, false);
+   #endif
    
    // オブジェクト名を保存
    SaveObjectName(bgName, g_PanelNames, g_PanelObjectCount);
@@ -435,8 +524,13 @@ void DeleteGUI()
 {
    for(int i = 0; i < g_PanelObjectCount; i++)
    {
-      if(ObjectFind(g_PanelNames[i]) >= 0)
-         ObjectDelete(g_PanelNames[i]);
+      #ifdef __MQL5__
+         if(ObjectFind(0, g_PanelNames[i]) >= 0)
+            ObjectDelete(0, g_PanelNames[i]);
+      #else
+         if(ObjectFind(g_PanelNames[i]) >= 0)
+            ObjectDelete(g_PanelNames[i]);
+      #endif
    }
    
    g_PanelObjectCount = 0;
@@ -458,24 +552,47 @@ void UpdateGUI()
    int buyLevel = ghost_position_count(OP_BUY) + 1;
    int sellLevel = ghost_position_count(OP_SELL) + 1;
    
-   ObjectSetText(levelBuyBtnPrefix, "BUY Level " + IntegerToString(buyLevel), 9, "MS Gothic", COLOR_TEXT_LIGHT);
-   ObjectSetText(levelSellBtnPrefix, "SELL Level " + IntegerToString(sellLevel), 9, "MS Gothic", COLOR_TEXT_LIGHT);
+   #ifdef __MQL5__
+      ObjectSetString(0, levelBuyBtnPrefix, OBJPROP_TEXT, "BUY Level " + IntegerToString(buyLevel));
+      ObjectSetString(0, levelSellBtnPrefix, OBJPROP_TEXT, "SELL Level " + IntegerToString(sellLevel));
+   #else
+      ObjectSetText(levelBuyBtnPrefix, "BUY Level " + IntegerToString(buyLevel), 9, "MS Gothic", COLOR_TEXT_LIGHT);
+      ObjectSetText(levelSellBtnPrefix, "SELL Level " + IntegerToString(sellLevel), 9, "MS Gothic", COLOR_TEXT_LIGHT);
+   #endif
    
    // Ghost ON/OFFボタン状態更新
    color ghostButtonColor = g_GhostMode ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE;
-   ObjectSet(ghostBtnPrefix + "BG", OBJPROP_BGCOLOR, ghostButtonColor);
-   ObjectSet(ghostBtnPrefix + "BG", OBJPROP_COLOR, ColorDarken(ghostButtonColor, 20));
-   ObjectSet(ghostBtnPrefix, OBJPROP_BGCOLOR, ghostButtonColor);
-   ObjectSet(ghostBtnPrefix, OBJPROP_BORDER_COLOR, ColorDarken(ghostButtonColor, 20));
-   ObjectSetText(ghostBtnPrefix, g_GhostMode ? "GHOST ON" : "GHOST OFF", 9, "MS Gothic", COLOR_TEXT_LIGHT);
+   
+   #ifdef __MQL5__
+      ObjectSetInteger(0, ghostBtnPrefix + "BG", OBJPROP_BGCOLOR, ghostButtonColor);
+      ObjectSetInteger(0, ghostBtnPrefix + "BG", OBJPROP_COLOR, ColorDarken(ghostButtonColor, 20));
+      ObjectSetInteger(0, ghostBtnPrefix, OBJPROP_BGCOLOR, ghostButtonColor);
+      ObjectSetInteger(0, ghostBtnPrefix, OBJPROP_BORDER_COLOR, ColorDarken(ghostButtonColor, 20));
+      ObjectSetString(0, ghostBtnPrefix, OBJPROP_TEXT, g_GhostMode ? "GHOST ON" : "GHOST OFF");
+   #else
+      ObjectSet(ghostBtnPrefix + "BG", OBJPROP_BGCOLOR, ghostButtonColor);
+      ObjectSet(ghostBtnPrefix + "BG", OBJPROP_COLOR, ColorDarken(ghostButtonColor, 20));
+      ObjectSet(ghostBtnPrefix, OBJPROP_BGCOLOR, ghostButtonColor);
+      ObjectSet(ghostBtnPrefix, OBJPROP_BORDER_COLOR, ColorDarken(ghostButtonColor, 20));
+      ObjectSetText(ghostBtnPrefix, g_GhostMode ? "GHOST ON" : "GHOST OFF", 9, "MS Gothic", COLOR_TEXT_LIGHT);
+   #endif
    
    // 平均取得単価表示ボタン状態更新
    color avgPriceButtonColor = g_AvgPriceVisible ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE;
-   ObjectSet(avgPriceBtnPrefix + "BG", OBJPROP_BGCOLOR, avgPriceButtonColor);
-   ObjectSet(avgPriceBtnPrefix + "BG", OBJPROP_COLOR, ColorDarken(avgPriceButtonColor, 20));
-   ObjectSet(avgPriceBtnPrefix, OBJPROP_BGCOLOR, avgPriceButtonColor);
-   ObjectSet(avgPriceBtnPrefix, OBJPROP_BORDER_COLOR, ColorDarken(avgPriceButtonColor, 20));
-   ObjectSetText(avgPriceBtnPrefix, g_AvgPriceVisible ? "AVG PRICE ON" : "AVG PRICE OFF", 9, "MS Gothic", COLOR_TEXT_LIGHT);
+   
+   #ifdef __MQL5__
+      ObjectSetInteger(0, avgPriceBtnPrefix + "BG", OBJPROP_BGCOLOR, avgPriceButtonColor);
+      ObjectSetInteger(0, avgPriceBtnPrefix + "BG", OBJPROP_COLOR, ColorDarken(avgPriceButtonColor, 20));
+      ObjectSetInteger(0, avgPriceBtnPrefix, OBJPROP_BGCOLOR, avgPriceButtonColor);
+      ObjectSetInteger(0, avgPriceBtnPrefix, OBJPROP_BORDER_COLOR, ColorDarken(avgPriceButtonColor, 20));
+      ObjectSetString(0, avgPriceBtnPrefix, OBJPROP_TEXT, g_AvgPriceVisible ? "AVG PRICE ON" : "AVG PRICE OFF");
+   #else
+      ObjectSet(avgPriceBtnPrefix + "BG", OBJPROP_BGCOLOR, avgPriceButtonColor);
+      ObjectSet(avgPriceBtnPrefix + "BG", OBJPROP_COLOR, ColorDarken(avgPriceButtonColor, 20));
+      ObjectSet(avgPriceBtnPrefix, OBJPROP_BGCOLOR, avgPriceButtonColor);
+      ObjectSet(avgPriceBtnPrefix, OBJPROP_BORDER_COLOR, ColorDarken(avgPriceButtonColor, 20));
+      ObjectSetText(avgPriceBtnPrefix, g_AvgPriceVisible ? "AVG PRICE ON" : "AVG PRICE OFF", 9, "MS Gothic", COLOR_TEXT_LIGHT);
+   #endif
    
    ChartRedraw(); // チャートを再描画
 }
@@ -499,13 +616,17 @@ void ProcessButtonClick(string buttonName)
    }
    
    // ボタンの状態をリセット（押したままにならないように）
-   ObjectSet(originalName, OBJPROP_STATE, false);
+   #ifdef __MQL5__
+      ObjectSetInteger(0, originalName, OBJPROP_STATE, false);
+   #else
+      ObjectSet(originalName, OBJPROP_STATE, false);
+   #endif
    
    // Buy Close
    if(buttonName == "btnCloseBuy")
    {
       Print("Close Buy clicked");
-      position_close(0);
+      position_close(0, -1);
       UpdateGUI();
    }
    
@@ -513,7 +634,7 @@ void ProcessButtonClick(string buttonName)
    else if(buttonName == "btnCloseSell")
    {
       Print("Close Sell clicked");
-      position_close(1);
+      position_close(1, -1);
       UpdateGUI();
    }
    
@@ -523,8 +644,8 @@ void ProcessButtonClick(string buttonName)
       Print("Close All clicked");
       
       // リアルポジションを閉じる
-      position_close(0);
-      position_close(1);
+      position_close(0, -1);
+      position_close(1, -1);
       
       // ゴーストもリセット
       ResetGhost(OP_BUY);
@@ -647,7 +768,7 @@ else if(buttonName == "btnGhostBuy")
       // ゴーストモードが無効の場合はメッセージを表示
       MessageBox("ゴーストモードが無効です。先にGHOST ONにしてください。", "ゴーストエントリーエラー", MB_ICONWARNING);
    }
-   else if(position_count(OP_BUY) > 0)
+   else if(position_count(OP_SELL) > 0)
    {
       // すでにリアルポジションがある場合
       MessageBox("すでにBuy方向のリアルポジションが存在します。\nゴーストエントリーはリアルポジションがない状態で行ってください。", 
@@ -843,17 +964,33 @@ void CreateHorizontalLine(string name, double price, color lineColor, int style,
 // オブジェクト名にプレフィックスを追加（複数チャート対策）
 string objectName = g_ObjectPrefix + name;
 
-if(ObjectFind(objectName) >= 0)
-   ObjectDelete(objectName);
+#ifdef __MQL5__
+   if(ObjectFind(0, objectName) >= 0)
+      ObjectDelete(0, objectName);
+#else
+   if(ObjectFind(objectName) >= 0)
+      ObjectDelete(objectName);
+#endif
    
-ObjectCreate(objectName, OBJ_HLINE, 0, 0, price);
-ObjectSet(objectName, OBJPROP_COLOR, lineColor);
-ObjectSet(objectName, OBJPROP_STYLE, style);
-ObjectSet(objectName, OBJPROP_WIDTH, width);
-ObjectSet(objectName, OBJPROP_BACK, false);
-ObjectSet(objectName, OBJPROP_SELECTABLE, true);
-ObjectSet(objectName, OBJPROP_SELECTED, false);
-ObjectSet(objectName, OBJPROP_HIDDEN, true);
+#ifdef __MQL5__
+   ObjectCreate(0, objectName, OBJ_HLINE, 0, 0, price);
+   ObjectSetInteger(0, objectName, OBJPROP_COLOR, lineColor);
+   ObjectSetInteger(0, objectName, OBJPROP_STYLE, style);
+   ObjectSetInteger(0, objectName, OBJPROP_WIDTH, width);
+   ObjectSetInteger(0, objectName, OBJPROP_BACK, false);
+   ObjectSetInteger(0, objectName, OBJPROP_SELECTABLE, true);
+   ObjectSetInteger(0, objectName, OBJPROP_SELECTED, false);
+   ObjectSetInteger(0, objectName, OBJPROP_HIDDEN, true);
+#else
+   ObjectCreate(objectName, OBJ_HLINE, 0, 0, price);
+   ObjectSet(objectName, OBJPROP_COLOR, lineColor);
+   ObjectSet(objectName, OBJPROP_STYLE, style);
+   ObjectSet(objectName, OBJPROP_WIDTH, width);
+   ObjectSet(objectName, OBJPROP_BACK, false);
+   ObjectSet(objectName, OBJPROP_SELECTABLE, true);
+   ObjectSet(objectName, OBJPROP_SELECTED, false);
+   ObjectSet(objectName, OBJPROP_HIDDEN, true);
+#endif
 
 // オブジェクト名を保存
 SaveObjectName(objectName, g_LineNames, g_LineObjectCount);
@@ -870,15 +1007,31 @@ void CreatePriceLabel(string name, string text, double price, color textColor, b
 string objectName = g_ObjectPrefix + name;
 
 // 既存のラベルがあれば削除
-if(ObjectFind(objectName) >= 0)
-   ObjectDelete(objectName);
+#ifdef __MQL5__
+   if(ObjectFind(0, objectName) >= 0)
+      ObjectDelete(0, objectName);
+#else
+   if(ObjectFind(objectName) >= 0)
+      ObjectDelete(objectName);
+#endif
    
 // ラベルの作成
 datetime labelTime = TimeCurrent() + 1800; // 現在時刻から30分後の位置に表示
-ObjectCreate(objectName, OBJ_TEXT, 0, labelTime, price + (isAbove ? 25*Point : -25*Point));
-ObjectSetText(objectName, text, 8, "Arial Bold", textColor);
-ObjectSet(objectName, OBJPROP_BACK, false);
-ObjectSet(objectName, OBJPROP_SELECTABLE, false);
+
+#ifdef __MQL5__
+   ObjectCreate(0, objectName, OBJ_TEXT, 0, labelTime, price + (isAbove ? 25*_Point : -25*_Point));
+   ObjectSetString(0, objectName, OBJPROP_TEXT, text);
+   ObjectSetString(0, objectName, OBJPROP_FONT, "Arial Bold");
+   ObjectSetInteger(0, objectName, OBJPROP_FONTSIZE, 8);
+   ObjectSetInteger(0, objectName, OBJPROP_COLOR, textColor);
+   ObjectSetInteger(0, objectName, OBJPROP_BACK, false);
+   ObjectSetInteger(0, objectName, OBJPROP_SELECTABLE, false);
+#else
+   ObjectCreate(objectName, OBJ_TEXT, 0, labelTime, price + (isAbove ? 25*Point : -25*Point));
+   ObjectSetText(objectName, text, 8, "Arial Bold", textColor);
+   ObjectSet(objectName, OBJPROP_BACK, false);
+   ObjectSet(objectName, OBJPROP_SELECTABLE, false);
+#endif
 
 // オブジェクト名を保存
 SaveObjectName(objectName, g_LineNames, g_LineObjectCount);
@@ -889,9 +1042,15 @@ SaveObjectName(objectName, g_LineNames, g_LineObjectCount);
 void DeleteAllLines()
 {
    // チャート上のすべてのオブジェクトを検索して関連するラインを削除
-   for(int i = ObjectsTotal() - 1; i >= 0; i--)
-   {
-      string name = ObjectName(i);
+   #ifdef __MQL5__
+      for(int i = ObjectsTotal(0, 0, -1) - 1; i >= 0; i--)
+      {
+         string name = ObjectName(0, i, 0, -1);
+   #else
+      for(int i = ObjectsTotal() - 1; i >= 0; i--)
+      {
+         string name = ObjectName(i);
+   #endif
       
       // 自分のEAのオブジェクトのみを対象にする
       if(StringFind(name, g_ObjectPrefix) != 0) 
@@ -907,20 +1066,32 @@ void DeleteAllLines()
          StringFind(name, "Label") >= 0 || 
          StringFind(name, "LimitTP") >= 0)
       {
-         ObjectDelete(name);
+         #ifdef __MQL5__
+            ObjectDelete(0, name);
+         #else
+            ObjectDelete(name);
+         #endif
       }
    }
    
    // 配列に保存されたオブジェクトも削除
    for(int i = 0; i < g_LineObjectCount; i++)
    {
-      if(ObjectFind(g_LineNames[i]) >= 0)
+      #ifdef __MQL5__
+         if(ObjectFind(0, g_LineNames[i]) >= 0)
+      #else
+         if(ObjectFind(g_LineNames[i]) >= 0)
+      #endif
       {
          // ここでもボタン保護
          if(StringFind(g_LineNames[i], "btn") >= 0)
             continue;
             
-         ObjectDelete(g_LineNames[i]);
+         #ifdef __MQL5__
+            ObjectDelete(0, g_LineNames[i]);
+         #else
+            ObjectDelete(g_LineNames[i]);
+         #endif
       }
    }
    
@@ -943,10 +1114,17 @@ void DeleteAllLines()
    
    for(int i = 0; i < ArraySize(specificObjects); i++)
    {
-      if(ObjectFind(specificObjects[i]) >= 0)
-      {
-         ObjectDelete(specificObjects[i]);
-      }
+      #ifdef __MQL5__
+         if(ObjectFind(0, specificObjects[i]) >= 0)
+         {
+            ObjectDelete(0, specificObjects[i]);
+         }
+      #else
+         if(ObjectFind(specificObjects[i]) >= 0)
+         {
+            ObjectDelete(specificObjects[i]);
+         }
+      #endif
    }
    
    // カウンターをリセット
@@ -976,10 +1154,17 @@ void CleanupLinesOnClose(int side)
     
     for(int i = 0; i < ArraySize(objects); i++)
     {
-        if(ObjectFind(objects[i]) >= 0)
-        {
-            ObjectDelete(objects[i]);
-        }
+        #ifdef __MQL5__
+            if(ObjectFind(0, objects[i]) >= 0)
+            {
+                ObjectDelete(0, objects[i]);
+            }
+        #else
+            if(ObjectFind(objects[i]) >= 0)
+            {
+                ObjectDelete(objects[i]);
+            }
+        #endif
     }
     
     // チャートを再描画
