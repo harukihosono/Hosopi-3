@@ -2,15 +2,13 @@
 //|              Hosopi 3 - メイン管理用関数                           |
 //|                       Copyright 2025                             |
 //+------------------------------------------------------------------+
+#include "Hosopi3_Compat.mqh"
 #include "Hosopi3_Defines.mqh"
 #include "Hosopi3_Trading.mqh"
 #include "Hosopi3_Utils.mqh"
 #include "Hosopi3_GUI.mqh"
 #include "Hosopi3_Table.mqh"
 #include "Hosopi3_Ghost.mqh"
-
-
-
 
 //+------------------------------------------------------------------+
 //| エントリー原因を記録するためのヘルパー関数                        |
@@ -23,7 +21,7 @@ void LogEntryReason(int type, string entryMethod, string reason)
    // エントリーログフォーマット：[時間] [タイプ] [メソッド] [理由]
    string logMessage = StringFormat("[%s] %s エントリー: メソッド=%s, 理由=%s, 価格=%s", 
                       timestamp, typeStr, entryMethod, reason, 
-                      DoubleToString(type == OP_BUY ? GetAskPrice() : GetBidPrice(), Digits));
+                      DoubleToString(type == OP_BUY ? GetAskPrice() : GetBidPrice(), GetDigits()));
    
    // ログを出力
    Print(logMessage);
@@ -61,8 +59,6 @@ void SaveEntryLogToFile(string logMessage)
    }
 }
 
-
-
 //+------------------------------------------------------------------+
 //| ExecuteRealEntry関数 - 初回エントリー時間制限対応版               |
 //+------------------------------------------------------------------+
@@ -74,9 +70,9 @@ void ExecuteRealEntry(int type, string entryReason)
       return;
    }
       
-   if((GetAskPrice() - GetBidPrice()) / Point > MaxSpreadPoints && MaxSpreadPoints > 0)
+   if((GetAskPrice() - GetBidPrice()) / GetPointValue() > MaxSpreadPoints && MaxSpreadPoints > 0)
    {
-      Print("スプレッドが大きすぎるため、リアルエントリーはスキップされました: ", (GetAskPrice() - GetBidPrice()) / Point, " > ", MaxSpreadPoints);
+      Print("スプレッドが大きすぎるため、リアルエントリーはスキップされました: ", (GetAskPrice() - GetBidPrice()) / GetPointValue(), " > ", MaxSpreadPoints);
       return;
    }
       
@@ -197,8 +193,6 @@ void ExecuteRealEntry(int type, string entryReason)
    }
 }
 
-
-
 //+------------------------------------------------------------------+
 //| ExecuteRealNanpin関数 - ナンピンレベル廃止版                     |
 //+------------------------------------------------------------------+
@@ -212,9 +206,9 @@ void ExecuteRealNanpin(int typeOrder)
    }
    
    // スプレッドチェック
-   if((GetAskPrice() - GetBidPrice()) / Point > MaxSpreadPoints && MaxSpreadPoints > 0)
+   if((GetAskPrice() - GetBidPrice()) / GetPointValue() > MaxSpreadPoints && MaxSpreadPoints > 0)
    {
-      Print("スプレッドが大きすぎるため、リアルナンピンはスキップされました: ", (GetAskPrice() - GetBidPrice()) / Point, " > ", MaxSpreadPoints);
+      Print("スプレッドが大きすぎるため、リアルナンピンはスキップされました: ", (GetAskPrice() - GetBidPrice()) / GetPointValue(), " > ", MaxSpreadPoints);
       return;
    }
    
@@ -298,8 +292,6 @@ void ExecuteRealNanpin(int typeOrder)
    }
 }
 
-
-
 //+------------------------------------------------------------------+
 //| ExecuteDiscretionaryEntry関数 - 初回エントリー時間制限対応版      |
 //+------------------------------------------------------------------+
@@ -311,9 +303,9 @@ void ExecuteDiscretionaryEntry(int typeOrder, double lotSize = 0)
       return;
    }
       
-   if((GetAskPrice() - GetBidPrice()) / Point > MaxSpreadPoints && MaxSpreadPoints > 0)
+   if((GetAskPrice() - GetBidPrice()) / GetPointValue() > MaxSpreadPoints && MaxSpreadPoints > 0)
    {
-      Print("スプレッドが大きすぎるため、裁量エントリーはスキップされました: ", (GetAskPrice() - GetBidPrice()) / Point, " > ", MaxSpreadPoints);
+      Print("スプレッドが大きすぎるため、裁量エントリーはスキップされました: ", (GetAskPrice() - GetBidPrice()) / GetPointValue(), " > ", MaxSpreadPoints);
       return;
    }
       
@@ -386,7 +378,6 @@ void ExecuteDiscretionaryEntry(int typeOrder, double lotSize = 0)
    }
 }
 
-
 //+------------------------------------------------------------------+
 //| ExecuteEntryFromLevel関数 - 初回エントリー時間制限対応版          |
 //+------------------------------------------------------------------+
@@ -398,9 +389,9 @@ void ExecuteEntryFromLevel(int type, int level)
       return;
    }
       
-   if((GetAskPrice() - GetBidPrice()) / Point > MaxSpreadPoints && MaxSpreadPoints > 0)
+   if((GetAskPrice() - GetBidPrice()) / GetPointValue() > MaxSpreadPoints && MaxSpreadPoints > 0)
    {
-      Print("スプレッドが大きすぎるため、レベル指定エントリーはスキップされました: ", (GetAskPrice() - GetBidPrice()) / Point, " > ", MaxSpreadPoints);
+      Print("スプレッドが大きすぎるため、レベル指定エントリーはスキップされました: ", (GetAskPrice() - GetBidPrice()) / GetPointValue(), " > ", MaxSpreadPoints);
       return;
    }
       
@@ -468,7 +459,6 @@ void ExecuteEntryFromLevel(int type, int level)
    }
 }
 
-
 // Hosopi3_Manager.mqh の OnTickManager関数内の最初の部分を修正 (バックテスト高速化対応)
 void OnTickManager()
 {
@@ -524,7 +514,9 @@ void OnTickManager()
       }
       
       // OnTimerの機能も呼び出し（バックテスト時は頻度を下げる）
-      if(!isTesting || (isTesting && MathMod(Bars, 1000) == 0)) // バックテスト時は1000バー毎に実行
+      static int callCounter = 0;
+      callCounter++;
+      if(!isTesting || (isTesting && callCounter % 1000 == 0)) // バックテスト時は1000回毎に実行
       {
          OnTimerHandler();
       }
@@ -534,7 +526,9 @@ void OnTickManager()
    ProcessStrategyLogic();
 
    // GUIを更新（バックテスト時は頻度を下げる）
-   if(!isTesting || (isTesting && MathMod(Bars, 1000) == 0)) // バックテスト時は1000バー毎に実行
+   static int guiUpdateCounter = 0;
+   guiUpdateCounter++;
+   if(!isTesting || (isTesting && guiUpdateCounter % 1000 == 0)) // バックテスト時は1000回毎に実行
    {
       UpdateGUI();
    }
@@ -606,6 +600,7 @@ void OnTickManager()
    // 指値決済の検出とゴーストリセット処理
    CheckLimitTakeProfitExecutions();
 }
+
 //+------------------------------------------------------------------+
 //| 特定方向のラインのみを削除                                        |
 //+------------------------------------------------------------------+
@@ -626,9 +621,9 @@ void DeleteSpecificLine(int side)
    
    for(int i = 0; i < ArraySize(objects); i++)
    {
-      if(ObjectFind(objects[i]) >= 0)
+      if(ObjectExists(objects[i]))
       {
-         ObjectDelete(objects[i]);
+         ObjectDeleteMQL(objects[i]);
          Print("方向別オブジェクト削除: ", objects[i]);
       }
    }
@@ -636,9 +631,6 @@ void DeleteSpecificLine(int side)
    // チャートの再描画
    ChartRedraw();
 }
-
-
-
 
 //+------------------------------------------------------------------+
 //| CheckNanpinConditions関数 - ナンピンレベル廃止版                   |
@@ -724,18 +716,18 @@ void CheckNanpinConditions(int side)
    Print("CheckNanpinConditions 詳細: 方向=", direction, 
          ", リアルポジション数=", realPositionCount,
          ", 合計ポジション数=", totalPositionCount,
-         ", 最後の価格=", DoubleToString(lastPrice, Digits),
-         ", 現在価格=", DoubleToString(currentPrice, Digits),
+         ", 最後の価格=", DoubleToString(lastPrice, GetDigits()),
+         ", 現在価格=", DoubleToString(currentPrice, GetDigits()),
          ", ナンピン幅=", nanpinSpread, "ポイント",
-         ", 差=", MathAbs((side == 0) ? (lastPrice - currentPrice) : (currentPrice - lastPrice)) / Point, "ポイント");
+         ", 差=", MathAbs((side == 0) ? (lastPrice - currentPrice) : (currentPrice - lastPrice)) / GetPointValue(), "ポイント");
    
    // ナンピン条件の判定
    bool nanpinCondition = false;
    
    if(side == 0) // Buy
-      nanpinCondition = (currentPrice < lastPrice - nanpinSpread * Point);
+      nanpinCondition = (currentPrice < lastPrice - nanpinSpread * GetPointValue());
    else // Sell
-      nanpinCondition = (currentPrice > lastPrice + nanpinSpread * Point);
+      nanpinCondition = (currentPrice > lastPrice + nanpinSpread * GetPointValue());
    
    Print("CheckNanpinConditions 条件判定: ", nanpinCondition ? "成立" : "不成立");
    
@@ -747,10 +739,6 @@ void CheckNanpinConditions(int side)
    }
 }
 
-
-
-
-
 //+------------------------------------------------------------------+
 //| InitializeEA関数 - レイアウトパターン対応版                        |
 //+------------------------------------------------------------------+
@@ -760,7 +748,7 @@ int InitializeEA()
    ResetTradingCaches();
 
    // アカウント番号を取得して保存
-   g_AccountNumber = AccountNumber();
+   g_AccountNumber = GetAccountNumber();
    
    // グローバル変数のプレフィックスを設定（通貨ペア＋マジックナンバー＋アカウント番号）
    g_GlobalVarPrefix = Symbol() + "_" + IntegerToString(MagicNumber) + "_" + IntegerToString(g_AccountNumber) + "_Ghost_";
@@ -878,8 +866,6 @@ int InitializeEA()
    return(INIT_SUCCEEDED);
 }
 
-
-
 //+------------------------------------------------------------------+
 //| Expert deinitialization function - バックテスト用修正             |
 //+------------------------------------------------------------------+
@@ -920,21 +906,18 @@ void DeinitializeEA(const int reason)
    DeleteAllGhostObjectsByType(OP_SELL);
    
    // 最後に明示的にすべてのゴースト関連オブジェクトを検索して削除 (追加)
-   for(int i = ObjectsTotal() - 1; i >= 0; i--)
+   for(int i = ObjectsTotalMQL() - 1; i >= 0; i--)
    {
-      string name = ObjectName(i);
+      string name = ObjectNameMQL(i);
       if(StringFind(name, g_ObjectPrefix) == 0 && StringFind(name, "Ghost") >= 0)
       {
-         ObjectDelete(name);
+         ObjectDeleteMQL(name);
       }
    }
    
    // チャートを再描画
    ChartRedraw();
 }
-
-
-
 
 //+------------------------------------------------------------------+
 //| チャートイベント関数                                               |
@@ -951,12 +934,6 @@ void HandleChartEvent(const int id,
    }
 }
 
-
-
-
-
-
-
 //+------------------------------------------------------------------+
 //| リアルエントリー用のGetLastPositionLot関数を追加                 |
 //+------------------------------------------------------------------+
@@ -965,6 +942,7 @@ double GetLastPositionLot(int type)
    double lastLotSize = 0;
    datetime lastOpenTime = 0;
    
+   #ifdef __MQL4__
    for(int i = OrdersTotal() - 1; i >= 0; i--)
    {
       if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
@@ -980,11 +958,32 @@ double GetLastPositionLot(int type)
          }
       }
    }
+   #endif
+   
+   #ifdef __MQL5__
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      ulong ticket = PositionGetTicket(i);
+      if(PositionSelectByTicket(ticket))
+      {
+         if((int)PositionGetInteger(POSITION_TYPE) == type && 
+            PositionGetString(POSITION_SYMBOL) == Symbol() && 
+            PositionGetInteger(POSITION_MAGIC) == MagicNumber)
+         {
+            // 最新のポジションを探す
+            datetime openTime = (datetime)PositionGetInteger(POSITION_TIME);
+            if(openTime > lastOpenTime)
+            {
+               lastOpenTime = openTime;
+               lastLotSize = PositionGetDouble(POSITION_VOLUME);
+            }
+         }
+      }
+   }
+   #endif
    
    return lastLotSize;
 }
-
-
 
 //+------------------------------------------------------------------+
 //| リアルポジション数変化を監視する関数 - 両建て強化対応版            |
@@ -1050,7 +1049,6 @@ void CheckPositionChanges()
    prevSellCount = currentSellCount;
 }
 
-
 //+------------------------------------------------------------------+
 //| ProcessRealEntries関数 - 初回エントリー時間制限対応版              |
 //+------------------------------------------------------------------+
@@ -1106,8 +1104,6 @@ void ProcessRealEntries(int side)
      
       return;
    }
-   
-   
    
    // 戦略シグナルチェック
    bool entrySignal = ShouldProcessRealEntry(side);

@@ -7,6 +7,28 @@
 #property link      ""
 #property strict
 
+
+// MQL4との互換性のためのモード定数（上部に移動）
+#ifdef __MQL5__
+   #define MODE_SMA 0
+   #define MODE_EMA 1
+   #define MODE_SMMA 2
+   #define MODE_LWMA 3
+   
+   // ボリンジャーバンド用
+   #define MODE_MAIN 0
+   #define MODE_UPPER 1
+   #define MODE_LOWER 2
+   
+   // ストキャスティクス用
+   #define MODE_SIGNAL 1
+   
+   // ADX用
+   #define MODE_PLUSDI 1
+   #define MODE_MINUSDI 2
+#endif
+
+
 //+------------------------------------------------------------------+
 //| グローバル変数 - インジケーターハンドル（MQL5用）                  |
 //+------------------------------------------------------------------+
@@ -321,13 +343,6 @@ enum CONDITION_TYPE
    AND_CONDITION = 1          // すべての条件が成立（AND条件）
 };
 
-// MQL4との互換性のためのモード定数（上部に移動）
-#ifdef __MQL5__
-   #define MODE_SMA 0
-   #define MODE_EMA 1
-   #define MODE_SMMA 2
-   #define MODE_LWMA 3
-#endif
 
 // MA戦略パラメータ
 sinput string Comment_MA = ""; //+--- 移動平均線戦略設定 ---+
@@ -901,20 +916,16 @@ bool CheckBollingerSignal(int side)
       return (BB_Sell_Direction == TREND_FOLLOWING) ? signal : !signal;
    }
 }
-
 //+------------------------------------------------------------------+
 //| RCI（ランク相関係数）の計算 - クロスプラットフォーム対応          |
 //+------------------------------------------------------------------+
 double CalculateRCI(int period, int shift, ENUM_TIMEFRAMES timeframe)
 {
    // 計算するために十分なヒストリカルデータがあることを確認
-#ifdef __MQL4__
-   if(Bars < period + shift)
+   int totalBars = iBars(_Symbol, timeframe);
+   
+   if(totalBars < period + shift)
       return 0;
-#else
-   if(Bars(_Symbol, timeframe) < period + shift)
-      return 0;
-#endif
 
    // サイズを確保した動的配列を使用
    double prices[];

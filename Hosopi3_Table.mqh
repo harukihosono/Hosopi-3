@@ -35,14 +35,16 @@
          case OBJPROP_YSIZE:
          case OBJPROP_COLOR:
          case OBJPROP_WIDTH:
-         case OBJPROP_ZORDER:
          case OBJPROP_BGCOLOR:
          case OBJPROP_BORDER_TYPE:
-            ObjectSetInteger(0, name, prop, (long)value);
+            ObjectSetInteger(0, name, (ENUM_OBJECT_PROPERTY_INTEGER)prop, (long)value);
+            break;
+         case OBJPROP_ZORDER:
+            ObjectSetInteger(0, name, OBJPROP_ZORDER, (long)value);
             break;
          case OBJPROP_BACK:
          case OBJPROP_SELECTABLE:
-            ObjectSetInteger(0, name, prop, (bool)value);
+            ObjectSetInteger(0, name, (ENUM_OBJECT_PROPERTY_INTEGER)prop, (bool)value);
             break;
       }
    }
@@ -82,6 +84,33 @@
    }
    
    #define Bars Bars(_Symbol, _Period)
+   
+   // MQL5でIsTesting()を実装
+   bool IsTesting()
+   {
+      return (bool)MQLInfoInteger(MQL_TESTER);
+   }
+   
+   // MQL5でMarketInfo()を実装
+   double MarketInfo(string symbol, int mode)
+   {
+      switch(mode)
+      {
+         case MODE_TICKVALUE:
+            return SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE);
+         case MODE_TICKSIZE:
+            return SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
+         case MODE_POINT:
+            return SymbolInfoDouble(symbol, SYMBOL_POINT);
+         case MODE_DIGITS:
+            return (double)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
+         case MODE_SPREAD:
+            return (double)SymbolInfoInteger(symbol, SYMBOL_SPREAD);
+         default:
+            return 0;
+      }
+   }
+  
    
 #else
    // MQL4の場合はそのまま使用
@@ -149,11 +178,7 @@ void CreatePositionTable()
    ObjectSetMQL4(bgName, OBJPROP_WIDTH_MQL4, 1);
    ObjectSetMQL4(bgName, OBJPROP_BACK_MQL4, false);
    ObjectSetMQL4(bgName, OBJPROP_SELECTABLE_MQL4, false);
-   #ifdef __MQL5__
-      ObjectSetInteger(0, bgName, OBJPROP_ZORDER, 0);
-   #else
-      ObjectSetInteger(0, bgName, OBJPROP_ZORDER, 0);
-   #endif
+   ObjectSetMQL4(bgName, OBJPROP_ZORDER_MQL4, 0);
    
    // タイトル背景
    string titleBgName = tablePrefix + "TitleBG";
@@ -169,11 +194,7 @@ void CreatePositionTable()
    ObjectSetMQL4(titleBgName, OBJPROP_WIDTH_MQL4, 1);
    ObjectSetMQL4(titleBgName, OBJPROP_BACK_MQL4, false);
    ObjectSetMQL4(titleBgName, OBJPROP_SELECTABLE_MQL4, false);
-   #ifdef __MQL5__
-      ObjectSetInteger(0, titleBgName, OBJPROP_ZORDER, 1);
-   #else
-      ObjectSetInteger(0, titleBgName, OBJPROP_ZORDER, 1);
-   #endif
+   ObjectSetMQL4(titleBgName, OBJPROP_ZORDER_MQL4, 1);
    
    // タイトルテキスト
    string titleName = tablePrefix + "Title";
@@ -183,11 +204,7 @@ void CreatePositionTable()
    ObjectSetMQL4(titleName, OBJPROP_YDISTANCE_MQL4, adjustedTableY + 3);
    ObjectSetTextMQL4(titleName, GhostTableTitle, 7, "MS Gothic", TABLE_TEXT_COLOR);
    ObjectSetMQL4(titleName, OBJPROP_SELECTABLE_MQL4, false);
-   #ifdef __MQL5__
-      ObjectSetInteger(0, titleName, OBJPROP_ZORDER, 2);
-   #else
-      ObjectSetInteger(0, titleName, OBJPROP_ZORDER, 2);
-   #endif
+   ObjectSetMQL4(titleName, OBJPROP_ZORDER_MQL4, 2);
    
    // ヘッダー背景
    string headerBgName = tablePrefix + "HeaderBG";
@@ -203,11 +220,7 @@ void CreatePositionTable()
    ObjectSetMQL4(headerBgName, OBJPROP_WIDTH_MQL4, 1);
    ObjectSetMQL4(headerBgName, OBJPROP_BACK_MQL4, false);
    ObjectSetMQL4(headerBgName, OBJPROP_SELECTABLE_MQL4, false);
-   #ifdef __MQL5__
-      ObjectSetInteger(0, headerBgName, OBJPROP_ZORDER, 1);
-   #else
-      ObjectSetInteger(0, headerBgName, OBJPROP_ZORDER, 1);
-   #endif
+   ObjectSetMQL4(headerBgName, OBJPROP_ZORDER_MQL4, 1);
    
    // ヘッダー列のラベルを作成
    for(int i = 0; i < 8; i++)
@@ -219,11 +232,7 @@ void CreatePositionTable()
       ObjectSetMQL4(name, OBJPROP_YDISTANCE_MQL4, adjustedTableY + TITLE_HEIGHT + 4);
       ObjectSetTextMQL4(name, headers[i], 8, "MS Gothic", TABLE_TEXT_COLOR);
       ObjectSetMQL4(name, OBJPROP_SELECTABLE_MQL4, false);
-      #ifdef __MQL5__
-         ObjectSetInteger(0, name, OBJPROP_ZORDER, 2);
-      #else
-         ObjectSetInteger(0, name, OBJPROP_ZORDER, 2);
-      #endif
+      ObjectSetMQL4(name, OBJPROP_ZORDER_MQL4, 2);
       
       // オブジェクト名を保存
       SaveObjectName(name, g_TableNames, g_TableObjectCount);
@@ -603,11 +612,7 @@ void UpdatePositionTable()
       ObjectSetMQL4(noDataName, OBJPROP_YDISTANCE_MQL4, adjustedTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT + 10);
       ObjectSetTextMQL4(noDataName, "No positions", 8, "MS Gothic", TABLE_TEXT_COLOR);
       ObjectSetMQL4(noDataName, OBJPROP_SELECTABLE_MQL4, false);
-      #ifdef __MQL5__
-         ObjectSetInteger(0, noDataName, OBJPROP_ZORDER, 2);
-      #else
-         ObjectSetInteger(0, noDataName, OBJPROP_ZORDER, 2);
-      #endif
+      ObjectSetMQL4(noDataName, OBJPROP_ZORDER_MQL4, 2);
       
       SaveObjectName(noDataName, g_TableNames, g_TableObjectCount);
       
@@ -646,11 +651,7 @@ void UpdatePositionTable()
       ObjectSetMQL4(rowBgName, OBJPROP_WIDTH_MQL4, 1);
       ObjectSetMQL4(rowBgName, OBJPROP_BACK_MQL4, false);
       ObjectSetMQL4(rowBgName, OBJPROP_SELECTABLE_MQL4, false);
-      #ifdef __MQL5__
-         ObjectSetInteger(0, rowBgName, OBJPROP_ZORDER, 1);
-      #else
-         ObjectSetInteger(0, rowBgName, OBJPROP_ZORDER, 1);
-      #endif
+      ObjectSetMQL4(rowBgName, OBJPROP_ZORDER_MQL4, 1);
       
       // ゴーストかリアルかで文字色を決定
       color textColorToUse = allPositions[i].isGhost ? TABLE_GHOST_COLOR : TABLE_TEXT_COLOR;
@@ -663,11 +664,7 @@ void UpdatePositionTable()
       ObjectSetMQL4(noName, OBJPROP_YDISTANCE_MQL4, rowY + 4);
       ObjectSetTextMQL4(noName, IntegerToString(i+1), 8, "MS Gothic", textColorToUse);
       ObjectSetMQL4(noName, OBJPROP_SELECTABLE_MQL4, false);
-      #ifdef __MQL5__
-         ObjectSetInteger(0, noName, OBJPROP_ZORDER, 3);
-      #else
-         ObjectSetInteger(0, noName, OBJPROP_ZORDER, 3);
-      #endif
+      ObjectSetMQL4(noName, OBJPROP_ZORDER_MQL4, 3);
       
       // Type
       string typeText = "";
@@ -698,11 +695,7 @@ void UpdatePositionTable()
       ObjectSetMQL4(typeName, OBJPROP_YDISTANCE_MQL4, rowY + 4);
       ObjectSetTextMQL4(typeName, typeText, 8, "MS Gothic", typeColor);
       ObjectSetMQL4(typeName, OBJPROP_SELECTABLE_MQL4, false);
-      #ifdef __MQL5__
-         ObjectSetInteger(0, typeName, OBJPROP_ZORDER, 3);
-      #else
-         ObjectSetInteger(0, typeName, OBJPROP_ZORDER, 3);
-      #endif
+      ObjectSetMQL4(typeName, OBJPROP_ZORDER_MQL4, 3);
       
       // Lots
       string lotsName = tablePrefix + "Row_" + IntegerToString(i) + "_Lots";
@@ -712,11 +705,7 @@ void UpdatePositionTable()
       ObjectSetMQL4(lotsName, OBJPROP_YDISTANCE_MQL4, rowY + 4);
       ObjectSetTextMQL4(lotsName, DoubleToString(allPositions[i].lots, 2), 8, "MS Gothic", textColorToUse);
       ObjectSetMQL4(lotsName, OBJPROP_SELECTABLE_MQL4, false);
-      #ifdef __MQL5__
-         ObjectSetInteger(0, lotsName, OBJPROP_ZORDER, 3);
-      #else
-         ObjectSetInteger(0, lotsName, OBJPROP_ZORDER, 3);
-      #endif
+      ObjectSetMQL4(lotsName, OBJPROP_ZORDER_MQL4, 3);
       
       // Symbol
       string symbolName = tablePrefix + "Row_" + IntegerToString(i) + "_Symbol";
@@ -726,20 +715,12 @@ void UpdatePositionTable()
       ObjectSetMQL4(symbolName, OBJPROP_YDISTANCE_MQL4, rowY + 4);
       ObjectSetTextMQL4(symbolName, allPositions[i].symbol, 8, "MS Gothic", textColorToUse);
       ObjectSetMQL4(symbolName, OBJPROP_SELECTABLE_MQL4, false);
-      #ifdef __MQL5__
-         ObjectSetInteger(0, symbolName, OBJPROP_ZORDER, 3);
-      #else
-         ObjectSetInteger(0, symbolName, OBJPROP_ZORDER, 3);
-      #endif
+      ObjectSetMQL4(symbolName, OBJPROP_ZORDER_MQL4, 3);
       
       // Price
       string priceStr = "";
-      if(StringFind(allPositions[i].symbol, "JPY") >= 0)
-         priceStr = DoubleToString(allPositions[i].price, 3);
-      else if(StringFind(allPositions[i].symbol, "XAU") >= 0)
-         priceStr = DoubleToString(allPositions[i].price, 2);
-      else
-         priceStr = DoubleToString(allPositions[i].price, 5);
+      int digits = (int)MarketInfo(allPositions[i].symbol, MODE_DIGITS);
+      priceStr = DoubleToString(allPositions[i].price, digits);
          
       string priceName = tablePrefix + "Row_" + IntegerToString(i) + "_Price";
       ObjectCreateMQL4(priceName, OBJ_LABEL, 0, 0, 0);
@@ -748,11 +729,7 @@ void UpdatePositionTable()
       ObjectSetMQL4(priceName, OBJPROP_YDISTANCE_MQL4, rowY + 4);
       ObjectSetTextMQL4(priceName, priceStr, 8, "MS Gothic", textColorToUse);
       ObjectSetMQL4(priceName, OBJPROP_SELECTABLE_MQL4, false);
-      #ifdef __MQL5__
-         ObjectSetInteger(0, priceName, OBJPROP_ZORDER, 3);
-      #else
-         ObjectSetInteger(0, priceName, OBJPROP_ZORDER, 3);
-      #endif
+      ObjectSetMQL4(priceName, OBJPROP_ZORDER_MQL4, 3);
       
       // OpenTime
       string timeStr = TimeToString(allPositions[i].openTime, TIME_DATE|TIME_MINUTES);
@@ -763,11 +740,7 @@ void UpdatePositionTable()
       ObjectSetMQL4(timeName, OBJPROP_YDISTANCE_MQL4, rowY + 4);
       ObjectSetTextMQL4(timeName, timeStr, 8, "MS Gothic", textColorToUse);
       ObjectSetMQL4(timeName, OBJPROP_SELECTABLE_MQL4, false);
-      #ifdef __MQL5__
-         ObjectSetInteger(0, timeName, OBJPROP_ZORDER, 3);
-      #else
-         ObjectSetInteger(0, timeName, OBJPROP_ZORDER, 3);
-      #endif
+      ObjectSetMQL4(timeName, OBJPROP_ZORDER_MQL4, 3);
       
       // Level
       string levelName = tablePrefix + "Row_" + IntegerToString(i) + "_Level";
@@ -777,11 +750,7 @@ void UpdatePositionTable()
       ObjectSetMQL4(levelName, OBJPROP_YDISTANCE_MQL4, rowY + 4);
       ObjectSetTextMQL4(levelName, IntegerToString(allPositions[i].level + 1), 8, "MS Gothic", textColorToUse);
       ObjectSetMQL4(levelName, OBJPROP_SELECTABLE_MQL4, false);
-      #ifdef __MQL5__
-         ObjectSetInteger(0, levelName, OBJPROP_ZORDER, 3);
-      #else
-         ObjectSetInteger(0, levelName, OBJPROP_ZORDER, 3);
-      #endif
+      ObjectSetMQL4(levelName, OBJPROP_ZORDER_MQL4, 3);
       
       // Profit
       string profitName = tablePrefix + "Row_" + IntegerToString(i) + "_Profit";
@@ -802,10 +771,13 @@ void UpdatePositionTable()
                           #endif
                           ;
          
+         double tickValue = MarketInfo(Symbol(), MODE_TICKVALUE);
+         double point = MarketInfo(Symbol(), MODE_POINT);
+         
          if(isGhostBuy) {
-            profit = (GetBidPrice() - allPositions[i].price) * allPositions[i].lots * MarketInfo(Symbol(), MODE_TICKVALUE) / Point;
+            profit = (GetBidPrice() - allPositions[i].price) * allPositions[i].lots * tickValue / point;
          } else {
-            profit = (allPositions[i].price - GetAskPrice()) * allPositions[i].lots * MarketInfo(Symbol(), MODE_TICKVALUE) / Point;
+            profit = (allPositions[i].price - GetAskPrice()) * allPositions[i].lots * tickValue / point;
          }
       } else {
          // リアルポジションの場合は実際の損益を取得
@@ -831,17 +803,9 @@ void UpdatePositionTable()
          profitColor = profit >= 0 ? clrForestGreen : clrFireBrick;
       }
       
-      #ifdef __MQL5__
-         ObjectSetTextMQL4(profitName, DoubleToString(profit, 2) + "", 8, "MS Gothic", profitColor);
-      #else
-         ObjectSetTextMQL4(profitName, DoubleToStr(profit, 2) + "", 8, "MS Gothic", profitColor);
-      #endif
+      ObjectSetTextMQL4(profitName, DoubleToString(profit, 2) + "", 8, "MS Gothic", profitColor);
       ObjectSetMQL4(profitName, OBJPROP_SELECTABLE_MQL4, false);
-      #ifdef __MQL5__
-         ObjectSetInteger(0, profitName, OBJPROP_ZORDER, 3);
-      #else
-         ObjectSetInteger(0, profitName, OBJPROP_ZORDER, 3);
-      #endif
+      ObjectSetMQL4(profitName, OBJPROP_ZORDER_MQL4, 3);
       
       // オブジェクト名を保存
       SaveObjectName(rowBgName, g_TableNames, g_TableObjectCount);
@@ -874,11 +838,7 @@ void UpdatePositionTable()
    ObjectSetMQL4(totalRowBgName, OBJPROP_WIDTH_MQL4, 1);
    ObjectSetMQL4(totalRowBgName, OBJPROP_BACK_MQL4, false);
    ObjectSetMQL4(totalRowBgName, OBJPROP_SELECTABLE_MQL4, false);
-   #ifdef __MQL5__
-      ObjectSetInteger(0, totalRowBgName, OBJPROP_ZORDER, 1);
-   #else
-      ObjectSetInteger(0, totalRowBgName, OBJPROP_ZORDER, 1);
-   #endif
+   ObjectSetMQL4(totalRowBgName, OBJPROP_ZORDER_MQL4, 1);
    
    // 合計テキスト
    string totalTextName = tablePrefix + "Row_Total_Text";
@@ -888,11 +848,7 @@ void UpdatePositionTable()
    ObjectSetMQL4(totalTextName, OBJPROP_YDISTANCE_MQL4, adjustedTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (visibleRows + 1) + 4);
    ObjectSetTextMQL4(totalTextName, "TOTAL:", 8, "MS Gothic Bold", TABLE_TEXT_COLOR);
    ObjectSetMQL4(totalTextName, OBJPROP_SELECTABLE_MQL4, false);
-   #ifdef __MQL5__
-      ObjectSetInteger(0, totalTextName, OBJPROP_ZORDER, 3);
-   #else
-      ObjectSetInteger(0, totalTextName, OBJPROP_ZORDER, 3);
-   #endif
+   ObjectSetMQL4(totalTextName, OBJPROP_ZORDER_MQL4, 3);
    
    // Buy合計
    string buyTotalName = tablePrefix + "Row_BuyTotal";
@@ -901,17 +857,9 @@ void UpdatePositionTable()
    ObjectSetMQL4(buyTotalName, OBJPROP_XDISTANCE_MQL4, adjustedTableX + positions[2]);
    ObjectSetMQL4(buyTotalName, OBJPROP_YDISTANCE_MQL4, adjustedTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (visibleRows + 1) + 4);
    color buyColor = totalBuyProfit >= 0 ? clrLime : clrRed;
-   #ifdef __MQL5__
-      ObjectSetTextMQL4(buyTotalName, "BUY: " + DoubleToString(totalBuyProfit, 2) + "", 8, "MS Gothic", buyColor);
-   #else
-      ObjectSetTextMQL4(buyTotalName, "BUY: " + DoubleToStr(totalBuyProfit, 2) + "", 8, "MS Gothic", buyColor);
-   #endif
+   ObjectSetTextMQL4(buyTotalName, "BUY: " + DoubleToString(totalBuyProfit, 2) + "", 8, "MS Gothic", buyColor);
    ObjectSetMQL4(buyTotalName, OBJPROP_SELECTABLE_MQL4, false);
-   #ifdef __MQL5__
-      ObjectSetInteger(0, buyTotalName, OBJPROP_ZORDER, 3);
-   #else
-      ObjectSetInteger(0, buyTotalName, OBJPROP_ZORDER, 3);
-   #endif
+   ObjectSetMQL4(buyTotalName, OBJPROP_ZORDER_MQL4, 3);
    
    // Sell合計
    string sellTotalName = tablePrefix + "Row_SellTotal";
@@ -920,17 +868,9 @@ void UpdatePositionTable()
    ObjectSetMQL4(sellTotalName, OBJPROP_XDISTANCE_MQL4, adjustedTableX + positions[4]);
    ObjectSetMQL4(sellTotalName, OBJPROP_YDISTANCE_MQL4, adjustedTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (visibleRows + 1) + 4);
    color sellColor = totalSellProfit >= 0 ? clrLime : clrRed;
-   #ifdef __MQL5__
-      ObjectSetTextMQL4(sellTotalName, "SELL: " + DoubleToString(totalSellProfit, 2) + "", 8, "MS Gothic", sellColor);
-   #else
-      ObjectSetTextMQL4(sellTotalName, "SELL: " + DoubleToStr(totalSellProfit, 2) + "", 8, "MS Gothic", sellColor);
-   #endif
+   ObjectSetTextMQL4(sellTotalName, "SELL: " + DoubleToString(totalSellProfit, 2) + "", 8, "MS Gothic", sellColor);
    ObjectSetMQL4(sellTotalName, OBJPROP_SELECTABLE_MQL4, false);
-   #ifdef __MQL5__
-      ObjectSetInteger(0, sellTotalName, OBJPROP_ZORDER, 3);
-   #else
-      ObjectSetInteger(0, sellTotalName, OBJPROP_ZORDER, 3);
-   #endif
+   ObjectSetMQL4(sellTotalName, OBJPROP_ZORDER_MQL4, 3);
    
    // 総合計
    string netTotalName = tablePrefix + "Row_NetTotal";
@@ -939,17 +879,9 @@ void UpdatePositionTable()
    ObjectSetMQL4(netTotalName, OBJPROP_XDISTANCE_MQL4, adjustedTableX + positions[7]);
    ObjectSetMQL4(netTotalName, OBJPROP_YDISTANCE_MQL4, adjustedTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (visibleRows + 1) + 4);
    color totalColor = totalProfit >= 0 ? clrLime : clrRed;
-   #ifdef __MQL5__
-      ObjectSetTextMQL4(netTotalName, "NET: " + DoubleToString(totalProfit, 2) + "", 8, "MS Gothic Bold", totalColor);
-   #else
-      ObjectSetTextMQL4(netTotalName, "NET: " + DoubleToStr(totalProfit, 2) + "", 8, "MS Gothic Bold", totalColor);
-   #endif
+   ObjectSetTextMQL4(netTotalName, "NET: " + DoubleToString(totalProfit, 2) + "", 8, "MS Gothic Bold", totalColor);
    ObjectSetMQL4(netTotalName, OBJPROP_SELECTABLE_MQL4, false);
-   #ifdef __MQL5__
-      ObjectSetInteger(0, netTotalName, OBJPROP_ZORDER, 3);
-   #else
-      ObjectSetInteger(0, netTotalName, OBJPROP_ZORDER, 3);
-   #endif
+   ObjectSetMQL4(netTotalName, OBJPROP_ZORDER_MQL4, 3);
    
    // オブジェクト名を保存
    SaveObjectName(totalRowBgName, g_TableNames, g_TableObjectCount);
@@ -1132,7 +1064,7 @@ void ShowPositionDetails(int index, PositionInfo &pos)
    details += "Type: " + typeStr + (pos.isGhost ? " (Ghost)" : " (Real)") + "\n";
    details += "Symbol: " + pos.symbol + "\n";
    details += "Lots: " + DoubleToString(pos.lots, 2) + "\n";
-   details += "Price: " + DoubleToString(pos.price, Digits) + "\n";
+   details += "Price: " + DoubleToString(pos.price, _Digits) + "\n";
    details += "Open Time: " + TimeToString(pos.openTime, TIME_DATE|TIME_SECONDS) + "\n";
    details += "Level: " + IntegerToString(pos.level + 1) + "\n";
 
@@ -1142,10 +1074,13 @@ void ShowPositionDetails(int index, PositionInfo &pos)
 
    if(pos.isGhost) {
       // ゴーストの場合は仮想損益を計算
+      double tickValue = MarketInfo(Symbol(), MODE_TICKVALUE);
+      double point = MarketInfo(Symbol(), MODE_POINT);
+      
       if(isBuy) {
-         profit = (GetBidPrice() - pos.price) * pos.lots * MarketInfo(Symbol(), MODE_TICKVALUE) / Point;
+         profit = (GetBidPrice() - pos.price) * pos.lots * tickValue / point;
       } else {
-         profit = (pos.price - GetAskPrice()) * pos.lots * MarketInfo(Symbol(), MODE_TICKVALUE) / Point;
+         profit = (pos.price - GetAskPrice()) * pos.lots * tickValue / point;
       }
    } else {
       // リアルポジションの場合は実際の損益を取得
@@ -1163,7 +1098,7 @@ void ShowPositionDetails(int index, PositionInfo &pos)
       #endif
    }
 
-   details += "Current Price: " + DoubleToString(currentPrice, Digits) + "\n";
+   details += "Current Price: " + DoubleToString(currentPrice, _Digits) + "\n";
    details += "Profit: " + DoubleToString(profit, 2) + "\n";
 
    // ポップアップウィンドウを表示

@@ -768,7 +768,7 @@ else if(buttonName == "btnGhostBuy")
       // ゴーストモードが無効の場合はメッセージを表示
       MessageBox("ゴーストモードが無効です。先にGHOST ONにしてください。", "ゴーストエントリーエラー", MB_ICONWARNING);
    }
-   else if(position_count(OP_BUY, -1) > 0)
+   else if(position_count(OP_SELL) > 0)
    {
       // すでにリアルポジションがある場合
       MessageBox("すでにBuy方向のリアルポジションが存在します。\nゴーストエントリーはリアルポジションがない状態で行ってください。", 
@@ -792,7 +792,7 @@ else if(buttonName == "btnGhostSell")
       // ゴーストモードが無効の場合はメッセージを表示
       MessageBox("ゴーストモードが無効です。先にGHOST ONにしてください。", "ゴーストエントリーエラー", MB_ICONWARNING);
    }
-   else if(position_count(OP_SELL, -1) > 0)
+   else if(position_count(OP_SELL) > 0)
    {
       // すでにリアルポジションがある場合
       MessageBox("すでにSell方向のリアルポジションが存在します。\nゴーストエントリーはリアルポジションがない状態で行ってください。", 
@@ -1177,7 +1177,7 @@ void CleanupLinesOnClose(int side)
 void CheckAndDeleteLinesIfNoPositions()
 {
    // Buy方向のチェック
-   int buyPositions = position_count(OP_BUY, -1);
+   int buyPositions = position_count(OP_BUY);
    int buyGhosts = ghost_position_count(OP_BUY);
    
    // Buy方向のポジションがゼロならラインを削除
@@ -1187,7 +1187,7 @@ void CheckAndDeleteLinesIfNoPositions()
    }
    
    // Sell方向のチェック
-   int sellPositions = position_count(OP_SELL, -1);
+   int sellPositions = position_count(OP_SELL);
    int sellGhosts = ghost_position_count(OP_SELL);
    
    // Sell方向のポジションがゼロならラインを削除

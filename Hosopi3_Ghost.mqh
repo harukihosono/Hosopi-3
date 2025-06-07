@@ -110,7 +110,7 @@ void CheckGhostStopLossHit(int side)
          
          // リアルポジションがあれば決済
          #ifdef __MQL5__
-            if(position_count(OP_BUY, MagicNumber) > 0)
+            if(position_count(OP_BUY) > 0)
          #else
             if(position_count(OP_BUY) > 0)
          #endif
@@ -123,7 +123,7 @@ void CheckGhostStopLossHit(int side)
          
          // リアルポジションがあれば決済
          #ifdef __MQL5__
-            if(position_count(OP_SELL, MagicNumber) > 0)
+            if(position_count(OP_SELL) > 0)
          #else
             if(position_count(OP_SELL) > 0)
          #endif
@@ -165,7 +165,7 @@ void CreateGhostEntryPoint(int type, double price, double lots, int level, datet
       return;
    // バックテスト時は頻度を下げる
    #ifdef __MQL5__
-      if(IsTesting() && MathMod((double)Bars(Symbol(), PERIOD_CURRENT), 100) != 0)
+      if(((bool)MQLInfoInteger(MQL_TESTER)) && MathMod((double)Bars(Symbol(), PERIOD_CURRENT), 100) != 0)
          return;
    #else
       if(IsTesting() && MathMod(Bars, 100) != 0)
@@ -260,7 +260,7 @@ void InitializeGhostPosition(int type, string entryReason = "")
 {
    // リアルポジションがある場合は処理をスキップ（複数チャート対策）
    #ifdef __MQL5__
-      if(position_count(OP_BUY, MagicNumber) > 0 || position_count(OP_SELL, MagicNumber) > 0) {
+      if(position_count(OP_BUY) > 0 || position_count(OP_SELL) > 0) {
          return;
       }
    #else
@@ -355,7 +355,7 @@ void InitializeGhostPosition(int type, string entryReason = "")
 void AddGhostNanpin(int type)
 {
    #ifdef __MQL5__
-      if(position_count(type, MagicNumber) > 0) {
+      if(position_count(type) > 0) {
          return;
       }
    #else
@@ -768,7 +768,7 @@ void OnTimerHandler()
    {
       // リアルポジションがない場合
       #ifdef __MQL5__
-         if(position_count(OP_BUY, MagicNumber) == 0 && position_count(OP_SELL, MagicNumber) == 0)
+         if(position_count(OP_BUY) == 0 && position_count(OP_SELL) == 0)
       #else
          if(position_count(OP_BUY) == 0 && position_count(OP_SELL) == 0)
       #endif
@@ -941,7 +941,7 @@ void UpdateAveragePriceLines(int side)
 
    // ポジションカウントとゴーストカウントの取得
    #ifdef __MQL5__
-      int positionCount = position_count(operationType, MagicNumber);
+      int positionCount = position_count(operationType);
    #else
       int positionCount = position_count(operationType);
    #endif
@@ -1101,19 +1101,7 @@ void ResetGhostClosedFlags()
    g_SellGhostClosed = false;
 }
 
-//+------------------------------------------------------------------+
-//| ゴーストポジションの数を取得する関数                              |
-//+------------------------------------------------------------------+
-int ghost_position_count(int type)
-{
-   // タイプ（OP_BUY/OP_SELL）に応じて適切なゴーストカウントを返す
-   if(type == OP_BUY)
-      return g_GhostBuyCount;
-   else if(type == OP_SELL)
-      return g_GhostSellCount;
-   else
-      return 0; // 不明なタイプの場合は0を返す
-}
+
 
 //+------------------------------------------------------------------+
 //| 全てのゴーストポジションの数を取得する関数                       |
@@ -1131,7 +1119,7 @@ int combined_position_count(int type)
 {
    // リアルポジション数
    #ifdef __MQL5__
-      int realCount = position_count(type, MagicNumber);
+      int realCount = position_count(type);
    #else
       int realCount = position_count(type);
    #endif
@@ -1474,7 +1462,7 @@ void CheckGhostNanpinCondition(int type)
 
    // リアルポジションがある場合は処理をスキップ（複数チャート対策）
    #ifdef __MQL5__
-      if(position_count(OP_BUY, MagicNumber) > 0 || position_count(OP_SELL, MagicNumber) > 0) {
+      if(position_count(OP_BUY) > 0 || position_count(OP_SELL) > 0) {
          return;
       }
    #else
@@ -1665,7 +1653,7 @@ bool LoadGhostPositionsFromGlobal()
 
    // リアルポジションがある場合は読み込みをスキップ
    #ifdef __MQL5__
-      if(position_count(OP_BUY, MagicNumber) > 0 || position_count(OP_SELL, MagicNumber) > 0) {
+      if(position_count(OP_BUY) > 0 || position_count(OP_SELL) > 0) {
          return false;
       }
    #else
@@ -2211,8 +2199,8 @@ void CheckLimitTakeProfitExecutions()
 
    // 現在のポジション数を取得
    #ifdef __MQL5__
-      int currentBuyCount = position_count(OP_BUY, MagicNumber);
-      int currentSellCount = position_count(OP_SELL, MagicNumber);
+      int currentBuyCount = position_count(OP_BUY);
+      int currentSellCount = position_count(OP_SELL);
    #else
       int currentBuyCount = position_count(OP_BUY);
       int currentSellCount = position_count(OP_SELL);
@@ -2254,7 +2242,7 @@ void ProcessGhostEntries(int side)
    // リアルポジションがある場合はスキップ - 同一タイプのみチェックに変更
    int operationType = (side == 0) ? OP_BUY : OP_SELL;
    #ifdef __MQL5__
-      int existingCount = position_count(operationType, MagicNumber);
+      int existingCount = position_count(operationType);
    #else
       int existingCount = position_count(operationType);
    #endif

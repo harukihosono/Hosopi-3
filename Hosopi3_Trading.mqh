@@ -318,52 +318,6 @@ int pending_order_count(int magic = 0)
 #endif
 
 //+------------------------------------------------------------------+
-//| ポジションカウント関数（共通化）                                  |
-//+------------------------------------------------------------------+
-int position_count(int side, int magic = 0)
-{
-   if(magic == 0) magic = MagicNumber;
-   
-   int count = 0;
-   
-   #ifdef __MQL5__
-   // MQL5でのポジションカウント
-   for(int i = PositionsTotal() - 1; i >= 0; i--)
-   {
-      ulong ticket = PositionGetTicket(i);
-      if(ticket > 0)
-      {
-         if(PositionGetString(POSITION_SYMBOL) == Symbol() &&
-            (magic == 0 || PositionGetInteger(POSITION_MAGIC) == magic) &&
-            PositionGetInteger(POSITION_TYPE) == (side == OP_BUY ? POSITION_TYPE_BUY : POSITION_TYPE_SELL))
-         {
-            count++;
-         }
-      }
-   }
-   
-   // MQL5では成行注文もカウントに含める
-   count += pending_order_count(magic);
-   
-   #else
-   // MQL4でのポジションカウント
-   for(int i = OrdersTotal() - 1; i >= 0; i--)
-   {
-      if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
-      {
-         if(OrderType() == side && OrderSymbol() == Symbol() && 
-            (magic == 0 || OrderMagicNumber() == magic))
-         {
-            count++;
-         }
-      }
-   }
-   #endif
-   
-   return count;
-}
-
-//+------------------------------------------------------------------+
 //| オーダーカウント関数（保留注文のカウント）                       |
 //+------------------------------------------------------------------+
 int order_count(int magic = 0)
