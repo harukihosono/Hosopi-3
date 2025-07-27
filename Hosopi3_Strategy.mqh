@@ -1318,15 +1318,15 @@ bool CheckEnvelopeFilter(int side)
    if(!EnableEnvelopeFilter)
       return true; // フィルターが無効の場合は常にtrue（制限なし）
 
-   double current_price = (side == 0) ? Ask : Bid;
+   double current_price = (side == 0) ? GetAskPrice() : GetBidPrice();
    double upper_envelope, lower_envelope;
 
 #ifdef __MQL4__
    // MQL4での直接取得
-   upper_envelope = iEnvelopes(_Symbol, EnvelopeTimeframe, EnvelopePeriod, EnvelopeMethod, 
-                              0, PRICE_CLOSE, EnvelopeDeviation, MODE_UPPER, 0);
-   lower_envelope = iEnvelopes(_Symbol, EnvelopeTimeframe, EnvelopePeriod, EnvelopeMethod, 
-                              0, PRICE_CLOSE, EnvelopeDeviation, MODE_LOWER, 0);
+   upper_envelope = iEnvelopes(_Symbol, EnvelopeTimeframe, EnvelopePeriod, 0, 
+                              EnvelopeMethod, PRICE_CLOSE, EnvelopeDeviation, MODE_UPPER, 0);
+   lower_envelope = iEnvelopes(_Symbol, EnvelopeTimeframe, EnvelopePeriod, 0, 
+                              EnvelopeMethod, PRICE_CLOSE, EnvelopeDeviation, MODE_LOWER, 0);
 #else
    // MQL5でのCopyBuffer使用
    if(!GetIndicatorValue(g_envelope_handle, 0, 0, upper_envelope) ||
@@ -2360,8 +2360,8 @@ void CheckFinalStopLoss()
       double avgPrice = CalculateRealAveragePrice(OP_BUY);
       if(avgPrice > 0)
       {
-         double currentPrice = Bid;
-         double lossPips = (avgPrice - currentPrice) / Point;
+         double currentPrice = GetBidPrice();
+         double lossPips = (avgPrice - currentPrice) / GetPoint();
          
          if(lossPips >= FinalStopLossPoints)
          {
@@ -2377,8 +2377,8 @@ void CheckFinalStopLoss()
       double avgPrice = CalculateRealAveragePrice(OP_SELL);
       if(avgPrice > 0)
       {
-         double currentPrice = Ask;
-         double lossPips = (currentPrice - avgPrice) / Point;
+         double currentPrice = GetAskPrice();
+         double lossPips = (currentPrice - avgPrice) / GetPoint();
          
          if(lossPips >= FinalStopLossPoints)
          {
