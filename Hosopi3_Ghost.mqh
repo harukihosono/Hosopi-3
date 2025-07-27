@@ -2311,9 +2311,9 @@ void ProcessGhostEntries(int side)
       
       // エンベロープフィルターをチェック（新規ポジションのみ、既存マーチンゲールは除外）
       bool envelopeAllowed = true;
-      int ghostCount = (side == 0) ? g_GhostBuyCount : g_GhostSellCount;
+      int currentGhostCount = (side == 0) ? g_GhostBuyCount : g_GhostSellCount;
       int realCount = position_count(side == 0 ? OP_BUY : OP_SELL);
-      bool isNewPosition = (ghostCount == 0 && realCount == 0);
+      bool isNewPosition = (currentGhostCount == 0 && realCount == 0);
       if(isNewPosition) {
          envelopeAllowed = CheckEnvelopeFilter(side);
       }
