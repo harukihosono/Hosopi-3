@@ -277,6 +277,15 @@ input color GhostSellColor = clrCrimson;      // ゴーストSellエントリー
 input int GhostArrowSize = 3;                 // ゴースト矢印サイズ
 
 
+// ======== エンベロープフィルター設定 ========
+sinput string Comment_Envelope = ""; //+--- エンベロープフィルター設定 ---+
+input bool EnableEnvelopeFilter = false;      // エンベロープフィルターを有効化
+input ENUM_TIMEFRAMES EnvelopeTimeframe = PERIOD_CURRENT; // エンベロープ時間足
+input int EnvelopePeriod = 14;                 // エンベロープ期間
+input ENUM_MA_METHOD EnvelopeMethod = MODE_SMA; // エンベロープ平均化方法
+input double EnvelopeDeviation = 0.1;         // エンベロープ偏差(%)
+input int FinalStopLossPoints = 10000;        // 最終損切り幅（Point）
+
 #include "Hosopi3_Strategy.mqh"
 
 

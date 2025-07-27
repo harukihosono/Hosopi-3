@@ -2309,12 +2309,21 @@ void ProcessGhostEntries(int side)
       else // Sell
          directionAllowed = (EntryMode == MODE_SELL_ONLY || EntryMode == MODE_BOTH);
       
+      // エンベロープフィルターをチェック（新規ポジションのみ、既存マーチンゲールは除外）
+      bool envelopeAllowed = true;
+      bool isNewPosition = (ghost_position_count_side(side) == 0 && position_count_side(side) == 0);
+      if(isNewPosition) {
+         envelopeAllowed = CheckEnvelopeFilter(side);
+      }
+      
       // いずれかの条件が満たされればエントリー
-      bool shouldEnter = indicatorSignal && directionAllowed;
+      bool shouldEnter = indicatorSignal && directionAllowed && envelopeAllowed;
       
       string reason = "";
       if(indicatorSignal) reason += "インジケーター条件OK ";
       if(directionAllowed) reason += "方向OK ";
+      if(envelopeAllowed) reason += "エンベロープフィルターOK ";
+      else if(isNewPosition) reason += "エンベロープフィルターNG ";
       
       if(shouldEnter) {
          InitializeGhostPosition(operationType, reason);

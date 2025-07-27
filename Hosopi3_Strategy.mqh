@@ -45,6 +45,7 @@ int g_bb_handle = INVALID_HANDLE;
 int g_stoch_handle = INVALID_HANDLE;
 int g_cci_handle = INVALID_HANDLE;
 int g_adx_handle = INVALID_HANDLE;
+int g_envelope_handle = INVALID_HANDLE;
 
 // インジケーター値を格納するバッファ
 double g_ma_buy_fast_buffer[];
@@ -61,6 +62,8 @@ double g_cci_buffer[];
 double g_adx_main_buffer[];
 double g_adx_plusdi_buffer[];
 double g_adx_minusdi_buffer[];
+double g_envelope_upper_buffer[];
+double g_envelope_lower_buffer[];
 #endif
 
 //+------------------------------------------------------------------+
@@ -554,6 +557,18 @@ bool InitializeStrategy()
       }
    }
    
+   // エンベロープフィルターが有効な場合
+   if(EnableEnvelopeFilter)
+   {
+      g_envelope_handle = iEnvelopes(_Symbol, EnvelopeTimeframe, EnvelopePeriod, 0, 
+                                    EnvelopeMethod, PRICE_CLOSE, EnvelopeDeviation);
+      if(g_envelope_handle == INVALID_HANDLE)
+      {
+         Print("エンベロープハンドルの作成に失敗しました");
+         init_success = false;
+      }
+   }
+   
    // バッファを時系列として設定
    ArraySetAsSeries(g_ma_buy_fast_buffer, true);
    ArraySetAsSeries(g_ma_buy_slow_buffer, true);
@@ -569,6 +584,8 @@ bool InitializeStrategy()
    ArraySetAsSeries(g_adx_main_buffer, true);
    ArraySetAsSeries(g_adx_plusdi_buffer, true);
    ArraySetAsSeries(g_adx_minusdi_buffer, true);
+   ArraySetAsSeries(g_envelope_upper_buffer, true);
+   ArraySetAsSeries(g_envelope_lower_buffer, true);
    
    return init_success;
 #else
@@ -1294,6 +1311,42 @@ bool CheckADXSignal(int side)
 }
 
 //+------------------------------------------------------------------+
+//| エンベロープフィルターの判定                                      |
+//+------------------------------------------------------------------+
+bool CheckEnvelopeFilter(int side)
+{
+   if(!EnableEnvelopeFilter)
+      return true; // フィルターが無効の場合は常にtrue（制限なし）
+
+   double current_price = (side == 0) ? Ask : Bid;
+   double upper_envelope, lower_envelope;
+
+#ifdef __MQL4__
+   // MQL4での直接取得
+   upper_envelope = iEnvelopes(_Symbol, EnvelopeTimeframe, EnvelopePeriod, EnvelopeMethod, 
+                              0, PRICE_CLOSE, EnvelopeDeviation, MODE_UPPER, 0);
+   lower_envelope = iEnvelopes(_Symbol, EnvelopeTimeframe, EnvelopePeriod, EnvelopeMethod, 
+                              0, PRICE_CLOSE, EnvelopeDeviation, MODE_LOWER, 0);
+#else
+   // MQL5でのCopyBuffer使用
+   if(!GetIndicatorValue(g_envelope_handle, 0, 0, upper_envelope) ||
+      !GetIndicatorValue(g_envelope_handle, 1, 0, lower_envelope))
+      return false;
+#endif
+
+   if(side == 0) // Buy
+   {
+      // 価格が上限バンドより上の場合のみBuy許可
+      return (current_price > upper_envelope);
+   }
+   else // Sell
+   {
+      // 価格が下限バンドより下の場合のみSell許可
+      return (current_price < lower_envelope);
+   }
+}
+
+//+------------------------------------------------------------------+
 //| 常時エントリー戦略の判定                                         |
 //+------------------------------------------------------------------+
 bool CheckConstantEntryStrategy(int side)
@@ -2014,6 +2067,9 @@ void ProcessStrategyLogic()
       return;
    }
 
+   // 【セクション: 最終損切りチェック】
+   CheckFinalStopLoss();
+
    // 【セクション: ポジション状態確認】
    bool hasRealBuy = position_count(OP_BUY) > 0;
    bool hasRealSell = position_count(OP_SELL) > 0;
@@ -2289,6 +2345,48 @@ double GetIndicatorValueOnTimeframe(string symbol, ENUM_TIMEFRAMES timeframe, in
 #endif
 
    return value;
+}
+
+//+------------------------------------------------------------------+
+//| 最終損切りチェック関数                                            |
+//+------------------------------------------------------------------+
+void CheckFinalStopLoss()
+{
+   if(FinalStopLossPoints <= 0) return; // 最終損切りが無効の場合は何もしない
+   
+   // Buy側ポジションの損切りチェック
+   if(position_count(OP_BUY) > 0)
+   {
+      double avgPrice = CalculateRealAveragePrice(OP_BUY);
+      if(avgPrice > 0)
+      {
+         double currentPrice = Bid;
+         double lossPips = (avgPrice - currentPrice) / Point;
+         
+         if(lossPips >= FinalStopLossPoints)
+         {
+            position_close(OP_BUY, 0.0, 10, MagicNumber);
+            Print("最終損切り実行: Buy側ポジション全決済 (損失: ", lossPips, " points)");
+         }
+      }
+   }
+   
+   // Sell側ポジションの損切りチェック
+   if(position_count(OP_SELL) > 0)
+   {
+      double avgPrice = CalculateRealAveragePrice(OP_SELL);
+      if(avgPrice > 0)
+      {
+         double currentPrice = Ask;
+         double lossPips = (currentPrice - avgPrice) / Point;
+         
+         if(lossPips >= FinalStopLossPoints)
+         {
+            position_close(OP_SELL, 0.0, 10, MagicNumber);
+            Print("最終損切り実行: Sell側ポジション全決済 (損失: ", lossPips, " points)");
+         }
+      }
+   }
 }
 
 //+------------------------------------------------------------------+
