@@ -292,6 +292,7 @@ input color GhostBuyColor = clrDeepSkyBlue;   // ゴーストBuyエントリー�
 input color GhostSellColor = clrCrimson;      // ゴーストSellエントリー色
 input int GhostArrowSize = 3;                 // ゴースト矢印サイズ
 
+<<<<<<< HEAD
 // フィルタータイプの列挙型
 enum FILTER_TYPE
 {
@@ -342,6 +343,17 @@ input ENUM_APPLIED_PRICE BollingerAppliedPrice = PRICE_CLOSE; // ボリンジャ
 
 // 共通設定
 input int FinalStopLossPoints = 10000;         // 最終損切り幅（Point）
+=======
+// ======== エンベロープフィルター設定 ========
+sinput string Comment_Envelope = ""; //+--- エンベロープフィルター設定 ---+
+input bool EnableEnvelopeFilter = false;      // エンベロープフィルターを有効化
+input int EnvelopeTimeframe = 0;              // エンベロープ時間足
+input int EnvelopePeriod = 14;                // エンベロープ期間
+input int EnvelopeMethod = 0;                 // エンベロープ平均化方法 (0=SMA)
+input double EnvelopeDeviation = 0.1;         // エンベロープ偏差(%)
+input int FinalStopLossPoints = 10000;        // 最終損切り幅（Point）
+
+>>>>>>> 9d64addf5f44fb05515fc8aae7d4ab4b485bdcbd
 
 #include "Hosopi3_Strategy.mqh"
 
