@@ -17,6 +17,31 @@
 #include "Hosopi3_TakeProfit.mqh"  
 #include "Hosopi3_Manager.mqh"
 #include "Hosopi3_Notification.mqh"
+
+// フィルタータイプの列挙型
+enum FILTER_TYPE
+{
+   FILTER_NONE = 0,        // フィルターなし
+   FILTER_ENVELOPE = 1,    // エンベロープ
+   FILTER_BOLLINGER = 2    // ボリンジャーバンド
+};
+
+// バンド対象の列挙型
+enum BAND_TARGET
+{
+   UPPER_BAND = 0,         // 上バンド
+   LOWER_BAND = 1,         // 下バンド
+   MIDDLE_BAND = 2         // 中央バンド（ボリンジャーバンドのみ）
+};
+
+// バンド条件の列挙型
+enum BAND_CONDITION
+{
+   PRICE_ABOVE = 0,        // 価格がバンドより上
+   PRICE_BELOW = 1,        // 価格がバンドより下
+   CROSS_DOWN = 2,         // 上から下へクロス
+   CROSS_UP = 3            // 下から上へクロス
+};
 //+------------------------------------------------------------------+
 //|                          入力パラメータ                          |
 //+------------------------------------------------------------------+
@@ -102,6 +127,11 @@ sinput string Comment_BreakEven = ""; //+--- 建値決済機能設定 ---+
 input bool EnableBreakEvenByPositions = false;   // ○ポジション以上なら建値で決済機能(ON/OFF)
 input double BreakEvenProfit = 0.0;              // 建値価格（最低利益額）
 input int BreakEvenMinPositions = 3;             // 最低ポジション数
+
+// ======== 損失額決済機能設定 ========
+sinput string Comment_MaxLoss = ""; //+--- 損失額決済機能設定 ---+
+input bool EnableMaxLossClose = false;           // 損失額決済機能を有効化(ON/OFF)
+input double MaxLossAmount = 10000.0;            // 最大損失額（この金額以上の損失で全決済）
 
 // ======== 基本設定 ========
 sinput string Comment_Basic = ""; //+--- 基本設定 ---+
@@ -262,6 +292,56 @@ input color GhostBuyColor = clrDeepSkyBlue;   // ゴーストBuyエントリー�
 input color GhostSellColor = clrCrimson;      // ゴーストSellエントリー色
 input int GhostArrowSize = 3;                 // ゴースト矢印サイズ
 
+// フィルタータイプの列挙型
+enum FILTER_TYPE
+{
+   FILTER_NONE = 0,        // フィルターなし
+   FILTER_ENVELOPE = 1,    // エンベロープ
+   FILTER_BOLLINGER = 2    // ボリンジャーバンド
+};
+
+// バンド対象の列挙型
+enum BAND_TARGET
+{
+   UPPER_BAND = 0,         // 上バンド
+   LOWER_BAND = 1,         // 下バンド
+   MIDDLE_BAND = 2         // 中央バンド（ボリンジャーバンドのみ）
+};
+
+// バンド条件の列挙型
+enum BAND_CONDITION
+{
+   PRICE_ABOVE = 0,        // 価格がバンドより上
+   PRICE_BELOW = 1,        // 価格がバンドより下
+   CROSS_DOWN = 2,         // 上から下へクロス
+   CROSS_UP = 3            // 下から上へクロス
+};
+
+// ======== テクニカルフィルター設定 ========
+sinput string Comment_Filter = ""; //+--- テクニカルフィルター設定 ---+
+input FILTER_TYPE FilterType = FILTER_NONE;    // フィルタータイプ
+input ENUM_TIMEFRAMES FilterTimeframe = PERIOD_CURRENT; // フィルター時間足
+input int FilterPeriod = 14;                   // 期間
+input ENUM_MA_METHOD FilterMethod = MODE_SMA;  // 平均化方法
+input int FilterShift = 0;                     // シフト（何足前と比較するか）
+
+// Buy用フィルター設定
+input BAND_TARGET BuyBandTarget = LOWER_BAND;   // Buyバンド対象
+input BAND_CONDITION BuyBandCondition = PRICE_ABOVE; // Buyバンド条件
+
+// Sell用フィルター設定
+input BAND_TARGET SellBandTarget = UPPER_BAND;  // Sellバンド対象
+input BAND_CONDITION SellBandCondition = PRICE_BELOW; // Sellバンド条件
+
+// エンベロープ専用設定
+input double EnvelopeDeviation = 0.1;          // エンベロープ偏差(%)
+
+// ボリンジャーバンド専用設定  
+input double BollingerDeviation = 2.0;         // ボリンジャーバンド偏差（標準偏差倍率）
+input ENUM_APPLIED_PRICE BollingerAppliedPrice = PRICE_CLOSE; // ボリンジャー適用価格
+
+// 共通設定
+input int FinalStopLossPoints = 10000;         // 最終損切り幅（Point）
 
 #include "Hosopi3_Strategy.mqh"
 

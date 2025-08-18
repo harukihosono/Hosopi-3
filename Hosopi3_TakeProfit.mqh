@@ -881,6 +881,166 @@ void CheckBreakEvenByPositions()
 }
 
 //+------------------------------------------------------------------+
+//| 損失額による決済チェック関数                                      |
+//+------------------------------------------------------------------+
+void CheckMaxLossClose()
+{
+   // 機能が無効な場合はスキップ
+   if(!EnableMaxLossClose)
+      return;
+      
+   // 最大損失額が0以下なら機能を無効とみなす
+   if(MaxLossAmount <= 0)
+      return;
+      
+   // Buy側ポジションの損失チェック
+   int buyPositions = position_count(OP_BUY);
+   if(buyPositions > 0)
+   {
+      // 現在の総損益を計算
+      double totalBuyProfit = 0;
+      
+#ifdef __MQL5__
+      // MQL5用の処理
+      for(int i = PositionsTotal() - 1; i >= 0; i--)
+      {
+         ulong ticket = PositionGetTicket(i);
+         if(ticket > 0)
+         {
+            if(PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY && 
+               PositionGetString(POSITION_SYMBOL) == Symbol() && 
+               PositionGetInteger(POSITION_MAGIC) == MagicNumber)
+            {
+               // 損益 + スワップを合計
+               totalBuyProfit += PositionGetDouble(POSITION_PROFIT) + 
+                               PositionGetDouble(POSITION_SWAP);
+               
+               // 手数料を別途計算
+               double commission = 0;
+               if(HistorySelectByPosition(PositionGetInteger(POSITION_IDENTIFIER)))
+               {
+                  int dealsTotal = HistoryDealsTotal();
+                  for(int j = 0; j < dealsTotal; j++)
+                  {
+                     ulong dealTicket = HistoryDealGetTicket(j);
+                     if(dealTicket > 0)
+                     {
+                        commission += HistoryDealGetDouble(dealTicket, DEAL_COMMISSION);
+                     }
+                  }
+               }
+               totalBuyProfit += commission;
+            }
+         }
+      }
+#else // MQL4
+      // すべてのBuyポジションの損益を合計
+      for(int i = OrdersTotal() - 1; i >= 0; i--)
+      {
+         if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+         {
+            if(OrderType() == OP_BUY && OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
+            {
+               // 損益 + スワップ + 手数料を合計
+               totalBuyProfit += OrderProfit() + OrderSwap() + OrderCommission();
+            }
+         }
+      }
+#endif
+      
+      // 損失が最大損失額を超えたら決済
+      if(totalBuyProfit <= -MaxLossAmount)
+      {
+         Print("Buy側損失額決済条件成立: ポジション数=", buyPositions, 
+               ", 総損失=", DoubleToString(totalBuyProfit, 2),
+               ", 最大損失額=-", DoubleToString(MaxLossAmount, 2));
+               
+         // Buy側のポジションをすべて決済
+         position_close(OP_BUY, 0.0, 10, MagicNumber);
+         
+         // ゴーストポジションもリセット
+         ResetSpecificGhost(OP_BUY);
+         
+         // 関連するラインを削除
+         CleanupLinesOnClose(0);
+      }
+   }
+   
+   // Sell側ポジションの損失チェック
+   int sellPositions = position_count(OP_SELL);
+   if(sellPositions > 0)
+   {
+      // 現在の総損益を計算
+      double totalSellProfit = 0;
+      
+#ifdef __MQL5__
+      // MQL5用の処理
+      for(int i = PositionsTotal() - 1; i >= 0; i--)
+      {
+         ulong ticket = PositionGetTicket(i);
+         if(ticket > 0)
+         {
+            if(PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_SELL && 
+               PositionGetString(POSITION_SYMBOL) == Symbol() && 
+               PositionGetInteger(POSITION_MAGIC) == MagicNumber)
+            {
+               // 損益 + スワップを合計
+               totalSellProfit += PositionGetDouble(POSITION_PROFIT) + 
+                               PositionGetDouble(POSITION_SWAP);
+               
+               // 手数料を別途計算
+               double commission = 0;
+               if(HistorySelectByPosition(PositionGetInteger(POSITION_IDENTIFIER)))
+               {
+                  int dealsTotal = HistoryDealsTotal();
+                  for(int j = 0; j < dealsTotal; j++)
+                  {
+                     ulong dealTicket = HistoryDealGetTicket(j);
+                     if(dealTicket > 0)
+                     {
+                        commission += HistoryDealGetDouble(dealTicket, DEAL_COMMISSION);
+                     }
+                  }
+               }
+               totalSellProfit += commission;
+            }
+         }
+      }
+#else // MQL4
+      // すべてのSellポジションの損益を合計
+      for(int i = OrdersTotal() - 1; i >= 0; i--)
+      {
+         if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+         {
+            if(OrderType() == OP_SELL && OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
+            {
+               // 損益 + スワップ + 手数料を合計
+               totalSellProfit += OrderProfit() + OrderSwap() + OrderCommission();
+            }
+         }
+      }
+#endif
+      
+      // 損失が最大損失額を超えたら決済
+      if(totalSellProfit <= -MaxLossAmount)
+      {
+         Print("Sell側損失額決済条件成立: ポジション数=", sellPositions, 
+               ", 総損失=", DoubleToString(totalSellProfit, 2),
+               ", 最大損失額=-", DoubleToString(MaxLossAmount, 2));
+               
+         // Sell側のポジションをすべて決済
+         position_close(OP_SELL, 0.0, 10, MagicNumber);
+         
+         // ゴーストポジションもリセット
+         ResetSpecificGhost(OP_SELL);
+         
+         // 関連するラインを削除
+         CleanupLinesOnClose(1);
+      }
+   }
+}
+
+//+------------------------------------------------------------------+
 //| Point値を取得する関数                                             |
 //+------------------------------------------------------------------+
 double GetPointValue()

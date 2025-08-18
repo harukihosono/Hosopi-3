@@ -17,6 +17,31 @@
 #include "Hosopi3_TakeProfit.mqh"  
 #include "Hosopi3_Manager.mqh"
 #include "Hosopi3_Notification.mqh"
+
+// フィルタータイプの列挙型
+enum ENUM_FILTER_TYPE
+{
+   FILTER_NONE = 0,        // フィルターなし
+   FILTER_ENVELOPE = 1,    // エンベロープ
+   FILTER_BOLLINGER = 2    // ボリンジャーバンド
+};
+
+// バンド対象の列挙型
+enum ENUM_BAND_TARGET
+{
+   BAND_UPPER = 0,         // 上バンド
+   BAND_LOWER = 1,         // 下バンド
+   BAND_MIDDLE = 2         // 中央バンド（ボリンジャーバンドのみ）
+};
+
+// バンド条件の列挙型
+enum ENUM_BAND_CONDITION
+{
+   BAND_PRICE_ABOVE = 0,   // 価格がバンドより上
+   BAND_PRICE_BELOW = 1,   // 価格がバンドより下
+   BAND_CROSS_DOWN = 2,    // 上から下へクロス
+   BAND_CROSS_UP = 3       // 下から上へクロス
+};
 //+------------------------------------------------------------------+
 //|                          入力パラメータ                          |
 //+------------------------------------------------------------------+
@@ -103,6 +128,11 @@ input bool EnableBreakEvenByPositions = false;   // ○ポジション以上な�
 input double BreakEvenProfit = 0.0;              // 建値価格（最低利益額）
 input int BreakEvenMinPositions = 3;             // 最低ポジション数
 
+// ======== 損失額決済機能設定 ========
+sinput string Comment_MaxLoss = ""; //+--- 損失額決済機能設定 ---+
+input bool EnableMaxLossClose = false;           // 損失額決済機能を有効化(ON/OFF)
+input double MaxLossAmount = 10000.0;            // 最大損失額（この金額以上の損失で全決済）
+
 // ======== 基本設定 ========
 sinput string Comment_Basic = ""; //+--- 基本設定 ---+
 // ======== MQL5専用設定 ========
@@ -152,6 +182,17 @@ input USE_TIMES set_time = GMT9;     // 時間取得方法
 input int natu = 6;                  // 夏加算時間（バックテスト用）
 input int huyu = 7;                  // 冬加算時間（バックテスト用）
 
+
+// 曜日別フィルター設定
+sinput string Comment_DayFilter = ""; //+--- 曜日別フィルター設定 ---+
+input bool EnablePositionByDay = true;         // 曜日別ポジション制御を有効化
+input bool AllowMondayPosition = true;         // 月曜日のポジション許可
+input bool AllowTuesdayPosition = true;        // 火曜日のポジション許可
+input bool AllowWednesdayPosition = true;      // 水曜日のポジション許可
+input bool AllowThursdayPosition = true;       // 木曜日のポジション許可
+input bool AllowFridayPosition = true;         // 金曜日のポジション許可
+input bool AllowSaturdayPosition = false;      // 土曜日のポジション許可
+input bool AllowSundayPosition = false;        // 日曜日のポジション許可
 
 // 共通時間設定（曜日別設定が無効の場合に使用）
 sinput string Comment_Common_Time = ""; //+--- 共通時間設定 ---+
@@ -276,15 +317,33 @@ input color GhostBuyColor = clrDeepSkyBlue;   // ゴーストBuyエントリー�
 input color GhostSellColor = clrCrimson;      // ゴーストSellエントリー色
 input int GhostArrowSize = 3;                 // ゴースト矢印サイズ
 
+// 列挙型は上で定義済み
 
-// ======== エンベロープフィルター設定 ========
-sinput string Comment_Envelope = ""; //+--- エンベロープフィルター設定 ---+
-input bool EnableEnvelopeFilter = false;      // エンベロープフィルターを有効化
-input ENUM_TIMEFRAMES EnvelopeTimeframe = PERIOD_CURRENT; // エンベロープ時間足
-input int EnvelopePeriod = 14;                 // エンベロープ期間
-input ENUM_MA_METHOD EnvelopeMethod = MODE_SMA; // エンベロープ平均化方法
-input double EnvelopeDeviation = 0.1;         // エンベロープ偏差(%)
-input int FinalStopLossPoints = 10000;        // 最終損切り幅（Point）
+// ======== テクニカルフィルター設定 ========
+sinput string Comment_Filter = ""; //+--- テクニカルフィルター設定 ---+
+input ENUM_FILTER_TYPE FilterType = FILTER_NONE;    // フィルタータイプ
+input ENUM_TIMEFRAMES FilterTimeframe = PERIOD_CURRENT; // フィルター時間足
+input int FilterPeriod = 14;                   // 期間
+input ENUM_MA_METHOD FilterMethod = MODE_SMA;  // 平均化方法
+input int FilterShift = 0;                     // シフト（何足前と比較するか）
+
+// Buy用フィルター設定
+input ENUM_BAND_TARGET BuyBandTarget = BAND_LOWER;   // Buyバンド対象
+input ENUM_BAND_CONDITION BuyBandCondition = BAND_PRICE_ABOVE; // Buyバンド条件
+
+// Sell用フィルター設定
+input ENUM_BAND_TARGET SellBandTarget = BAND_UPPER;  // Sellバンド対象
+input ENUM_BAND_CONDITION SellBandCondition = BAND_PRICE_BELOW; // Sellバンド条件
+
+// エンベロープ専用設定
+input double EnvelopeDeviation = 0.1;          // エンベロープ偏差(%)
+
+// ボリンジャーバンド専用設定  
+input double BollingerDeviation = 2.0;         // ボリンジャーバンド偏差（標準偏差倍率）
+input ENUM_APPLIED_PRICE BollingerAppliedPrice = PRICE_CLOSE; // ボリンジャー適用価格
+
+// 共通設定
+input int FinalStopLossPoints = 10000;         // 最終損切り幅（Point）
 
 #include "Hosopi3_Strategy.mqh"
 

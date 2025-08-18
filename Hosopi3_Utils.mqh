@@ -244,7 +244,27 @@ bool IsInitialEntryTimeAllowed(int type)
    int minute = TimeMinute(jpTime);
 #endif
    
-   // 曜日の有効/無効チェック
+   // 曜日別ポジション制御が有効な場合のみ曜日チェック
+   if(EnablePositionByDay) {
+      // 曜日別ポジション許可チェック
+      bool dayAllowed = false;
+      switch(dayOfWeek) {
+         case 0: dayAllowed = AllowSundayPosition; break;
+         case 1: dayAllowed = AllowMondayPosition; break;
+         case 2: dayAllowed = AllowTuesdayPosition; break;
+         case 3: dayAllowed = AllowWednesdayPosition; break;
+         case 4: dayAllowed = AllowThursdayPosition; break;
+         case 5: dayAllowed = AllowFridayPosition; break;
+         case 6: dayAllowed = AllowSaturdayPosition; break;
+      }
+      
+      if(!dayAllowed) {
+         g_InitialTimeAllowedCache[typeIndex] = false;
+         return false;
+      }
+   }
+   
+   // 曜日の有効/無効チェック（既存の時間帯設定）
    switch(dayOfWeek) {
       case 0: if(Sunday_Enable == OFF_MODE) { g_InitialTimeAllowedCache[typeIndex] = false; return false; } break;
       case 1: if(Monday_Enable == OFF_MODE) { g_InitialTimeAllowedCache[typeIndex] = false; return false; } break;

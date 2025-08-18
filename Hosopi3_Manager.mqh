@@ -593,6 +593,9 @@ void OnTickManager()
 
    // ポジション数に応じた建値決済機能を実行
    CheckBreakEvenByPositions();
+   
+   // 損失額による決済機能を実行
+   CheckMaxLossClose();
 
    // リアルポジション数の変化をチェック
    CheckPositionChanges();

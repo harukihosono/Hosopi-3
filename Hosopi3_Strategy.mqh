@@ -557,16 +557,21 @@ bool InitializeStrategy()
       }
    }
    
-   // エンベロープフィルターが有効な場合
-   if(EnableEnvelopeFilter)
+   // テクニカルフィルターが有効な場合
+   if(FilterType == FILTER_ENVELOPE)
    {
-      g_envelope_handle = iEnvelopes(_Symbol, EnvelopeTimeframe, EnvelopePeriod, 0, 
-                                    EnvelopeMethod, PRICE_CLOSE, EnvelopeDeviation);
+      g_envelope_handle = iEnvelopes(_Symbol, FilterTimeframe, FilterPeriod, 0, 
+                                    FilterMethod, PRICE_CLOSE, EnvelopeDeviation);
       if(g_envelope_handle == INVALID_HANDLE)
       {
          Print("エンベロープハンドルの作成に失敗しました");
          init_success = false;
       }
+   }
+   else if(FilterType == FILTER_BOLLINGER)
+   {
+      // ボリンジャーバンドは必要に応じて動的に生成
+      // ハンドル不要
    }
    
    // バッファを時系列として設定
@@ -1311,39 +1316,193 @@ bool CheckADXSignal(int side)
 }
 
 //+------------------------------------------------------------------+
+//| テクニカルフィルターの判定                                      |
+//+------------------------------------------------------------------+
+bool CheckTechnicalFilter(int side)
+{
+   // フィルターが無効の場合
+   if(FilterType == FILTER_NONE)
+      return true;
+      
+   // エンベロープフィルター
+   if(FilterType == FILTER_ENVELOPE)
+      return CheckEnvelopeFilter(side);
+      
+   // ボリンジャーバンドフィルター
+   if(FilterType == FILTER_BOLLINGER)
+      return CheckBollingerFilter(side);
+      
+   return true;
+}
+
+//+------------------------------------------------------------------+
 //| エンベロープフィルターの判定                                      |
 //+------------------------------------------------------------------+
 bool CheckEnvelopeFilter(int side)
 {
-   if(!EnableEnvelopeFilter)
-      return true; // フィルターが無効の場合は常にtrue（制限なし）
+   double target_band_current, target_band_previous = 0;
+   double price_current, price_previous = 0;
+   
+   // Buy/Sellに応じた条件を取得
+   ENUM_BAND_TARGET currentTarget = (side == 0) ? BuyBandTarget : SellBandTarget;
+   ENUM_BAND_CONDITION currentCondition = (side == 0) ? BuyBandCondition : SellBandCondition;
+   
+   // 現在の価格とバンド値を取得
+   price_current = GetClosePrice(FilterShift);
+   if(!GetEnvelopeBandValue(FilterShift, target_band_current, currentTarget))
+      return false;
+      
+   // クロス条件の場合は前の足の値も取得
+   if(currentCondition == BAND_CROSS_DOWN || currentCondition == BAND_CROSS_UP)
+   {
+      price_previous = GetClosePrice(FilterShift + 1);
+      if(!GetEnvelopeBandValue(FilterShift + 1, target_band_previous, currentTarget))
+         return false;
+   }
+   
+   return EvaluateBandCondition(price_current, target_band_current, price_previous, target_band_previous, currentCondition);
+}
 
-   double current_price = (side == 0) ? GetAskPrice() : GetBidPrice();
-   double upper_envelope, lower_envelope;
-
+//+------------------------------------------------------------------+
+//| エンベロープバンド値取得                                      |
+//+------------------------------------------------------------------+
+bool GetEnvelopeBandValue(int shift, double &band_value, ENUM_BAND_TARGET target)
+{
 #ifdef __MQL4__
    // MQL4での直接取得
-   upper_envelope = iEnvelopes(_Symbol, EnvelopeTimeframe, EnvelopePeriod, 0, 
-                              EnvelopeMethod, PRICE_CLOSE, EnvelopeDeviation, MODE_UPPER, 0);
-   lower_envelope = iEnvelopes(_Symbol, EnvelopeTimeframe, EnvelopePeriod, 0, 
-                              EnvelopeMethod, PRICE_CLOSE, EnvelopeDeviation, MODE_LOWER, 0);
+   if(target == BAND_UPPER)
+      band_value = iEnvelopes(_Symbol, FilterTimeframe, FilterPeriod, 0, 
+                             FilterMethod, PRICE_CLOSE, EnvelopeDeviation, MODE_UPPER, shift);
+   else if(target == BAND_LOWER)
+      band_value = iEnvelopes(_Symbol, FilterTimeframe, FilterPeriod, 0, 
+                             FilterMethod, PRICE_CLOSE, EnvelopeDeviation, MODE_LOWER, shift);
+   else // BAND_MIDDLE
+      band_value = iMA(_Symbol, FilterTimeframe, FilterPeriod, 0, FilterMethod, PRICE_CLOSE, shift);
+      
+   return (band_value > 0);
 #else
    // MQL5でのCopyBuffer使用
-   if(!GetIndicatorValue(g_envelope_handle, 0, 0, upper_envelope) ||
-      !GetIndicatorValue(g_envelope_handle, 1, 0, lower_envelope))
-      return false;
+   if(target == BAND_UPPER)
+      return GetIndicatorValue(g_envelope_handle, 0, shift, band_value);
+   else if(target == BAND_LOWER)
+      return GetIndicatorValue(g_envelope_handle, 1, shift, band_value);
+   else // BAND_MIDDLE
+   {
+      // 中央バンドは移動平均と同じ
+      int ma_handle = iMA(_Symbol, FilterTimeframe, FilterPeriod, 0, FilterMethod, PRICE_CLOSE);
+      return GetIndicatorValue(ma_handle, 0, shift, band_value);
+   }
 #endif
+}
 
-   if(side == 0) // Buy
+//+------------------------------------------------------------------+
+//| ボリンジャーバンドフィルターの判定                              |
+//+------------------------------------------------------------------+
+bool CheckBollingerFilter(int side)
+{
+   double target_band_current, target_band_previous = 0;
+   double price_current, price_previous = 0;
+   
+   // Buy/Sellに応じた条件を取得
+   ENUM_BAND_TARGET currentTarget = (side == 0) ? BuyBandTarget : SellBandTarget;
+   ENUM_BAND_CONDITION currentCondition = (side == 0) ? BuyBandCondition : SellBandCondition;
+   
+   // 現在の価格とバンド値を取得
+   price_current = GetClosePrice(FilterShift);
+   if(!GetBollingerBandValue(FilterShift, target_band_current, currentTarget))
+      return false;
+      
+   // クロス条件の場合は前の足の値も取得
+   if(currentCondition == BAND_CROSS_DOWN || currentCondition == BAND_CROSS_UP)
    {
-      // 価格が上限バンドより上の場合のみBuy許可
-      return (current_price > upper_envelope);
+      price_previous = GetClosePrice(FilterShift + 1);
+      if(!GetBollingerBandValue(FilterShift + 1, target_band_previous, currentTarget))
+         return false;
    }
-   else // Sell
+   
+   return EvaluateBandCondition(price_current, target_band_current, price_previous, target_band_previous, currentCondition);
+}
+
+//+------------------------------------------------------------------+
+//| ボリンジャーバンド値取得                                      |
+//+------------------------------------------------------------------+
+bool GetBollingerBandValue(int shift, double &band_value, ENUM_BAND_TARGET target)
+{
+#ifdef __MQL4__
+   // MQL4での直接取得
+   if(target == BAND_UPPER)
+      band_value = iBands(_Symbol, FilterTimeframe, FilterPeriod, BollingerDeviation, 0, 
+                         BollingerAppliedPrice, MODE_UPPER, shift);
+   else if(target == BAND_LOWER)
+      band_value = iBands(_Symbol, FilterTimeframe, FilterPeriod, BollingerDeviation, 0, 
+                         BollingerAppliedPrice, MODE_LOWER, shift);
+   else // BAND_MIDDLE
+      band_value = iBands(_Symbol, FilterTimeframe, FilterPeriod, BollingerDeviation, 0, 
+                         BollingerAppliedPrice, MODE_MAIN, shift);
+      
+   return (band_value > 0);
+#else
+   // MQL5でのCopyBuffer使用
+   int bb_handle = iBands(_Symbol, FilterTimeframe, FilterPeriod, 0, BollingerDeviation, 
+                          BollingerAppliedPrice);
+   if(bb_handle == INVALID_HANDLE)
+      return false;
+      
+   int buffer_index;
+   if(target == BAND_UPPER)
+      buffer_index = 1;
+   else if(target == BAND_LOWER)
+      buffer_index = 2;
+   else // BAND_MIDDLE
+      buffer_index = 0;
+      
+   double buffer[1];
+   if(CopyBuffer(bb_handle, buffer_index, shift, 1, buffer) <= 0)
+      return false;
+      
+   band_value = buffer[0];
+   return true;
+#endif
+}
+
+//+------------------------------------------------------------------+
+//| バンド条件の評価                                                |
+//+------------------------------------------------------------------+
+bool EvaluateBandCondition(double price_current, double band_current, double price_previous, double band_previous, ENUM_BAND_CONDITION condition)
+{
+   switch(condition)
    {
-      // 価格が下限バンドより下の場合のみSell許可
-      return (current_price < lower_envelope);
+      case BAND_PRICE_ABOVE:
+         return (price_current > band_current);
+         
+      case BAND_PRICE_BELOW:
+         return (price_current < band_current);
+         
+      case BAND_CROSS_DOWN:
+         // 前の足で価格がバンドより上、現在の足で価格がバンドより下
+         return (price_previous > band_previous && price_current < band_current);
+         
+      case BAND_CROSS_UP:
+         // 前の足で価格がバンドより下、現在の足で価格がバンドより上
+         return (price_previous < band_previous && price_current > band_current);
    }
+   
+   return false;
+}
+
+//+------------------------------------------------------------------+
+//| 指定されたシフトの終値を取得                                     |
+//+------------------------------------------------------------------+
+double GetClosePrice(int shift)
+{
+#ifdef __MQL4__
+   return iClose(_Symbol, FilterTimeframe, shift);
+#else
+   double close_array[1];
+   if(CopyClose(_Symbol, FilterTimeframe, shift, 1, close_array) <= 0)
+      return 0;
+   return close_array[0];
+#endif
 }
 
 //+------------------------------------------------------------------+
