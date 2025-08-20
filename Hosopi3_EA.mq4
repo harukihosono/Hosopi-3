@@ -42,6 +42,18 @@ enum BAND_CONDITION
    CROSS_DOWN = 2,         // 上から下へクロス
    CROSS_UP = 3            // 下から上へクロス
 };
+
+// 奇数偶数戦略の列挙型
+enum EVEN_ODD_STRATEGY_TYPE
+{
+   EVEN_ODD_DISABLED = 0,            // 無効
+   ALL_HOURS_ENABLED = 1,            // すべての時間有効
+   EVEN_HOUR_BOTH = 2,               // 偶数時間両方向
+   ODD_HOUR_BOTH = 3,                // 奇数時間両方向
+   EVEN_HOUR_BUY_ODD_HOUR_SELL = 4, // 偶数時間Buy/奇数時間Sell
+   ODD_HOUR_BUY_EVEN_HOUR_SELL = 5  // 奇数時間Buy/偶数時間Sell
+};
+
 //+------------------------------------------------------------------+
 //|                          入力パラメータ                          |
 //+------------------------------------------------------------------+
@@ -266,8 +278,20 @@ input int Saturday_Sell_StartMinute = 0;   // 土曜日Sell開始時刻-分
 input int Saturday_Sell_EndHour = 24;      // 土曜日Sell終了時刻-時
 input int Saturday_Sell_EndMinute = 0;     // 土曜日Sell終了時刻-分
 
+// ======== 奇数偶数時間フィルター設定 ========
+sinput string Comment_EvenOdd = ""; //+--- 奇数偶数時間フィルター設定 ---+
+input EVEN_ODD_STRATEGY_TYPE EvenOdd_Entry_Strategy = EVEN_ODD_DISABLED; // 奇数偶数エントリー戦略
 
-
+// ======== 曜日フィルター設定 ========
+sinput string Comment_DayFilter = ""; //+--- 曜日フィルター設定 ---+
+input bool EnablePositionByDay = false;         // 曜日フィルターを有効化
+input bool AllowSundayPosition = true;          // 日曜日の取引を許可
+input bool AllowMondayPosition = true;          // 月曜日の取引を許可
+input bool AllowTuesdayPosition = true;         // 火曜日の取引を許可
+input bool AllowWednesdayPosition = true;       // 水曜日の取引を許可
+input bool AllowThursdayPosition = true;        // 木曜日の取引を許可
+input bool AllowFridayPosition = true;          // 金曜日の取引を許可
+input bool AllowSaturdayPosition = true;        // 土曜日の取引を許可
 
 // ======== 表示設定 ========
 sinput string Comment_Display = ""; //+--- 表示設定 ---+
@@ -291,32 +315,6 @@ input int UpdateInterval = 1;           // テーブル更新間隔（秒）
 input color GhostBuyColor = clrDeepSkyBlue;   // ゴーストBuyエントリー色
 input color GhostSellColor = clrCrimson;      // ゴーストSellエントリー色
 input int GhostArrowSize = 3;                 // ゴースト矢印サイズ
-
-<<<<<<< HEAD
-// フィルタータイプの列挙型
-enum FILTER_TYPE
-{
-   FILTER_NONE = 0,        // フィルターなし
-   FILTER_ENVELOPE = 1,    // エンベロープ
-   FILTER_BOLLINGER = 2    // ボリンジャーバンド
-};
-
-// バンド対象の列挙型
-enum BAND_TARGET
-{
-   UPPER_BAND = 0,         // 上バンド
-   LOWER_BAND = 1,         // 下バンド
-   MIDDLE_BAND = 2         // 中央バンド（ボリンジャーバンドのみ）
-};
-
-// バンド条件の列挙型
-enum BAND_CONDITION
-{
-   PRICE_ABOVE = 0,        // 価格がバンドより上
-   PRICE_BELOW = 1,        // 価格がバンドより下
-   CROSS_DOWN = 2,         // 上から下へクロス
-   CROSS_UP = 3            // 下から上へクロス
-};
 
 // ======== テクニカルフィルター設定 ========
 sinput string Comment_Filter = ""; //+--- テクニカルフィルター設定 ---+
@@ -343,17 +341,6 @@ input ENUM_APPLIED_PRICE BollingerAppliedPrice = PRICE_CLOSE; // ボリンジャ
 
 // 共通設定
 input int FinalStopLossPoints = 10000;         // 最終損切り幅（Point）
-=======
-// ======== エンベロープフィルター設定 ========
-sinput string Comment_Envelope = ""; //+--- エンベロープフィルター設定 ---+
-input bool EnableEnvelopeFilter = false;      // エンベロープフィルターを有効化
-input int EnvelopeTimeframe = 0;              // エンベロープ時間足
-input int EnvelopePeriod = 14;                // エンベロープ期間
-input int EnvelopeMethod = 0;                 // エンベロープ平均化方法 (0=SMA)
-input double EnvelopeDeviation = 0.1;         // エンベロープ偏差(%)
-input int FinalStopLossPoints = 10000;        // 最終損切り幅（Point）
-
->>>>>>> 9d64addf5f44fb05515fc8aae7d4ab4b485bdcbd
 
 #include "Hosopi3_Strategy.mqh"
 
