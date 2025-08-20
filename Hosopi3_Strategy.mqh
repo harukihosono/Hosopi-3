@@ -67,24 +67,10 @@ double g_envelope_lower_buffer[];
 #endif
 
 //+------------------------------------------------------------------+
-//| 偶数/奇数時間エントリー戦略のタイプ定義                            |
-//+------------------------------------------------------------------+
-enum EVEN_ODD_STRATEGY_TYPE
-{
-   EVEN_ODD_DISABLED = 0,       // 無効
-   EVEN_HOUR_BUY_ODD_HOUR_SELL = 1,  // 偶数時間Buy・奇数時間Sell
-   ODD_HOUR_BUY_EVEN_HOUR_SELL = 2,  // 奇数時間Buy・偶数時間Sell
-   EVEN_HOUR_BOTH = 3,          // 偶数時間のみ両方向
-   ODD_HOUR_BOTH = 4,           // 奇数時間のみ両方向
-   ALL_HOURS_ENABLED = 5        // 全時間両方向
-};
-
-//+------------------------------------------------------------------+
 //| 偶数/奇数時間エントリー戦略パラメータ                              |
 //+------------------------------------------------------------------+
-// ======== 偶数/奇数時間エントリー戦略設定 ========
-sinput string Comment_EvenOdd = ""; //+--- 偶数/奇数時間エントリー設定 ---+
-input EVEN_ODD_STRATEGY_TYPE EvenOdd_Entry_Strategy = EVEN_ODD_DISABLED; // 偶数/奇数時間エントリー
+// EvenOdd戦略の定義はHosopi3_EA.mq4に移動済み
+// ======== 偶数/奇数時間エントリー戦略設定（追加パラメータ） ========
 input bool EvenOdd_UseJPTime = true;  // 日本時間を使用
 input bool EvenOdd_IncludeWeekends = false; // 週末も含める
 
@@ -1344,8 +1330,8 @@ bool CheckEnvelopeFilter(int side)
    double price_current, price_previous = 0;
    
    // Buy/Sellに応じた条件を取得
-   ENUM_BAND_TARGET currentTarget = (side == 0) ? BuyBandTarget : SellBandTarget;
-   ENUM_BAND_CONDITION currentCondition = (side == 0) ? BuyBandCondition : SellBandCondition;
+   BAND_TARGET currentTarget = (side == 0) ? BuyBandTarget : SellBandTarget;
+   BAND_CONDITION currentCondition = (side == 0) ? BuyBandCondition : SellBandCondition;
    
    // 現在の価格とバンド値を取得
    price_current = GetClosePrice(FilterShift);
@@ -1353,7 +1339,7 @@ bool CheckEnvelopeFilter(int side)
       return false;
       
    // クロス条件の場合は前の足の値も取得
-   if(currentCondition == BAND_CROSS_DOWN || currentCondition == BAND_CROSS_UP)
+   if(currentCondition == CROSS_DOWN || currentCondition == CROSS_UP)
    {
       price_previous = GetClosePrice(FilterShift + 1);
       if(!GetEnvelopeBandValue(FilterShift + 1, target_band_previous, currentTarget))
@@ -1366,27 +1352,27 @@ bool CheckEnvelopeFilter(int side)
 //+------------------------------------------------------------------+
 //| エンベロープバンド値取得                                      |
 //+------------------------------------------------------------------+
-bool GetEnvelopeBandValue(int shift, double &band_value, ENUM_BAND_TARGET target)
+bool GetEnvelopeBandValue(int shift, double &band_value, BAND_TARGET target)
 {
 #ifdef __MQL4__
    // MQL4での直接取得
-   if(target == BAND_UPPER)
+   if(target == UPPER_BAND)
       band_value = iEnvelopes(_Symbol, FilterTimeframe, FilterPeriod, 0, 
                              FilterMethod, PRICE_CLOSE, EnvelopeDeviation, MODE_UPPER, shift);
-   else if(target == BAND_LOWER)
+   else if(target == LOWER_BAND)
       band_value = iEnvelopes(_Symbol, FilterTimeframe, FilterPeriod, 0, 
                              FilterMethod, PRICE_CLOSE, EnvelopeDeviation, MODE_LOWER, shift);
-   else // BAND_MIDDLE
+   else // MIDDLE_BAND
       band_value = iMA(_Symbol, FilterTimeframe, FilterPeriod, 0, FilterMethod, PRICE_CLOSE, shift);
       
    return (band_value > 0);
 #else
    // MQL5でのCopyBuffer使用
-   if(target == BAND_UPPER)
+   if(target == UPPER_BAND)
       return GetIndicatorValue(g_envelope_handle, 0, shift, band_value);
-   else if(target == BAND_LOWER)
+   else if(target == LOWER_BAND)
       return GetIndicatorValue(g_envelope_handle, 1, shift, band_value);
-   else // BAND_MIDDLE
+   else // MIDDLE_BAND
    {
       // 中央バンドは移動平均と同じ
       int ma_handle = iMA(_Symbol, FilterTimeframe, FilterPeriod, 0, FilterMethod, PRICE_CLOSE);
@@ -1404,8 +1390,8 @@ bool CheckBollingerFilter(int side)
    double price_current, price_previous = 0;
    
    // Buy/Sellに応じた条件を取得
-   ENUM_BAND_TARGET currentTarget = (side == 0) ? BuyBandTarget : SellBandTarget;
-   ENUM_BAND_CONDITION currentCondition = (side == 0) ? BuyBandCondition : SellBandCondition;
+   BAND_TARGET currentTarget = (side == 0) ? BuyBandTarget : SellBandTarget;
+   BAND_CONDITION currentCondition = (side == 0) ? BuyBandCondition : SellBandCondition;
    
    // 現在の価格とバンド値を取得
    price_current = GetClosePrice(FilterShift);
@@ -1413,7 +1399,7 @@ bool CheckBollingerFilter(int side)
       return false;
       
    // クロス条件の場合は前の足の値も取得
-   if(currentCondition == BAND_CROSS_DOWN || currentCondition == BAND_CROSS_UP)
+   if(currentCondition == CROSS_DOWN || currentCondition == CROSS_UP)
    {
       price_previous = GetClosePrice(FilterShift + 1);
       if(!GetBollingerBandValue(FilterShift + 1, target_band_previous, currentTarget))
@@ -1426,17 +1412,17 @@ bool CheckBollingerFilter(int side)
 //+------------------------------------------------------------------+
 //| ボリンジャーバンド値取得                                      |
 //+------------------------------------------------------------------+
-bool GetBollingerBandValue(int shift, double &band_value, ENUM_BAND_TARGET target)
+bool GetBollingerBandValue(int shift, double &band_value, BAND_TARGET target)
 {
 #ifdef __MQL4__
    // MQL4での直接取得
-   if(target == BAND_UPPER)
+   if(target == UPPER_BAND)
       band_value = iBands(_Symbol, FilterTimeframe, FilterPeriod, BollingerDeviation, 0, 
                          BollingerAppliedPrice, MODE_UPPER, shift);
-   else if(target == BAND_LOWER)
+   else if(target == LOWER_BAND)
       band_value = iBands(_Symbol, FilterTimeframe, FilterPeriod, BollingerDeviation, 0, 
                          BollingerAppliedPrice, MODE_LOWER, shift);
-   else // BAND_MIDDLE
+   else // MIDDLE_BAND
       band_value = iBands(_Symbol, FilterTimeframe, FilterPeriod, BollingerDeviation, 0, 
                          BollingerAppliedPrice, MODE_MAIN, shift);
       
@@ -1449,11 +1435,11 @@ bool GetBollingerBandValue(int shift, double &band_value, ENUM_BAND_TARGET targe
       return false;
       
    int buffer_index;
-   if(target == BAND_UPPER)
+   if(target == UPPER_BAND)
       buffer_index = 1;
-   else if(target == BAND_LOWER)
+   else if(target == LOWER_BAND)
       buffer_index = 2;
-   else // BAND_MIDDLE
+   else // MIDDLE_BAND
       buffer_index = 0;
       
    double buffer[1];
@@ -1468,21 +1454,21 @@ bool GetBollingerBandValue(int shift, double &band_value, ENUM_BAND_TARGET targe
 //+------------------------------------------------------------------+
 //| バンド条件の評価                                                |
 //+------------------------------------------------------------------+
-bool EvaluateBandCondition(double price_current, double band_current, double price_previous, double band_previous, ENUM_BAND_CONDITION condition)
+bool EvaluateBandCondition(double price_current, double band_current, double price_previous, double band_previous, BAND_CONDITION condition)
 {
    switch(condition)
    {
-      case BAND_PRICE_ABOVE:
+      case PRICE_ABOVE:
          return (price_current > band_current);
          
-      case BAND_PRICE_BELOW:
+      case PRICE_BELOW:
          return (price_current < band_current);
          
-      case BAND_CROSS_DOWN:
+      case CROSS_DOWN:
          // 前の足で価格がバンドより上、現在の足で価格がバンドより下
          return (price_previous > band_previous && price_current < band_current);
          
-      case BAND_CROSS_UP:
+      case CROSS_UP:
          // 前の足で価格がバンドより下、現在の足で価格がバンドより上
          return (price_previous < band_previous && price_current > band_current);
    }
