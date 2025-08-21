@@ -579,6 +579,22 @@ void OnTickManager()
       ManageTakeProfit(1); // Sell側
    }
    
+   // ナンピン機能が有効な場合、常にナンピン条件をチェック（手動エントリー対応）
+   if(EnableNanpin)
+   {
+      // Buy側のリアルポジションがある場合
+      if(position_count(OP_BUY) > 0)
+      {
+         CheckNanpinConditions(0); // Buy側のナンピン条件チェック
+      }
+      
+      // Sell側のリアルポジションがある場合
+      if(position_count(OP_SELL) > 0)
+      {
+         CheckNanpinConditions(1); // Sell側のナンピン条件チェック
+      }
+   }
+   
    // トレールストップ条件のチェック（独立して動作）
    if(EnableTrailingStop)
    {
@@ -653,7 +669,14 @@ void CheckNanpinConditions(int side)
    int operationType = (side == 0) ? OP_BUY : OP_SELL;
    
    // ポジションカウントを取得（リアルのみ - ゴーストは含めない）
+   // マジックナンバー0の場合は全ポジションをチェック
    int realPositionCount = position_count(operationType);
+   
+   // マジックナンバーが0の場合、手動ポジションも含めてカウント
+   if(MagicNumber == 0)
+   {
+      realPositionCount = position_count_all(operationType);
+   }
    
    // ポジションがないか最大数に達している場合はスキップ
    if(realPositionCount <= 0 || realPositionCount >= (int)MaxPositions)

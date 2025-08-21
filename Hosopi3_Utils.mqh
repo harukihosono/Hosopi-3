@@ -497,9 +497,12 @@ datetime GetLastEntryTime(int type)
    {
       if(g_position.SelectByIndex(i))
       {
-         if(g_position.PositionType() == (ENUM_POSITION_TYPE)type && 
-            g_position.Symbol() == Symbol() && 
-            g_position.Magic() == MagicNumber)
+         // マジックナンバーが0の場合は全ポジションをチェック
+         bool shouldCheck = (MagicNumber == 0) ? 
+            (g_position.PositionType() == (ENUM_POSITION_TYPE)type && g_position.Symbol() == Symbol()) :
+            (g_position.PositionType() == (ENUM_POSITION_TYPE)type && g_position.Symbol() == Symbol() && g_position.Magic() == MagicNumber);
+         
+         if(shouldCheck)
          {
             if(g_position.Time() > lastTime)
                lastTime = g_position.Time();
@@ -511,7 +514,12 @@ datetime GetLastEntryTime(int type)
    {
       if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
       {
-         if(OrderType() == type && OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
+         // マジックナンバーが0の場合は全ポジションをチェック
+         bool shouldCheck = (MagicNumber == 0) ?
+            (OrderType() == type && OrderSymbol() == Symbol()) :
+            (OrderType() == type && OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber);
+         
+         if(shouldCheck)
          {
             if(OrderOpenTime() > lastTime)
                lastTime = OrderOpenTime();
@@ -813,6 +821,41 @@ int position_count(int type)
       if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
       {
          if(OrderType() == type && OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
+         {
+            count++;
+         }
+      }
+   }
+#endif
+   
+   return count;
+}
+
+//+------------------------------------------------------------------+
+//| マジックナンバーに関係なく全ポジション数をカウントする関数         |
+//+------------------------------------------------------------------+
+int position_count_all(int type)
+{
+   int count = 0;
+   
+#ifdef __MQL5__
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      if(g_position.SelectByIndex(i))
+      {
+         if(g_position.PositionType() == (ENUM_POSITION_TYPE)type && 
+            g_position.Symbol() == Symbol())
+         {
+            count++;
+         }
+      }
+   }
+#else
+   for(int i = OrdersTotal() - 1; i >= 0; i--)
+   {
+      if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+      {
+         if(OrderType() == type && OrderSymbol() == Symbol())
          {
             count++;
          }

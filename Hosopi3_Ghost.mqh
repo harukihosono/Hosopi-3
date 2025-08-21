@@ -1989,9 +1989,13 @@ double GetLastCombinedPositionPrice(int type)
       {
          if(PositionSelectByTicket(PositionGetTicket(i)))
          {
-            if(PositionGetInteger(POSITION_TYPE) == type && 
-               PositionGetString(POSITION_SYMBOL) == Symbol() && 
-               PositionGetInteger(POSITION_MAGIC) == MagicNumber)
+            // マジックナンバーが0の場合は全ポジションをチェック
+            bool shouldCheck = (MagicNumber == 0) ?
+               (PositionGetInteger(POSITION_TYPE) == type && PositionGetString(POSITION_SYMBOL) == Symbol()) :
+               (PositionGetInteger(POSITION_TYPE) == type && PositionGetString(POSITION_SYMBOL) == Symbol() && 
+                PositionGetInteger(POSITION_MAGIC) == MagicNumber);
+            
+            if(shouldCheck)
             {
                datetime posTime = (datetime)PositionGetInteger(POSITION_TIME);
                if(posTime > lastTime)
@@ -2009,7 +2013,12 @@ double GetLastCombinedPositionPrice(int type)
       {
          if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
          {
-            if(OrderType() == type && OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
+            // マジックナンバーが0の場合は全ポジションをチェック
+            bool shouldCheck = (MagicNumber == 0) ?
+               (OrderType() == type && OrderSymbol() == Symbol()) :
+               (OrderType() == type && OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber);
+            
+            if(shouldCheck)
             {
                if(OrderOpenTime() > lastTime)
                {
