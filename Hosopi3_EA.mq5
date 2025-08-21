@@ -328,15 +328,18 @@ input ENUM_MA_METHOD FilterMethod = MODE_SMA;  // 平均化方法
 input int FilterShift = 0;                     // シフト（何足前と比較するか）
 
 // Buy用フィルター設定
-input ENUM_BAND_TARGET BuyBandTarget = BAND_LOWER;   // Buyバンド対象
-input ENUM_BAND_CONDITION BuyBandCondition = BAND_PRICE_ABOVE; // Buyバンド条件
+input BAND_TARGET BuyBandTarget = TARGET_LOWER;   // Buyバンド対象
+input BAND_CONDITION BuyBandCondition = PRICE_ABOVE; // Buyバンド条件
 
 // Sell用フィルター設定
-input ENUM_BAND_TARGET SellBandTarget = BAND_UPPER;  // Sellバンド対象
-input ENUM_BAND_CONDITION SellBandCondition = BAND_PRICE_BELOW; // Sellバンド条件
+input BAND_TARGET SellBandTarget = TARGET_UPPER;  // Sellバンド対象
+input BAND_CONDITION SellBandCondition = PRICE_BELOW; // Sellバンド条件
 
 // エンベロープ専用設定
 input double EnvelopeDeviation = 0.1;          // エンベロープ偏差(%)
+
+// 偶数奇数時間エントリー戦略設定
+input EVEN_ODD_STRATEGY EvenOdd_Entry_Strategy = EVEN_ODD_DISABLED; // 偶数奇数時間エントリー戦略
 
 // ボリンジャーバンド専用設定  
 input double BollingerDeviation = 2.0;         // ボリンジャーバンド偏差（標準偏差倍率）

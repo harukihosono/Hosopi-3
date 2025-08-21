@@ -1356,23 +1356,23 @@ bool GetEnvelopeBandValue(int shift, double &band_value, BAND_TARGET target)
 {
 #ifdef __MQL4__
    // MQL4での直接取得
-   if(target == UPPER_BAND)
+   if(target == TARGET_UPPER)
       band_value = iEnvelopes(_Symbol, FilterTimeframe, FilterPeriod, 0, 
                              FilterMethod, PRICE_CLOSE, EnvelopeDeviation, MODE_UPPER, shift);
-   else if(target == LOWER_BAND)
+   else if(target == TARGET_LOWER)
       band_value = iEnvelopes(_Symbol, FilterTimeframe, FilterPeriod, 0, 
                              FilterMethod, PRICE_CLOSE, EnvelopeDeviation, MODE_LOWER, shift);
-   else // MIDDLE_BAND
+   else // TARGET_MIDDLE
       band_value = iMA(_Symbol, FilterTimeframe, FilterPeriod, 0, FilterMethod, PRICE_CLOSE, shift);
       
    return (band_value > 0);
 #else
    // MQL5でのCopyBuffer使用
-   if(target == UPPER_BAND)
+   if(target == TARGET_UPPER)
       return GetIndicatorValue(g_envelope_handle, 0, shift, band_value);
-   else if(target == LOWER_BAND)
+   else if(target == TARGET_LOWER)
       return GetIndicatorValue(g_envelope_handle, 1, shift, band_value);
-   else // MIDDLE_BAND
+   else // TARGET_MIDDLE
    {
       // 中央バンドは移動平均と同じ
       int ma_handle = iMA(_Symbol, FilterTimeframe, FilterPeriod, 0, FilterMethod, PRICE_CLOSE);
@@ -1416,13 +1416,13 @@ bool GetBollingerBandValue(int shift, double &band_value, BAND_TARGET target)
 {
 #ifdef __MQL4__
    // MQL4での直接取得
-   if(target == UPPER_BAND)
+   if(target == TARGET_UPPER)
       band_value = iBands(_Symbol, FilterTimeframe, FilterPeriod, BollingerDeviation, 0, 
                          BollingerAppliedPrice, MODE_UPPER, shift);
-   else if(target == LOWER_BAND)
+   else if(target == TARGET_LOWER)
       band_value = iBands(_Symbol, FilterTimeframe, FilterPeriod, BollingerDeviation, 0, 
                          BollingerAppliedPrice, MODE_LOWER, shift);
-   else // MIDDLE_BAND
+   else // TARGET_MIDDLE
       band_value = iBands(_Symbol, FilterTimeframe, FilterPeriod, BollingerDeviation, 0, 
                          BollingerAppliedPrice, MODE_MAIN, shift);
       
@@ -1435,11 +1435,11 @@ bool GetBollingerBandValue(int shift, double &band_value, BAND_TARGET target)
       return false;
       
    int buffer_index;
-   if(target == UPPER_BAND)
+   if(target == TARGET_UPPER)
       buffer_index = 1;
-   else if(target == LOWER_BAND)
+   else if(target == TARGET_LOWER)
       buffer_index = 2;
-   else // MIDDLE_BAND
+   else // TARGET_MIDDLE
       buffer_index = 0;
       
    double buffer[1];

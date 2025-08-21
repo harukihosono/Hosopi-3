@@ -93,6 +93,31 @@ enum ENTRY_MODE {
     MODE_BOTH = 2            // BUY & SELL両方
 };
 
+// 偶数奇数時間エントリー戦略
+enum EVEN_ODD_STRATEGY {
+    EVEN_ODD_DISABLED = 0,         // 偶数奇数時間エントリー無効
+    ALL_HOURS_ENABLED = 1,         // 全時間有効
+    EVEN_HOUR_BOTH = 2,            // 偶数時間 両方向エントリー
+    ODD_HOUR_BOTH = 3,             // 奇数時間 両方向エントリー
+    EVEN_HOUR_BUY_ODD_HOUR_SELL = 4,  // 偶数時間Buy、奇数時間Sell
+    ODD_HOUR_BUY_EVEN_HOUR_SELL = 5   // 奇数時間Buy、偶数時間Sell
+};
+
+// バンド系指標のターゲット
+enum BAND_TARGET {
+    TARGET_MIDDLE = 0,         // 中央線（移動平均など）
+    TARGET_UPPER = 1,          // 上位線（+1σ、上限など）
+    TARGET_LOWER = 2           // 下位線（-1σ、下限など）
+};
+
+// バンド系指標の条件
+enum BAND_CONDITION {
+    PRICE_ABOVE = 0,           // 価格がライン上
+    PRICE_BELOW = 1,           // 価格がライン下
+    CROSS_UP = 2,              // 上抜け（クロスアップ）
+    CROSS_DOWN = 3             // 下抜け（クロスダウン）
+};
+
 // ポジション情報の構造体
 struct PositionInfo {
     int type;           // 注文タイプ (OP_BUY/OP_SELL)
