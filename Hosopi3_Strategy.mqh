@@ -2558,7 +2558,7 @@ void ProcessStrategyLogic()
    bool useGhostMode = (NanpinSkipLevel != SKIP_NONE) && g_GhostMode;
 
    // ゴーストエントリー機能がOFFの場合はゴーストモードを無効化
-   if(!EnableGhostEntry)
+   if(!g_EnableGhostEntry)
    {
       useGhostMode = false;
    }
