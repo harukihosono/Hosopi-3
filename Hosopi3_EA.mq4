@@ -254,7 +254,7 @@ input int Saturday_Sell_EndMinute = 0;     // 土曜日Sell終了時刻-分
 
 // ======== 奇数偶数時間フィルター設定 ========
 sinput string Comment_EvenOdd = ""; //+--- 奇数偶数時間フィルター設定 ---+
-input EVEN_ODD_STRATEGY_TYPE EvenOdd_Entry_Strategy = EVEN_ODD_DISABLED; // 奇数偶数エントリー戦略
+input EVEN_ODD_STRATEGY EvenOdd_Entry_Strategy = EVEN_ODD_DISABLED; // 奇数偶数エントリー戦略
 
 // ======== 曜日フィルター設定 ========
 sinput string Comment_DayFilter = ""; //+--- 曜日フィルター設定 ---+
