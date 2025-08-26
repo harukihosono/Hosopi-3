@@ -160,15 +160,38 @@ double NormalizeVolume(double volume, string symbol = "")
    double volumeStep = MarketInfo(symbol, MODE_LOTSTEP);
    #endif
    
-   // ボリュームが0以下の場合は最小ボリュームを返す
-   if(volume <= 0) return minVolume;
+   // ボリューム正規化ログ（必要時のみ）
    
-   // ボリュームステップに合わせて正規化
-   volume = MathFloor(volume / volumeStep) * volumeStep;
+   // ボリュームが0以下の場合は最小ボリュームを返す
+   if(volume <= 0) 
+   {
+      Print("Volume <= 0, returning min volume: ", minVolume);
+      return minVolume;
+   }
+   
+   // ボリュームステップが0の場合のエラー処理
+   if(volumeStep <= 0)
+   {
+      Print("ERROR: Invalid volume step: ", volumeStep);
+      return minVolume;
+   }
+   
+   // ボリュームステップに合わせて正規化（より精密な計算）
+   double steps = MathFloor(volume / volumeStep + 0.0000001);
+   volume = steps * volumeStep;
    
    // 最小・最大ボリュームでクリップ
-   volume = MathMax(volume, minVolume);
-   volume = MathMin(volume, maxVolume);
+   if(volume < minVolume) volume = minVolume;
+   if(volume > maxVolume) volume = maxVolume;
+   
+   // 最終的なボリューム検証
+   if(volume < minVolume || volume > maxVolume)
+   {
+      Print("ERROR: Volume out of range after normalization: ", volume);
+      return minVolume;
+   }
+   
+   // 正規化完了
    
    return volume;
 }
@@ -191,9 +214,13 @@ bool position_entry(int side, double lot = 0.1, int slippage = 10, int magic = 0
    MqlTradeRequest request = {};
    MqlTradeResult result = {};
    
+   double normalizedVolume = NormalizeVolume(lot);
+   
+   // ボリューム検証
+   
    request.action = TRADE_ACTION_DEAL;
    request.symbol = Symbol();
-   request.volume = NormalizeVolume(lot);
+   request.volume = normalizedVolume;
    request.type = (side == OP_BUY) ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
    request.price = (side == OP_BUY) ? GetAskPrice() : GetBidPrice();
    request.deviation = slippage;
@@ -205,9 +232,23 @@ bool position_entry(int side, double lot = 0.1, int slippage = 10, int magic = 0
    
    if(!success || result.retcode != TRADE_RETCODE_DONE)
    {
-      Print("注文エラー: ", result.retcode, " - ", GetLastError());
+      Print("注文エラー: retcode=", result.retcode, " LastError=", GetLastError());
+      Print("注文詳細: symbol=", Symbol(), " volume=", normalizedVolume, 
+            " price=", request.price, " type=", EnumToString((ENUM_ORDER_TYPE)request.type));
+      
+      // 特にボリュームエラーの場合は詳細情報を出力
+      if(result.retcode == TRADE_RETCODE_INVALID_VOLUME)
+      {
+         double minVol = SymbolInfoDouble(Symbol(), SYMBOL_VOLUME_MIN);
+         double maxVol = SymbolInfoDouble(Symbol(), SYMBOL_VOLUME_MAX);
+         double stepVol = SymbolInfoDouble(Symbol(), SYMBOL_VOLUME_STEP);
+         Print("INVALID_VOLUME: min=", minVol, " max=", maxVol, " step=", stepVol, " requested=", normalizedVolume);
+      }
+      
       return false;
    }
+   
+   Print("注文成功: ticket=", result.order, " volume=", result.volume);
    
    return true;
    

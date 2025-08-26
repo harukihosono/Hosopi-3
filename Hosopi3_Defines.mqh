@@ -197,6 +197,7 @@ bool g_EnableNanpin = true;         // ナンピン機能有効フラグ
 bool g_EnableGhostEntry = true;     // ゴーストエントリー機能有効フラグ
 bool g_EnableIndicatorsEntry = false; // テクニカル指標エントリー有効フラグ
 bool g_EnableTimeEntry = false;      // 時間ベースエントリー有効フラグ
+// bool g_DebugMode = false;            // デバッグモード無効
 bool g_EnableFixedTP = true;        // 固定利確有効フラグ
 bool g_EnableIndicatorsTP = false;  // テクニカル指標利確有効フラグ
 bool g_EnableTrailingStop = false;  // トレーリングストップ有効フラグ

@@ -47,7 +47,7 @@ int g_cci_handle = INVALID_HANDLE;
 int g_adx_handle = INVALID_HANDLE;
 int g_envelope_handle = INVALID_HANDLE;
 
-// インジケーター値を格納するバッファ
+// 最適化されたインジケーター値バッファ（動的配列）
 double g_ma_buy_fast_buffer[];
 double g_ma_buy_slow_buffer[];
 double g_ma_sell_fast_buffer[];
@@ -64,6 +64,9 @@ double g_adx_plusdi_buffer[];
 double g_adx_minusdi_buffer[];
 double g_envelope_upper_buffer[];
 double g_envelope_lower_buffer[];
+
+// データ更新最適化用
+datetime g_last_indicator_update = 0;
 #endif
 
 //+------------------------------------------------------------------+
@@ -471,30 +474,89 @@ bool InitializeStrategy()
    // MQL5用のインジケーターハンドル初期化
    bool init_success = true;
    
+   
    // MA戦略が有効な場合
    if(MA_Entry_Strategy == MA_ENTRY_ENABLED)
    {
-      g_ma_buy_fast_handle = iMA(_Symbol, MA_Timeframe, MA_Buy_Fast_Period, 0, MA_Method, MA_Price);
-      g_ma_buy_slow_handle = iMA(_Symbol, MA_Timeframe, MA_Buy_Slow_Period, 0, MA_Method, MA_Price);
-      g_ma_sell_fast_handle = iMA(_Symbol, MA_Timeframe, MA_Sell_Fast_Period, 0, MA_Method, MA_Price);
-      g_ma_sell_slow_handle = iMA(_Symbol, MA_Timeframe, MA_Sell_Slow_Period, 0, MA_Method, MA_Price);
-      
-      if(g_ma_buy_fast_handle == INVALID_HANDLE || g_ma_buy_slow_handle == INVALID_HANDLE ||
-         g_ma_sell_fast_handle == INVALID_HANDLE || g_ma_sell_slow_handle == INVALID_HANDLE)
+      // パラメーター検証
+      if(MA_Buy_Fast_Period < 1 || MA_Buy_Slow_Period < 1 || MA_Sell_Fast_Period < 1 || MA_Sell_Slow_Period < 1)
       {
-         Print("MAハンドルの作成に失敗しました");
-         init_success = false;
+         Print("ERROR: Invalid MA periods - MA戦略を無効化します");
+      }
+      else
+      {
+         // リトライ機能付きハンドル作成
+         int retry_count = 0;
+         const int MAX_RETRIES = 3;
+         
+         while(retry_count < MAX_RETRIES)
+         {
+            g_ma_buy_fast_handle = iMA(_Symbol, MA_Timeframe, MA_Buy_Fast_Period, 0, MA_Method, MA_Price);
+            g_ma_buy_slow_handle = iMA(_Symbol, MA_Timeframe, MA_Buy_Slow_Period, 0, MA_Method, MA_Price);
+            g_ma_sell_fast_handle = iMA(_Symbol, MA_Timeframe, MA_Sell_Fast_Period, 0, MA_Method, MA_Price);
+            g_ma_sell_slow_handle = iMA(_Symbol, MA_Timeframe, MA_Sell_Slow_Period, 0, MA_Method, MA_Price);
+            
+            // 全てのハンドルが有効かチェック
+            if(g_ma_buy_fast_handle != INVALID_HANDLE && g_ma_buy_slow_handle != INVALID_HANDLE &&
+               g_ma_sell_fast_handle != INVALID_HANDLE && g_ma_sell_slow_handle != INVALID_HANDLE)
+            {
+               break; // 成功
+            }
+            
+            retry_count++;
+            if(retry_count < MAX_RETRIES)
+            {
+               Print("MAハンドル作成失敗、リトライ ", retry_count, "/", MAX_RETRIES);
+               Sleep(1000); // 1秒待機
+            }
+         }
+      
+         if(g_ma_buy_fast_handle == INVALID_HANDLE || g_ma_buy_slow_handle == INVALID_HANDLE ||
+            g_ma_sell_fast_handle == INVALID_HANDLE || g_ma_sell_slow_handle == INVALID_HANDLE)
+         {
+            Print("MAハンドルの作成に失敗しました - MA戦略を無効化します");
+            // ハンドル初期化失敗時は戦略を無効化
+            // init_success = false; // 他の戦略は継続
+         }
+         else
+         {
+            // データの準備を待つ（4807エラー対策）
+            if(!WaitForIndicatorData(g_ma_buy_fast_handle) || 
+               !WaitForIndicatorData(g_ma_buy_slow_handle) ||
+               !WaitForIndicatorData(g_ma_sell_fast_handle) || 
+               !WaitForIndicatorData(g_ma_sell_slow_handle))
+            {
+               Print("WARNING: MA indicators may not be ready - MA戦略を無効化します");
+               // データ取得失敗時もハンドルを無効化
+               if(g_ma_buy_fast_handle != INVALID_HANDLE) { IndicatorRelease(g_ma_buy_fast_handle); g_ma_buy_fast_handle = INVALID_HANDLE; }
+               if(g_ma_buy_slow_handle != INVALID_HANDLE) { IndicatorRelease(g_ma_buy_slow_handle); g_ma_buy_slow_handle = INVALID_HANDLE; }
+               if(g_ma_sell_fast_handle != INVALID_HANDLE) { IndicatorRelease(g_ma_sell_fast_handle); g_ma_sell_fast_handle = INVALID_HANDLE; }
+               if(g_ma_sell_slow_handle != INVALID_HANDLE) { IndicatorRelease(g_ma_sell_slow_handle); g_ma_sell_slow_handle = INVALID_HANDLE; }
+            }
+         }
       }
    }
    
    // RSI戦略が有効な場合
    if(RSI_Entry_Strategy == RSI_ENTRY_ENABLED)
    {
-      g_rsi_handle = iRSI(_Symbol, RSI_Timeframe, RSI_Period, RSI_Price);
-      if(g_rsi_handle == INVALID_HANDLE)
+      if(RSI_Period < 1)
       {
-         Print("RSIハンドルの作成に失敗しました");
-         init_success = false;
+         Print("ERROR: Invalid RSI period - RSI戦略を無効化します");
+      }
+      else
+      {
+         g_rsi_handle = iRSI(_Symbol, RSI_Timeframe, RSI_Period, RSI_Price);
+         if(g_rsi_handle == INVALID_HANDLE)
+         {
+            Print("RSIハンドルの作成に失敗しました - RSI戦略を無効化します");
+         }
+         else if(!WaitForIndicatorData(g_rsi_handle))
+         {
+            Print("WARNING: RSI indicator may not be ready - RSI戦略を無効化します");
+            IndicatorRelease(g_rsi_handle);
+            g_rsi_handle = INVALID_HANDLE;
+         }
       }
    }
    
@@ -504,8 +566,13 @@ bool InitializeStrategy()
       g_bb_handle = iBands(_Symbol, BB_Timeframe, BB_Period, 0, BB_Deviation, BB_Price);
       if(g_bb_handle == INVALID_HANDLE)
       {
-         Print("ボリンジャーバンドハンドルの作成に失敗しました");
-         init_success = false;
+         Print("BBハンドルの作成に失敗しました - BB戦略を無効化します");
+      }
+      else if(!WaitForIndicatorData(g_bb_handle))
+      {
+         Print("WARNING: BB indicator may not be ready - BB戦略を無効化します");
+         IndicatorRelease(g_bb_handle);
+         g_bb_handle = INVALID_HANDLE;
       }
    }
    
@@ -519,6 +586,12 @@ bool InitializeStrategy()
          Print("ストキャスティクスハンドルの作成に失敗しました");
          init_success = false;
       }
+      else
+      {
+         // Debug: Stochハンドルのデータ準備を待機中...");
+         if(!WaitForIndicatorData(g_stoch_handle))
+            Print("WARNING: Stoch indicator may not be ready for immediate use");
+      }
    }
    
    // CCI戦略が有効な場合
@@ -530,6 +603,12 @@ bool InitializeStrategy()
          Print("CCIハンドルの作成に失敗しました");
          init_success = false;
       }
+      else
+      {
+         // Debug: CCIハンドルのデータ準備を待機中...");
+         if(!WaitForIndicatorData(g_cci_handle))
+            Print("WARNING: CCI indicator may not be ready for immediate use");
+      }
    }
    
    // ADX戦略が有効な場合
@@ -540,6 +619,12 @@ bool InitializeStrategy()
       {
          Print("ADXハンドルの作成に失敗しました");
          init_success = false;
+      }
+      else
+      {
+         // Debug: ADXハンドルのデータ準備を待機中...");
+         if(!WaitForIndicatorData(g_adx_handle))
+            Print("WARNING: ADX indicator may not be ready for immediate use");
       }
    }
    
@@ -553,12 +638,36 @@ bool InitializeStrategy()
          Print("エンベロープハンドルの作成に失敗しました");
          init_success = false;
       }
+      else
+      {
+         // Debug: Envelopeハンドルのデータ準備を待機中...");
+         if(!WaitForIndicatorData(g_envelope_handle))
+            Print("WARNING: Envelope indicator may not be ready for immediate use");
+      }
    }
    else if(FilterType == FILTER_BOLLINGER)
    {
       // ボリンジャーバンドは必要に応じて動的に生成
       // ハンドル不要
    }
+   
+   // バッファサイズを初期化（3要素）
+   ArrayResize(g_ma_buy_fast_buffer, 3);
+   ArrayResize(g_ma_buy_slow_buffer, 3);
+   ArrayResize(g_ma_sell_fast_buffer, 3);
+   ArrayResize(g_ma_sell_slow_buffer, 3);
+   ArrayResize(g_rsi_buffer, 3);
+   ArrayResize(g_bb_main_buffer, 3);
+   ArrayResize(g_bb_upper_buffer, 3);
+   ArrayResize(g_bb_lower_buffer, 3);
+   ArrayResize(g_stoch_main_buffer, 3);
+   ArrayResize(g_stoch_signal_buffer, 3);
+   ArrayResize(g_cci_buffer, 3);
+   ArrayResize(g_adx_main_buffer, 3);
+   ArrayResize(g_adx_plusdi_buffer, 3);
+   ArrayResize(g_adx_minusdi_buffer, 3);
+   ArrayResize(g_envelope_upper_buffer, 3);
+   ArrayResize(g_envelope_lower_buffer, 3);
    
    // バッファを時系列として設定
    ArraySetAsSeries(g_ma_buy_fast_buffer, true);
@@ -612,21 +721,164 @@ void DeinitializeStrategy(const int reason)
 }
 
 //+------------------------------------------------------------------+
-//| MQL5用のインジケーター値取得関数                                  |
+//| 最適化されたインジケーターデータ更新関数                          |
 //+------------------------------------------------------------------+
 #ifdef __MQL5__
+bool UpdateIndicatorBuffers()
+{
+   datetime current_time = TimeCurrent();
+   
+   // 同一バーでは更新をスキップ（パフォーマンス最適化）
+   if(current_time == g_last_indicator_update)
+      return true;
+      
+   g_last_indicator_update = current_time;
+   
+   bool success = true;
+   
+   // MA データ更新
+   if(MA_Entry_Strategy == MA_ENTRY_ENABLED)
+   {
+      if(g_ma_buy_fast_handle != INVALID_HANDLE)
+      {
+         if(CopyBuffer(g_ma_buy_fast_handle, 0, 0, 3, g_ma_buy_fast_buffer) <= 0) success = false;
+         if(CopyBuffer(g_ma_buy_slow_handle, 0, 0, 3, g_ma_buy_slow_buffer) <= 0) success = false;
+         if(CopyBuffer(g_ma_sell_fast_handle, 0, 0, 3, g_ma_sell_fast_buffer) <= 0) success = false;
+         if(CopyBuffer(g_ma_sell_slow_handle, 0, 0, 3, g_ma_sell_slow_buffer) <= 0) success = false;
+      }
+   }
+   
+   // RSI データ更新
+   if(RSI_Entry_Strategy == RSI_ENTRY_ENABLED && g_rsi_handle != INVALID_HANDLE)
+   {
+      if(CopyBuffer(g_rsi_handle, 0, 0, 3, g_rsi_buffer) <= 0) success = false;
+   }
+   
+   // BB データ更新
+   if(BB_Entry_Strategy == BB_ENTRY_ENABLED && g_bb_handle != INVALID_HANDLE)
+   {
+      if(CopyBuffer(g_bb_handle, 0, 0, 3, g_bb_main_buffer) <= 0) success = false;
+      if(CopyBuffer(g_bb_handle, 1, 0, 3, g_bb_upper_buffer) <= 0) success = false;
+      if(CopyBuffer(g_bb_handle, 2, 0, 3, g_bb_lower_buffer) <= 0) success = false;
+   }
+   
+   // Stoch データ更新
+   if(Stoch_Entry_Strategy == STOCH_ENTRY_ENABLED && g_stoch_handle != INVALID_HANDLE)
+   {
+      if(CopyBuffer(g_stoch_handle, 0, 0, 3, g_stoch_main_buffer) <= 0) success = false;
+      if(CopyBuffer(g_stoch_handle, 1, 0, 3, g_stoch_signal_buffer) <= 0) success = false;
+   }
+   
+   // CCI データ更新
+   if(CCI_Entry_Strategy == CCI_ENTRY_ENABLED && g_cci_handle != INVALID_HANDLE)
+   {
+      if(CopyBuffer(g_cci_handle, 0, 0, 3, g_cci_buffer) <= 0) success = false;
+   }
+   
+   // ADX データ更新
+   if(ADX_Entry_Strategy == ADX_ENTRY_ENABLED && g_adx_handle != INVALID_HANDLE)
+   {
+      if(CopyBuffer(g_adx_handle, 0, 0, 3, g_adx_main_buffer) <= 0) success = false;
+      if(CopyBuffer(g_adx_handle, 1, 0, 3, g_adx_plusdi_buffer) <= 0) success = false;
+      if(CopyBuffer(g_adx_handle, 2, 0, 3, g_adx_minusdi_buffer) <= 0) success = false;
+   }
+   
+   // Envelope データ更新
+   if(FilterType == FILTER_ENVELOPE && g_envelope_handle != INVALID_HANDLE)
+   {
+      if(CopyBuffer(g_envelope_handle, 0, 0, 3, g_envelope_upper_buffer) <= 0) success = false;
+      if(CopyBuffer(g_envelope_handle, 1, 0, 3, g_envelope_lower_buffer) <= 0) success = false;
+   }
+   
+   return success;
+}
+#endif
+
+//+------------------------------------------------------------------+
+//| インジケーター戦略が使用可能かチェック                            |
+//+------------------------------------------------------------------+
+#ifdef __MQL5__
+bool IsIndicatorStrategyAvailable(int strategy_type)
+{
+   switch(strategy_type)
+   {
+      case 1: // MA戦略
+         return (g_ma_buy_fast_handle != INVALID_HANDLE && g_ma_buy_slow_handle != INVALID_HANDLE &&
+                 g_ma_sell_fast_handle != INVALID_HANDLE && g_ma_sell_slow_handle != INVALID_HANDLE);
+      case 2: // RSI戦略  
+         return (g_rsi_handle != INVALID_HANDLE);
+      case 3: // BB戦略
+         return (g_bb_handle != INVALID_HANDLE);
+      case 4: // Stoch戦略
+         return (g_stoch_handle != INVALID_HANDLE);
+      case 5: // CCI戦略
+         return (g_cci_handle != INVALID_HANDLE);
+      case 6: // ADX戦略
+         return (g_adx_handle != INVALID_HANDLE);
+      case 7: // Envelope戦略
+         return (g_envelope_handle != INVALID_HANDLE);
+      default:
+         return false;
+   }
+}
+#endif
+
+//+------------------------------------------------------------------+
+//| ハンドル初期化後のデータ準備待ち関数                              |
+//+------------------------------------------------------------------+
+#ifdef __MQL5__
+bool WaitForIndicatorData(int handle, int timeout_ms)
+{
+   if(handle == INVALID_HANDLE) return false;
+   
+   datetime start_time = GetTickCount();
+   double dummy_buffer[];
+   ArrayResize(dummy_buffer, 1);
+   
+   while((GetTickCount() - start_time) < timeout_ms)
+   {
+      ResetLastError();
+      if(CopyBuffer(handle, 0, 0, 1, dummy_buffer) > 0)
+         return true;
+      
+      int error = GetLastError();
+      if(error != 4806 && error != 4807)  // 4806=データ未準備, 4807=ハンドル無効
+      {
+         Print("WaitForIndicatorData unexpected error: ", error);
+         return false;
+      }
+      
+      Sleep(100);
+   }
+   
+   Print("WaitForIndicatorData timeout for handle: ", handle);
+   return false;
+}
+
+bool WaitForIndicatorData(int handle)
+{
+   return WaitForIndicatorData(handle, 5000);
+}
+#endif
+
+//+------------------------------------------------------------------+
+//| 最適化されたインジケーター値取得関数（グローバルバッファ使用）     |
+//+------------------------------------------------------------------+
+#ifdef __MQL5__
+//+------------------------------------------------------------------+
+//| エラーハンドリング付きGetIndicatorValue関数                       |
+//+------------------------------------------------------------------+
 bool GetIndicatorValue(int handle, int buffer_index, int shift, double &value)
 {
-   double buffer[];
-   ArraySetAsSeries(buffer, true);
-   ResetLastError();
+   if(handle == INVALID_HANDLE)
+   {
+      return false;  // エラーメッセージは出力しない（高頻度呼び出しのため）
+   }
    
+   double buffer[1];
    if(CopyBuffer(handle, buffer_index, shift, 1, buffer) <= 0)
    {
-      int error = GetLastError();
-      if(error != 4806)  // 4806はデータ未準備で正常
-         Print("CopyBufferエラー: ", error);
-      return false;
+      return false;  // エラーメッセージは出力しない（高頻度呼び出しのため）
    }
    
    value = buffer[0];
@@ -648,10 +900,18 @@ bool CheckMASignal(int side)
 {
    if(MA_Entry_Strategy == MA_ENTRY_DISABLED)
       return false;
+   
+   #ifdef __MQL5__
+   // ハンドル有効性チェック
+   if(!IsIndicatorStrategyAvailable(1)) // MA戦略=1
+   {
+      return false; // ハンドルが無効な場合はスキップ
+   }
+   #endif
 
    // MA値の取得
-   double fastMA_current, slowMA_current, fastMA_prev, slowMA_prev;
-   double price_current, price_prev;
+   double fastMA_current = 0.0, slowMA_current = 0.0, fastMA_prev = 0.0, slowMA_prev = 0.0;
+   double price_current = 0.0, price_prev = 0.0;
 
 #ifdef __MQL4__
    // MQL4での直接取得
@@ -781,8 +1041,16 @@ bool CheckRSISignal(int side)
 {
    if(RSI_Entry_Strategy == RSI_ENTRY_DISABLED)
       return false;
+   
+   #ifdef __MQL5__
+   // ハンドル有効性チェック
+   if(!IsIndicatorStrategyAvailable(2)) // RSI戦略=2
+   {
+      return false; // ハンドルが無効な場合はスキップ
+   }
+   #endif
 
-   double rsi_current, rsi_prev;
+   double rsi_current = 0.0, rsi_prev = 0.0;
 
 #ifdef __MQL4__
    // MQL4での直接取得
@@ -851,8 +1119,16 @@ bool CheckBollingerSignal(int side)
 {
    if(BB_Entry_Strategy == BB_ENTRY_DISABLED)
       return false;
+   
+   #ifdef __MQL5__
+   // ハンドル有効性チェック
+   if(!IsIndicatorStrategyAvailable(3)) // BB戦略=3
+   {
+      return false; // ハンドルが無効な場合はスキップ
+   }
+   #endif
 
-   double middle, upper, lower, close_current, close_prev;
+   double middle = 0.0, upper = 0.0, lower = 0.0, close_current = 0.0, close_prev = 0.0;
 
 #ifdef __MQL4__
    // MQL4での直接取得
@@ -1072,6 +1348,14 @@ bool CheckStochasticSignal(int side)
 {
    if(Stoch_Entry_Strategy == STOCH_ENTRY_DISABLED)
       return false;
+   
+   #ifdef __MQL5__
+   // ハンドル有効性チェック
+   if(!IsIndicatorStrategyAvailable(4)) // Stoch戦略=4
+   {
+      return false; // ハンドルが無効な場合はスキップ
+   }
+   #endif
 
    double k_current, k_prev, d_current, d_prev;
 
@@ -1162,6 +1446,14 @@ bool CheckCCISignal(int side)
 {
    if(CCI_Entry_Strategy == CCI_ENTRY_DISABLED)
       return false;
+   
+   #ifdef __MQL5__
+   // ハンドル有効性チェック
+   if(!IsIndicatorStrategyAvailable(5)) // CCI戦略=5
+   {
+      return false; // ハンドルが無効な場合はスキップ
+   }
+   #endif
 
    double cci_current, cci_prev;
 
@@ -1232,6 +1524,14 @@ bool CheckADXSignal(int side)
 {
    if(ADX_Entry_Strategy == ADX_ENTRY_DISABLED)
       return false;
+   
+   #ifdef __MQL5__
+   // ハンドル有効性チェック
+   if(!IsIndicatorStrategyAvailable(6)) // ADX戦略=6
+   {
+      return false; // ハンドルが無効な場合はスキップ
+   }
+   #endif
 
    double adx, plus_di, minus_di, plus_di_prev, minus_di_prev;
 
@@ -1428,11 +1728,28 @@ bool GetBollingerBandValue(int shift, double &band_value, BAND_TARGET target)
       
    return (band_value > 0);
 #else
-   // MQL5でのCopyBuffer使用
-   int bb_handle = iBands(_Symbol, FilterTimeframe, FilterPeriod, 0, BollingerDeviation, 
-                          BollingerAppliedPrice);
-   if(bb_handle == INVALID_HANDLE)
-      return false;
+   // MQL5でのCopyBuffer使用 - 毎回新しいハンドルを作成すると4807エラーが発生しやすい
+   static int bb_handle = INVALID_HANDLE;
+   static datetime last_init_time = 0;
+   
+   // ハンドルが無効か、24時間以上経過している場合は再初期化
+   if(bb_handle == INVALID_HANDLE || (TimeCurrent() - last_init_time > 86400))
+   {
+      if(bb_handle != INVALID_HANDLE) 
+         IndicatorRelease(bb_handle);
+         
+      bb_handle = iBands(_Symbol, FilterTimeframe, FilterPeriod, 0, BollingerDeviation, 
+                         BollingerAppliedPrice);
+      if(bb_handle == INVALID_HANDLE)
+      {
+         Print("ERROR: Failed to create BollingerBands handle in GetBandValue");
+         return false;
+      }
+      last_init_time = TimeCurrent();
+      
+      // 新しく作成したハンドルは少し待つ
+      Sleep(50);
+   }
       
    int buffer_index;
    if(target == TARGET_UPPER)
@@ -1442,9 +1759,27 @@ bool GetBollingerBandValue(int shift, double &band_value, BAND_TARGET target)
    else // TARGET_MIDDLE
       buffer_index = 0;
       
-   double buffer[1];
+   double buffer[];
+   ArrayResize(buffer, 1);
+   ArraySetAsSeries(buffer, true);
+   ResetLastError();
+   
    if(CopyBuffer(bb_handle, buffer_index, shift, 1, buffer) <= 0)
+   {
+      int error = GetLastError();
+      if(error == 4807)
+      {
+         Print("ERROR 4807 in GetBandValue: handle=", bb_handle, " buffer_index=", buffer_index, " shift=", shift);
+         // ハンドルをリセットして次回再作成する
+         IndicatorRelease(bb_handle);
+         bb_handle = INVALID_HANDLE;
+      }
+      else if(error != 4806)
+      {
+         Print("GetBandValue CopyBuffer error: ", error);
+      }
       return false;
+   }
       
    band_value = buffer[0];
    return true;
@@ -2049,7 +2384,7 @@ string GetStrategyDetails(int side)
       bool rsiSignal = CheckRSISignal(side);
       
       // RSI値の取得
-      double rsi_current;
+      double rsi_current = 0.0;
 #ifdef __MQL4__
       rsi_current = iRSI(_Symbol, RSI_Timeframe, RSI_Period, RSI_Price, RSI_Signal_Shift);
 #else
@@ -2135,7 +2470,7 @@ string GetStrategyDetails(int side)
       bool cciSignal = CheckCCISignal(side);
       
       // CCI値の取得
-      double cci_current;
+      double cci_current = 0.0;
 #ifdef __MQL4__
       cci_current = iCCI(_Symbol, CCI_Timeframe, CCI_Period, CCI_Price, CCI_Signal_Shift);
 #else

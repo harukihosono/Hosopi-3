@@ -770,6 +770,8 @@ void CheckNanpinConditions(int side)
 //+------------------------------------------------------------------+
 int InitializeEA()
 {
+   // デバッグモード無効
+   
    // キャッシュをリセット（高速化のため）
    ResetTradingCaches();
 
