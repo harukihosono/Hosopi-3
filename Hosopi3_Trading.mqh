@@ -143,6 +143,37 @@ bool IsEquitySufficientCached()
 }
 
 //+------------------------------------------------------------------+
+//| ボリューム正規化関数（4807エラー対策）                            |
+//+------------------------------------------------------------------+
+double NormalizeVolume(double volume, string symbol = "")
+{
+   if(symbol == "") symbol = Symbol();
+   
+   #ifdef __MQL5__
+   double minVolume = SymbolInfoDouble(symbol, SYMBOL_VOLUME_MIN);
+   double maxVolume = SymbolInfoDouble(symbol, SYMBOL_VOLUME_MAX);
+   double volumeStep = SymbolInfoDouble(symbol, SYMBOL_VOLUME_STEP);
+   #else
+   // MQL4での市場情報取得
+   double minVolume = MarketInfo(symbol, MODE_MINLOT);
+   double maxVolume = MarketInfo(symbol, MODE_MAXLOT);
+   double volumeStep = MarketInfo(symbol, MODE_LOTSTEP);
+   #endif
+   
+   // ボリュームが0以下の場合は最小ボリュームを返す
+   if(volume <= 0) return minVolume;
+   
+   // ボリュームステップに合わせて正規化
+   volume = MathFloor(volume / volumeStep) * volumeStep;
+   
+   // 最小・最大ボリュームでクリップ
+   volume = MathMax(volume, minVolume);
+   volume = MathMin(volume, maxVolume);
+   
+   return volume;
+}
+
+//+------------------------------------------------------------------+
 //| ポジションエントリー関数（最適化版・共通化）                      |
 //+------------------------------------------------------------------+
 bool position_entry(int side, double lot = 0.1, int slippage = 10, int magic = 0, string comment = "")
@@ -162,7 +193,7 @@ bool position_entry(int side, double lot = 0.1, int slippage = 10, int magic = 0
    
    request.action = TRADE_ACTION_DEAL;
    request.symbol = Symbol();
-   request.volume = lot;
+   request.volume = NormalizeVolume(lot);
    request.type = (side == OP_BUY) ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
    request.price = (side == OP_BUY) ? GetAskPrice() : GetBidPrice();
    request.deviation = slippage;
@@ -182,7 +213,8 @@ bool position_entry(int side, double lot = 0.1, int slippage = 10, int magic = 0
    
    #else
    // MQL4での注文処理
-   int ticket = OrderSend(Symbol(), side, lot, (side == OP_BUY) ? GetAskPrice() : GetBidPrice(), 
+   double normalizedLot = NormalizeVolume(lot);
+   int ticket = OrderSend(Symbol(), side, normalizedLot, (side == OP_BUY) ? GetAskPrice() : GetBidPrice(), 
                          slippage, 0, 0, comment, magic, 0, (side == OP_BUY) ? clrGreen : clrRed);
    
    if(ticket <= 0)
@@ -217,6 +249,7 @@ bool position_close(int side, double lot = 0.0, int slippage = 10, int magic = 0
             PositionGetInteger(POSITION_TYPE) == (side == OP_BUY ? POSITION_TYPE_BUY : POSITION_TYPE_SELL))
          {
             double volume = (lot <= 0) ? PositionGetDouble(POSITION_VOLUME) : MathMin(lot, PositionGetDouble(POSITION_VOLUME));
+            volume = NormalizeVolume(volume);
             
             // ポジションを決済
             MqlTradeRequest request = {};
@@ -263,6 +296,7 @@ bool position_close(int side, double lot = 0.0, int slippage = 10, int magic = 0
             (magic == 0 || OrderMagicNumber() == magic))
          {
             double close_volume = (lot <= 0) ? OrderLots() : MathMin(lot, OrderLots());
+            close_volume = NormalizeVolume(close_volume);
             double close_price = (side == OP_BUY) ? GetBidPrice() : GetAskPrice();
             
             result = OrderClose(OrderTicket(), close_volume, close_price, slippage, (side == OP_BUY) ? clrRed : clrBlue);
