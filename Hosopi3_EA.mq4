@@ -26,33 +26,7 @@ enum FILTER_TYPE
    FILTER_BOLLINGER = 2    // ボリンジャーバンド
 };
 
-// バンド対象の列挙型
-enum BAND_TARGET
-{
-   UPPER_BAND = 0,         // 上バンド
-   LOWER_BAND = 1,         // 下バンド
-   MIDDLE_BAND = 2         // 中央バンド（ボリンジャーバンドのみ）
-};
 
-// バンド条件の列挙型
-enum BAND_CONDITION
-{
-   PRICE_ABOVE = 0,        // 価格がバンドより上
-   PRICE_BELOW = 1,        // 価格がバンドより下
-   CROSS_DOWN = 2,         // 上から下へクロス
-   CROSS_UP = 3            // 下から上へクロス
-};
-
-// 奇数偶数戦略の列挙型
-enum EVEN_ODD_STRATEGY_TYPE
-{
-   EVEN_ODD_DISABLED = 0,            // 無効
-   ALL_HOURS_ENABLED = 1,            // すべての時間有効
-   EVEN_HOUR_BOTH = 2,               // 偶数時間両方向
-   ODD_HOUR_BOTH = 3,                // 奇数時間両方向
-   EVEN_HOUR_BUY_ODD_HOUR_SELL = 4, // 偶数時間Buy/奇数時間Sell
-   ODD_HOUR_BUY_EVEN_HOUR_SELL = 5  // 奇数時間Buy/偶数時間Sell
-};
 
 //+------------------------------------------------------------------+
 //|                          入力パラメータ                          |
@@ -335,8 +309,7 @@ input BAND_CONDITION SellBandCondition = PRICE_BELOW; // Sellバンド条件
 // エンベロープ専用設定
 input double EnvelopeDeviation = 0.1;          // エンベロープ偏差(%)
 
-// 偶数奇数時間エントリー戦略設定
-input EVEN_ODD_STRATEGY EvenOdd_Entry_Strategy = EVEN_ODD_DISABLED; // 偶数奇数時間エントリー戦略
+// 偶数奇数時間エントリー戦略設定は上で定義済み
 
 // ボリンジャーバンド専用設定  
 input double BollingerDeviation = 2.0;         // ボリンジャーバンド偏差（標準偏差倍率）
