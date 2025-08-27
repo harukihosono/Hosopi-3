@@ -4,6 +4,7 @@
 //|                    MQL4/MQL5 完全共通化バージョン                 |
 //+------------------------------------------------------------------+
 #include "Hosopi3_Defines.mqh"
+#include "Hosopi3_Compat.mqh"
 
 //+------------------------------------------------------------------+
 //| MQL4/MQL5互換性のための定義                                      |
@@ -14,13 +15,9 @@
    #define OP_SELL 1
    #define MODE_TRADES 0
    #define SELECT_BY_POS 0
-   #define MODE_TICKVALUE SYMBOL_TRADE_TICK_VALUE
-   #define MODE_TICKSIZE SYMBOL_TRADE_TICK_SIZE
-   #define MODE_DIGITS SYMBOL_DIGITS
-   #define MODE_POINT SYMBOL_POINT
+   // MODE定数はCompat.mqhで定義済み
    #define MODE_BID SYMBOL_BID
    #define MODE_ASK SYMBOL_ASK
-   #define MODE_SPREAD SYMBOL_SPREAD
 #endif
 
 //+------------------------------------------------------------------+
@@ -49,6 +46,127 @@ double GetBidPrice()
 double GetAccountEquity()
 {
    return AccountInfoDouble(ACCOUNT_EQUITY);
+}
+
+// トレードリターンコードの説明を取得
+string GetTradeRetcodeDescription(uint retcode)
+{
+   switch(retcode)
+   {
+      case TRADE_RETCODE_REQUOTE: return "価格再提示";
+      case TRADE_RETCODE_REJECT: return "リクエスト拒否";
+      case TRADE_RETCODE_CANCEL: return "キャンセル";
+      case TRADE_RETCODE_PLACED: return "注文配置";
+      case TRADE_RETCODE_DONE: return "実行完了";
+      case TRADE_RETCODE_DONE_PARTIAL: return "部分実行";
+      case TRADE_RETCODE_ERROR: return "一般エラー";
+      case TRADE_RETCODE_TIMEOUT: return "タイムアウト";
+      case TRADE_RETCODE_INVALID: return "無効なリクエスト";
+      case TRADE_RETCODE_INVALID_VOLUME: return "無効なボリューム";
+      case TRADE_RETCODE_INVALID_PRICE: return "無効な価格";
+      case TRADE_RETCODE_INVALID_STOPS: return "無効なストップ";
+      case TRADE_RETCODE_TRADE_DISABLED: return "取引無効";
+      case TRADE_RETCODE_MARKET_CLOSED: return "市場終了";
+      case TRADE_RETCODE_NO_MONEY: return "証拠金不足";
+      case TRADE_RETCODE_PRICE_CHANGED: return "価格変更";
+      case TRADE_RETCODE_PRICE_OFF: return "価格オフ";
+      case TRADE_RETCODE_INVALID_EXPIRATION: return "無効な有効期限";
+      case TRADE_RETCODE_ORDER_CHANGED: return "注文変更";
+      case TRADE_RETCODE_TOO_MANY_REQUESTS: return "リクエスト過多";
+      case TRADE_RETCODE_NO_CHANGES: return "変更なし";
+      case TRADE_RETCODE_SERVER_DISABLES_AT: return "自動売買無効";
+      case TRADE_RETCODE_CLIENT_DISABLES_AT: return "クライアント自動売買無効";
+      case TRADE_RETCODE_LOCKED: return "ロック";
+      case TRADE_RETCODE_FROZEN: return "フリーズ";
+      case TRADE_RETCODE_INVALID_FILL: return "無効なフィル";
+      case TRADE_RETCODE_CONNECTION: return "接続エラー";
+      case TRADE_RETCODE_ONLY_REAL: return "リアル口座のみ";
+      case TRADE_RETCODE_LIMIT_ORDERS: return "注文制限";
+      case TRADE_RETCODE_LIMIT_VOLUME: return "ボリューム制限";
+      case TRADE_RETCODE_INVALID_ORDER: return "無効な注文";
+      case TRADE_RETCODE_POSITION_CLOSED: return "ポジション決済済み";
+      default: return "不明なエラー";
+   }
+}
+
+// 価格の妥当性をチェック
+bool IsPriceValid(double price, int orderType)
+{
+   if(price <= 0) 
+   {
+      Print("ERROR: 価格が0以下 - Price=", price);
+      return false;
+   }
+   
+   // 現在の市場価格と比較
+   double ask = SymbolInfoDouble(Symbol(), SYMBOL_ASK);
+   double bid = SymbolInfoDouble(Symbol(), SYMBOL_BID);
+   
+   if(ask <= 0 || bid <= 0)
+   {
+      Print("ERROR: 無効な市場価格 - Ask=", ask, " Bid=", bid);
+      return false;
+   }
+   
+   // 買い注文の場合、Ask価格との乖離をチェック
+   if(orderType == ORDER_TYPE_BUY)
+   {
+      double deviation = MathAbs(price - ask);
+      double maxDeviation = ask * 0.001; // 0.1%の許容誤差
+      
+      if(deviation > maxDeviation)
+      {
+         Print("ERROR: BUY価格の乖離が大きすぎる - Price=", DoubleToString(price, 5), 
+               " Ask=", DoubleToString(ask, 5), " Deviation=", DoubleToString(deviation, 5));
+         return false;
+      }
+   }
+   // 売り注文の場合、Bid価格との乖離をチェック
+   else if(orderType == ORDER_TYPE_SELL)
+   {
+      double deviation = MathAbs(price - bid);
+      double maxDeviation = bid * 0.001; // 0.1%の許容誤差
+      
+      if(deviation > maxDeviation)
+      {
+         Print("ERROR: SELL価格の乖離が大きすぎる - Price=", DoubleToString(price, 5), 
+               " Bid=", DoubleToString(bid, 5), " Deviation=", DoubleToString(deviation, 5));
+         return false;
+      }
+   }
+   
+   return true;
+}
+
+// エラーコードの回復可能性を判定
+bool IsRecoverableError(uint retcode)
+{
+   switch(retcode)
+   {
+      // 回復可能エラー（リトライ推奨）
+      case TRADE_RETCODE_REQUOTE:           // 価格再提示
+      case TRADE_RETCODE_PRICE_CHANGED:     // 価格変更
+      case TRADE_RETCODE_PRICE_OFF:         // 価格が無効
+      case TRADE_RETCODE_TIMEOUT:           // タイムアウト
+      case TRADE_RETCODE_CONNECTION:        // 接続エラー
+      case TRADE_RETCODE_MARKET_CLOSED:     // 市場終了
+      case TRADE_RETCODE_REJECT:            // リジェクト（一時的）
+         return true;
+      
+      // 回復不可能エラー（即座に停止）
+      case TRADE_RETCODE_INVALID:           // 無効なリクエスト
+      case TRADE_RETCODE_INVALID_VOLUME:    // 無効なボリューム
+      case TRADE_RETCODE_INVALID_PRICE:     // 無効な価格
+      case TRADE_RETCODE_INVALID_STOPS:     // 無効なストップ
+      case TRADE_RETCODE_TRADE_DISABLED:    // 取引禁止
+      case TRADE_RETCODE_NO_MONEY:          // 証拠金不足
+      case TRADE_RETCODE_INVALID_ORDER:     // 無効な注文
+         return false;
+      
+      default:
+         // 不明なエラーは安全のため回復不可能として扱う
+         return false;
+   }
 }
 
 // MQL5でのテスト中判定
@@ -202,65 +320,76 @@ double NormalizeVolume(double volume, string symbol = "")
 bool position_entry(int side, double lot = 0.1, int slippage = 10, int magic = 0, string comment = "")
 {
    // 高頻度呼び出し対策: キャッシュを使用したエントリー制限チェック
-   if(!IsEquitySufficientCached())
-   {
-      return false;
-   }
 
    if(magic == 0) magic = MagicNumber;
    
    #ifdef __MQL5__
-   // MQL5での注文処理
+   // MQL5での注文処理（シンプル版）
    MqlTradeRequest request = {};
    MqlTradeResult result = {};
    
    double normalizedVolume = NormalizeVolume(lot);
-   
-   // ボリューム検証
-   
+
+  
+   // 基本設定
    request.action = TRADE_ACTION_DEAL;
    request.symbol = Symbol();
    request.volume = normalizedVolume;
    request.type = (side == OP_BUY) ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
-   request.price = (side == OP_BUY) ? GetAskPrice() : GetBidPrice();
+   request.price = (side == OP_BUY) ? SymbolInfoDouble(Symbol(), SYMBOL_ASK) : SymbolInfoDouble(Symbol(), SYMBOL_BID);
    request.deviation = slippage;
    request.magic = magic;
    request.comment = comment;
-   request.type_filling = OrderFillingMode; // フィリングモードを使用
+   request.type_filling = OrderFillingMode; // パラメーターで設定されたフィリングモード
    
    bool success = OrderSend(request, result);
    
    if(!success || result.retcode != TRADE_RETCODE_DONE)
    {
-      Print("注文エラー: retcode=", result.retcode, " LastError=", GetLastError());
-      Print("注文詳細: symbol=", Symbol(), " volume=", normalizedVolume, 
-            " price=", request.price, " type=", EnumToString((ENUM_ORDER_TYPE)request.type));
-      
-      // 特にボリュームエラーの場合は詳細情報を出力
-      if(result.retcode == TRADE_RETCODE_INVALID_VOLUME)
-      {
-         double minVol = SymbolInfoDouble(Symbol(), SYMBOL_VOLUME_MIN);
-         double maxVol = SymbolInfoDouble(Symbol(), SYMBOL_VOLUME_MAX);
-         double stepVol = SymbolInfoDouble(Symbol(), SYMBOL_VOLUME_STEP);
-         Print("INVALID_VOLUME: min=", minVol, " max=", maxVol, " step=", stepVol, " requested=", normalizedVolume);
-      }
-      
+      Print("MQL5注文エラー: retcode=", result.retcode, " LastError=", GetLastError());
       return false;
    }
    
-   Print("注文成功: ticket=", result.order, " volume=", result.volume);
-   
+   Print("MQL5注文成功: ticket=", result.order, " volume=", result.volume);
    return true;
    
    #else
-   // MQL4での注文処理
+   // MQL4での注文処理（リトライ機能付き）
    double normalizedLot = NormalizeVolume(lot);
-   int ticket = OrderSend(Symbol(), side, normalizedLot, (side == OP_BUY) ? GetAskPrice() : GetBidPrice(), 
-                         slippage, 0, 0, comment, magic, 0, (side == OP_BUY) ? clrGreen : clrRed);
+   int maxRetries = 3;
+   int ticket = -1;
+   
+   for(int retry = 0; retry < maxRetries; retry++)
+   {
+      if(retry > 0)
+      {
+         // リトライ時は価格を再取得
+         RefreshRates();
+         Sleep(100); // 100ms待機
+         Print("リトライ ", retry, "/", maxRetries, " - Ask: ", DoubleToString(Ask, 5), " Bid: ", DoubleToString(Bid, 5));
+      }
+      
+      double currentPrice = (side == OP_BUY) ? Ask : Bid;
+      ticket = OrderSend(Symbol(), side, normalizedLot, currentPrice, slippage * 2, 0, 0, comment, magic, 0, (side == OP_BUY) ? clrGreen : clrRed);
+      
+      if(ticket > 0)
+      {
+         Print("注文成功 (試行回数: ", retry + 1, ") チケット: ", ticket);
+         break;
+      }
+      
+      int error = GetLastError();
+      // リクォートエラー以外なら即座に失敗として扱う
+      if(error != 138 && error != 4202 && error != 3) // 138=Requote, 4202=Invalid price, 3=Common error
+      {
+         Print("致命的な注文エラー: ", error);
+         break;
+      }
+   }
    
    if(ticket <= 0)
    {
-      Print("注文エラー: ", GetLastError());
+      Print("注文エラー (最終): ", GetLastError());
       return false;
    }
    

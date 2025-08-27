@@ -3,23 +3,34 @@
 //|                         Copyright 2025                           |
 //+------------------------------------------------------------------+
 #include "Hosopi3_Defines.mqh"
+#include "Hosopi3_Compat.mqh"
 #include "Hosopi3_Utils.mqh"
 #include "Hosopi3_Trading.mqh"
 
+// 前方宣言（#import不要）
 
-
-
-//+------------------------------------------------------------------+
-//| レイアウト設定のための列挙型を追加                                |
-//+------------------------------------------------------------------+
-enum LAYOUT_PATTERN
+// スタブ実装
+void InitializeGhostPosition(int operationType, string comment) 
 {
-   LAYOUT_DEFAULT = 0,         // デフォルト (パネル上/テーブル下)
-   LAYOUT_SIDE_BY_SIDE = 1,    // 横並び (パネル左/テーブル右)
-   LAYOUT_TABLE_TOP = 2,       // テーブル優先 (テーブル上/パネル下)
-   LAYOUT_COMPACT = 3,         // コンパクト (小さいパネル)
-   LAYOUT_CUSTOM = 4           // カスタム (位置を個別指定)
-};
+    // 正しい取引価格を設定（リアル取引と同じ価格を使用）
+    double price = (operationType == OP_BUY) ? GetAskPrice() : GetBidPrice();
+    double lot = InitialLot;
+    
+    Print("DEBUG: ゴーストポジション初期化 - Type=", operationType, 
+          " Price=", price, " Ask=", GetAskPrice(), " Bid=", GetBidPrice(), 
+          " Spread=", (GetAskPrice() - GetBidPrice()) / GetPointValue());
+    
+    // ExecuteGhostEntryを使用して矢印描画も実行
+    ExecuteGhostEntry(operationType, price, lot, comment, -1);
+}
+string GetConstantEntryStrategyState() { return "OFF"; }
+string GetEvenOddStrategyState() { return "OFF"; }
+void UpdateAveragePriceLines(int operationType) { /* スタブ */ }
+
+
+
+
+// LAYOUT_PATTERNはEnums.mqhで定義済み
 
 
 
@@ -152,100 +163,112 @@ void CreateGUI()
    int buttonWidth = (panelWidth - (PANEL_MARGIN * 3)) / 2; // 2列のボタン用
    int fullWidth = panelWidth - (PANEL_MARGIN * 2); // 横いっぱいのボタン用
    
+   // Y座標管理用変数
+   int currentY = adjustedPanelY + TITLE_HEIGHT + PANEL_MARGIN;
+   int sectionSpacing = PANEL_MARGIN * 3;  // セクション間のスペース
+   int labelOffset = 20;  // セクションラベルのオフセット
+   
    // ========== 行1: 決済ボタン ==========
-   int row1Y = adjustedPanelY + TITLE_HEIGHT + PANEL_MARGIN;
    
    // Sell決済ボタン (左)
-   CreateButton("btnCloseSell", "Close Sell", adjustedPanelX + PANEL_MARGIN, row1Y, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_SELL, COLOR_TEXT_LIGHT);
+   CreateButton("btnCloseSell", "Close Sell", adjustedPanelX + PANEL_MARGIN, currentY, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_SELL, COLOR_TEXT_LIGHT);
    
    // Buy決済ボタン (右)
-   CreateButton("btnCloseBuy", "Close Buy", adjustedPanelX + PANEL_MARGIN * 2 + buttonWidth, row1Y, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_BUY, COLOR_TEXT_LIGHT);
+   CreateButton("btnCloseBuy", "Close Buy", adjustedPanelX + PANEL_MARGIN * 2 + buttonWidth, currentY, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_BUY, COLOR_TEXT_LIGHT);
+   currentY += BUTTON_HEIGHT + PANEL_MARGIN;
    
    // ========== 行2: 全決済ボタン ==========
-   int row2Y = row1Y + BUTTON_HEIGHT + PANEL_MARGIN;
    
    // 全決済ボタン（横いっぱい）
-   CreateButton("btnCloseAll", "Close All", adjustedPanelX + PANEL_MARGIN, row2Y, fullWidth, BUTTON_HEIGHT, COLOR_BUTTON_CLOSE_ALL, COLOR_TEXT_DARK);
+   CreateButton("btnCloseAll", "Close All", adjustedPanelX + PANEL_MARGIN, currentY, fullWidth, BUTTON_HEIGHT, COLOR_BUTTON_CLOSE_ALL, COLOR_TEXT_WHITE);
+   currentY += BUTTON_HEIGHT + sectionSpacing;
+   CreateTooltip("btnCloseAll", "すべてのポジションを即座に決済します");
    
    // ========== 行3: 直接エントリーボタン ==========
-   int row3Y = row2Y + BUTTON_HEIGHT + PANEL_MARGIN * 2; // 間隔を広く
    
    // セクションラベル
-   CreateLabel("lblDirectEntry", "【直接エントリー】", adjustedPanelX + PANEL_MARGIN, row3Y - 5, COLOR_TEXT_LIGHT);
+   CreateLabel("lblDirectEntry", "【直接エントリー】", adjustedPanelX + PANEL_MARGIN, currentY - labelOffset, COLOR_TEXT_LIGHT);
    
-   // Sellエントリーボタン (左)
-   CreateButton("btnDirectSell", "SELL NOW", adjustedPanelX + PANEL_MARGIN, row3Y + 15, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_SELL, COLOR_TEXT_LIGHT);
+   // Sellエントリーボタン (左) - 直接エントリー色
+   CreateButton("btnDirectSell", "SELL NOW", adjustedPanelX + PANEL_MARGIN, currentY, buttonWidth, BUTTON_HEIGHT, COLOR_ENTRY_DIRECT, COLOR_TEXT_WHITE);
+   CreateTooltip("btnDirectSell", "現在価格で即座にSELL注文を実行します");
    
-   // Buyエントリーボタン (右)
-   CreateButton("btnDirectBuy", "BUY NOW", adjustedPanelX + PANEL_MARGIN * 2 + buttonWidth, row3Y + 15, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_BUY, COLOR_TEXT_LIGHT);
+   // Buyエントリーボタン (右) - 直接エントリー色
+   CreateButton("btnDirectBuy", "BUY NOW", adjustedPanelX + PANEL_MARGIN * 2 + buttonWidth, currentY, buttonWidth, BUTTON_HEIGHT, COLOR_ENTRY_DIRECT, COLOR_TEXT_WHITE);
+   currentY += BUTTON_HEIGHT + sectionSpacing;
+   CreateTooltip("btnDirectBuy", "現在価格で即座にBUY注文を実行します");
    
    // コンパクトモードの場合、一部のセクションを省略または縮小
    int rowSpacing = (LayoutPattern == LAYOUT_COMPACT) ? 10 : 15;
    
    // ========== 新規追加: 行3.5: ゴーストエントリーボタン ==========
-   int row3_5Y = row3Y + BUTTON_HEIGHT + PANEL_MARGIN + rowSpacing;
    
    // セクションラベル
-   CreateLabel("lblGhostEntry", "【ゴーストエントリー】", adjustedPanelX + PANEL_MARGIN, row3_5Y - 5, COLOR_TEXT_LIGHT);
+   CreateLabel("lblGhostEntry", "【ゴーストエントリー】", adjustedPanelX + PANEL_MARGIN, currentY - labelOffset, COLOR_TEXT_LIGHT);
    
-   // ゴーストSellエントリーボタン (左)
-   CreateButton("btnGhostSell", "GHOST SELL", adjustedPanelX + PANEL_MARGIN, row3_5Y + rowSpacing, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_SELL, COLOR_TEXT_LIGHT);
+   // ゴーストSellエントリーボタン (左) - ゴースト色
+   CreateButton("btnGhostSell", "GHOST SELL", adjustedPanelX + PANEL_MARGIN, currentY, buttonWidth, BUTTON_HEIGHT, COLOR_ENTRY_GHOST, COLOR_TEXT_WHITE);
+   CreateTooltip("btnGhostSell", "仮想SELL注文を作成します（実際の取引は行いません）");
    
-   // ゴーストBuyエントリーボタン (右)
-   CreateButton("btnGhostBuy", "GHOST BUY", adjustedPanelX + PANEL_MARGIN * 2 + buttonWidth, row3_5Y + rowSpacing, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_BUY, COLOR_TEXT_LIGHT);
+   // ゴーストBuyエントリーボタン (右) - ゴースト色
+   CreateButton("btnGhostBuy", "GHOST BUY", adjustedPanelX + PANEL_MARGIN * 2 + buttonWidth, currentY, buttonWidth, BUTTON_HEIGHT, COLOR_ENTRY_GHOST, COLOR_TEXT_WHITE);
+   currentY += BUTTON_HEIGHT + sectionSpacing;
+   CreateTooltip("btnGhostBuy", "仮想BUY注文を作成します（実際の取引は行いません）");
    
    // ========== 行4: 途中からエントリーボタン ==========
-   int row4Y = row3_5Y + BUTTON_HEIGHT + PANEL_MARGIN * 2 + rowSpacing; // 間隔を広く
    
    // セクションラベル
-   CreateLabel("lblLevelEntry", "【レベル指定エントリー】", adjustedPanelX + PANEL_MARGIN, row4Y - 5, COLOR_TEXT_LIGHT);
+   CreateLabel("lblLevelEntry", "【レベル指定エントリー】", adjustedPanelX + PANEL_MARGIN, currentY - labelOffset, COLOR_TEXT_LIGHT);
    
    // 現在のゴーストカウントに基づいてレベルを決定
    int buyLevel = ghost_position_count(OP_BUY) + 1;
    int sellLevel = ghost_position_count(OP_SELL) + 1;
    
-   // Sellエントリーボタン (左)
-   CreateButton("btnLevelSell", "SELL Level " + IntegerToString(sellLevel), adjustedPanelX + PANEL_MARGIN, row4Y + rowSpacing, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_SELL, COLOR_TEXT_LIGHT);
+   // Sellエントリーボタン (左) - レベルエントリー色
+   CreateButton("btnLevelSell", "SELL Level " + IntegerToString(sellLevel), adjustedPanelX + PANEL_MARGIN, currentY, buttonWidth, BUTTON_HEIGHT, COLOR_ENTRY_LEVEL, COLOR_TEXT_WHITE);
+   CreateTooltip("btnLevelSell", "指定レベル(" + IntegerToString(sellLevel) + ")でSELL注文を実行します");
    
-   // Buyエントリーボタン (右)
-   CreateButton("btnLevelBuy", "BUY Level " + IntegerToString(buyLevel), adjustedPanelX + PANEL_MARGIN * 2 + buttonWidth, row4Y + rowSpacing, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_BUY, COLOR_TEXT_LIGHT);
+   // Buyエントリーボタン (右) - レベルエントリー色
+   CreateButton("btnLevelBuy", "BUY Level " + IntegerToString(buyLevel), adjustedPanelX + PANEL_MARGIN * 2 + buttonWidth, currentY, buttonWidth, BUTTON_HEIGHT, COLOR_ENTRY_LEVEL, COLOR_TEXT_WHITE);
+   currentY += BUTTON_HEIGHT + sectionSpacing;
+   CreateTooltip("btnLevelBuy", "指定レベル(" + IntegerToString(buyLevel) + ")でBUY注文を実行します");
    
    // ========== 行5: 設定セクション ==========
-   int row5Y = row4Y + BUTTON_HEIGHT + PANEL_MARGIN * 2 + rowSpacing; // 間隔を広く
    
    // セクションラベル
-   CreateLabel("lblSettings", "【設定】", adjustedPanelX + PANEL_MARGIN, row5Y - 5, COLOR_TEXT_LIGHT);
+   CreateLabel("lblSettings", "【設定】", adjustedPanelX + PANEL_MARGIN, currentY - labelOffset, COLOR_TEXT_LIGHT);
    
    // Ghostモードボタン（横いっぱい）
    CreateButton("btnGhostToggle", "GHOST " + (g_GhostMode ? "ON" : "OFF"), 
-               adjustedPanelX + PANEL_MARGIN, row5Y + rowSpacing, fullWidth, BUTTON_HEIGHT, 
+               adjustedPanelX + PANEL_MARGIN, currentY, fullWidth, BUTTON_HEIGHT, 
                g_GhostMode ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE, COLOR_TEXT_LIGHT);
+   currentY += BUTTON_HEIGHT + PANEL_MARGIN * 2;
    
    // ========== 行6: ゴーストリセットボタン ==========
-   int row6Y = row5Y + BUTTON_HEIGHT + PANEL_MARGIN + rowSpacing;
    
    // ゴーストリセットボタン（横いっぱい）
-   CreateButton("btnResetGhost", "GHOST RESET", adjustedPanelX + PANEL_MARGIN, row6Y, fullWidth, BUTTON_HEIGHT, COLOR_BUTTON_INACTIVE, COLOR_TEXT_LIGHT);
+   CreateButton("btnResetGhost", "GHOST RESET", adjustedPanelX + PANEL_MARGIN, currentY, fullWidth, BUTTON_HEIGHT, COLOR_BUTTON_INACTIVE, COLOR_TEXT_LIGHT);
+   currentY += BUTTON_HEIGHT + PANEL_MARGIN;
    
    // ========== 行7: 平均取得単価表示切替ボタン ==========
-   int row7Y = row6Y + BUTTON_HEIGHT + PANEL_MARGIN;
    
    // 平均取得単価表示切替ボタン（横いっぱい）
    CreateButton("btnToggleAvgPrice", "AVG PRICE " + (g_AvgPriceVisible ? "ON" : "OFF"), 
-               adjustedPanelX + PANEL_MARGIN, row7Y, fullWidth, BUTTON_HEIGHT, 
+               adjustedPanelX + PANEL_MARGIN, currentY, fullWidth, BUTTON_HEIGHT, 
                g_AvgPriceVisible ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE, COLOR_TEXT_LIGHT);
+   currentY += BUTTON_HEIGHT + PANEL_MARGIN;
    
    // ========== 行8: 情報表示ボタン ==========
-   int row8Y = row7Y + BUTTON_HEIGHT + PANEL_MARGIN;
    
    // ロット情報表示ボタン (左)
-   CreateButton("btnShowLotTable", "Lot Table", adjustedPanelX + PANEL_MARGIN, row8Y, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_NEUTRAL, COLOR_TEXT_LIGHT);
+   CreateButton("btnShowLotTable", "Lot Table", adjustedPanelX + PANEL_MARGIN, currentY, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_NEUTRAL, COLOR_TEXT_LIGHT);
    
    // 設定情報表示ボタン (右)
-   CreateButton("btnShowSettings", "Settings", adjustedPanelX + PANEL_MARGIN * 2 + buttonWidth, row8Y, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_NEUTRAL, COLOR_TEXT_LIGHT);
+   CreateButton("btnShowSettings", "Settings", adjustedPanelX + PANEL_MARGIN * 2 + buttonWidth, currentY, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_NEUTRAL, COLOR_TEXT_LIGHT);
+   currentY += BUTTON_HEIGHT + PANEL_MARGIN;
    
    // パネルの高さを調整
-   panelHeight = row8Y + BUTTON_HEIGHT + PANEL_MARGIN - adjustedPanelY;
+   panelHeight = currentY - adjustedPanelY;
    #ifdef __MQL5__
       ObjectSetInteger(0, g_ObjectPrefix + "MainPanel" + "BG", OBJPROP_YSIZE, panelHeight);
    #else
@@ -256,7 +279,7 @@ void CreateGUI()
 }
 
 //+------------------------------------------------------------------+
-//| ラベル作成 - フォントをMS Gothicに変更                           |
+//| ラベル作成 - フォントをSegoe UIに変更                           |
 //+------------------------------------------------------------------+
 void CreateLabel(string name, string text, int x, int y, color textColor)
 {
@@ -269,7 +292,7 @@ void CreateLabel(string name, string text, int x, int y, color textColor)
       ObjectSetInteger(0, objectName, OBJPROP_XDISTANCE, x);
       ObjectSetInteger(0, objectName, OBJPROP_YDISTANCE, y);
       ObjectSetString(0, objectName, OBJPROP_TEXT, text);
-      ObjectSetString(0, objectName, OBJPROP_FONT, "MS Gothic");
+      ObjectSetString(0, objectName, OBJPROP_FONT, "Yu Gothic UI");
       ObjectSetInteger(0, objectName, OBJPROP_FONTSIZE, 9);
       ObjectSetInteger(0, objectName, OBJPROP_COLOR, textColor);
       ObjectSetInteger(0, objectName, OBJPROP_SELECTABLE, false);
@@ -278,7 +301,7 @@ void CreateLabel(string name, string text, int x, int y, color textColor)
       ObjectSet(objectName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
       ObjectSet(objectName, OBJPROP_XDISTANCE, x);
       ObjectSet(objectName, OBJPROP_YDISTANCE, y);
-      ObjectSetText(objectName, text, 9, "MS Gothic", textColor);
+      ObjectSetText(objectName, text, 9, "Yu Gothic UI", textColor);
       ObjectSet(objectName, OBJPROP_SELECTABLE, false);
    #endif
    
@@ -375,7 +398,7 @@ void CreateTitleBar(string name, int x, int y, int width, int height, color bgCo
       ObjectSetInteger(0, textName, OBJPROP_XDISTANCE, x + 10);
       ObjectSetInteger(0, textName, OBJPROP_YDISTANCE, y + 8);
       ObjectSetString(0, textName, OBJPROP_TEXT, title);
-      ObjectSetString(0, textName, OBJPROP_FONT, "Arial");
+      ObjectSetString(0, textName, OBJPROP_FONT, "Yu Gothic UI");
       ObjectSetInteger(0, textName, OBJPROP_FONTSIZE, 10);
       ObjectSetInteger(0, textName, OBJPROP_COLOR, COLOR_TITLE_TEXT);
       ObjectSetInteger(0, textName, OBJPROP_SELECTABLE, false);
@@ -394,7 +417,33 @@ void CreateTitleBar(string name, int x, int y, int width, int height, color bgCo
 }
 
 //+------------------------------------------------------------------+
-//| ボタン作成 - フォントをMS Gothicに変更                           |
+//| ツールチップ作成                                                |
+//+------------------------------------------------------------------+
+void CreateTooltip(string objectName, string tooltipText)
+{
+   string tooltipName = g_ObjectPrefix + objectName + "_Tooltip";
+   
+#ifdef __MQL5__
+   ObjectCreate(0, tooltipName, OBJ_LABEL, 0, 0, 0);
+   ObjectSetString(0, tooltipName, OBJPROP_TEXT, tooltipText);
+   ObjectSetString(0, tooltipName, OBJPROP_FONT, "Yu Gothic UI");
+   ObjectSetInteger(0, tooltipName, OBJPROP_FONTSIZE, 8);
+   ObjectSetInteger(0, tooltipName, OBJPROP_COLOR, COLOR_TEXT_LIGHT);
+   ObjectSetInteger(0, tooltipName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetInteger(0, tooltipName, OBJPROP_SELECTABLE, false);
+   ObjectSetInteger(0, tooltipName, OBJPROP_TIMEFRAMES, OBJ_NO_PERIODS); // 非表示にする
+#else
+   ObjectCreate(tooltipName, OBJ_LABEL, 0, 0, 0);
+   ObjectSet(tooltipName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetText(tooltipName, tooltipText, 8, "Yu Gothic UI", COLOR_TEXT_LIGHT);
+   ObjectSet(tooltipName, OBJPROP_TIMEFRAMES, OBJ_NO_PERIODS); // 非表示にする
+#endif
+   
+   SaveObjectName(tooltipName, g_PanelNames, g_PanelObjectCount);
+}
+
+//+------------------------------------------------------------------+
+//| ボタン作成 - フォントをYu Gothic UIに変更                           |
 //+------------------------------------------------------------------+
 void CreateButton(string name, string text, int x, int y, int width, int height, color bgColor, color textColor)
 {
@@ -441,7 +490,7 @@ void CreateButton(string name, string text, int x, int y, int width, int height,
       ObjectSetInteger(0, objectName, OBJPROP_XSIZE, width);
       ObjectSetInteger(0, objectName, OBJPROP_YSIZE, height);
       ObjectSetString(0, objectName, OBJPROP_TEXT, text);
-      ObjectSetString(0, objectName, OBJPROP_FONT, "MS Gothic");
+      ObjectSetString(0, objectName, OBJPROP_FONT, "Yu Gothic UI");
       ObjectSetInteger(0, objectName, OBJPROP_FONTSIZE, 9);
       ObjectSetInteger(0, objectName, OBJPROP_COLOR, textColor);
       ObjectSetInteger(0, objectName, OBJPROP_BGCOLOR, bgColor);
@@ -454,7 +503,7 @@ void CreateButton(string name, string text, int x, int y, int width, int height,
       ObjectSet(objectName, OBJPROP_YDISTANCE, y);
       ObjectSet(objectName, OBJPROP_XSIZE, width);
       ObjectSet(objectName, OBJPROP_YSIZE, height);
-      ObjectSetText(objectName, text, 9, "MS Gothic", textColor);
+      ObjectSetText(objectName, text, 9, "Yu Gothic UI", textColor);
       ObjectSet(objectName, OBJPROP_BGCOLOR, bgColor);
       ObjectSet(objectName, OBJPROP_BORDER_COLOR, ColorDarken(bgColor, 20));
       ObjectSet(objectName, OBJPROP_COLOR, textColor);
@@ -556,8 +605,8 @@ void UpdateGUI()
       ObjectSetString(0, levelBuyBtnPrefix, OBJPROP_TEXT, "BUY Level " + IntegerToString(buyLevel));
       ObjectSetString(0, levelSellBtnPrefix, OBJPROP_TEXT, "SELL Level " + IntegerToString(sellLevel));
    #else
-      ObjectSetText(levelBuyBtnPrefix, "BUY Level " + IntegerToString(buyLevel), 9, "MS Gothic", COLOR_TEXT_LIGHT);
-      ObjectSetText(levelSellBtnPrefix, "SELL Level " + IntegerToString(sellLevel), 9, "MS Gothic", COLOR_TEXT_LIGHT);
+      ObjectSetText(levelBuyBtnPrefix, "BUY Level " + IntegerToString(buyLevel), 9, "Yu Gothic UI", COLOR_TEXT_LIGHT);
+      ObjectSetText(levelSellBtnPrefix, "SELL Level " + IntegerToString(sellLevel), 9, "Yu Gothic UI", COLOR_TEXT_LIGHT);
    #endif
    
    // Ghost ON/OFFボタン状態更新
@@ -574,7 +623,7 @@ void UpdateGUI()
       ObjectSet(ghostBtnPrefix + "BG", OBJPROP_COLOR, ColorDarken(ghostButtonColor, 20));
       ObjectSet(ghostBtnPrefix, OBJPROP_BGCOLOR, ghostButtonColor);
       ObjectSet(ghostBtnPrefix, OBJPROP_BORDER_COLOR, ColorDarken(ghostButtonColor, 20));
-      ObjectSetText(ghostBtnPrefix, g_GhostMode ? "GHOST ON" : "GHOST OFF", 9, "MS Gothic", COLOR_TEXT_LIGHT);
+      ObjectSetText(ghostBtnPrefix, g_GhostMode ? "GHOST ON" : "GHOST OFF", 9, "Yu Gothic UI", COLOR_TEXT_LIGHT);
    #endif
    
    // 平均取得単価表示ボタン状態更新
@@ -591,7 +640,7 @@ void UpdateGUI()
       ObjectSet(avgPriceBtnPrefix + "BG", OBJPROP_COLOR, ColorDarken(avgPriceButtonColor, 20));
       ObjectSet(avgPriceBtnPrefix, OBJPROP_BGCOLOR, avgPriceButtonColor);
       ObjectSet(avgPriceBtnPrefix, OBJPROP_BORDER_COLOR, ColorDarken(avgPriceButtonColor, 20));
-      ObjectSetText(avgPriceBtnPrefix, g_AvgPriceVisible ? "AVG PRICE ON" : "AVG PRICE OFF", 9, "MS Gothic", COLOR_TEXT_LIGHT);
+      ObjectSetText(avgPriceBtnPrefix, g_AvgPriceVisible ? "AVG PRICE ON" : "AVG PRICE OFF", 9, "Yu Gothic UI", COLOR_TEXT_LIGHT);
    #endif
    
    ChartRedraw(); // チャートを再描画
@@ -648,11 +697,11 @@ void ProcessButtonClick(string buttonName)
       position_close(1, -1);
       
       // ゴーストもリセット
-      ResetGhost(OP_BUY);
-      ResetGhost(OP_SELL);
+      ResetGhostPositions(OP_BUY);
+      ResetGhostPositions(OP_SELL);
       
       // グローバル変数からもクリア
-      ClearGhostPositionsFromGlobal();
+      ClearGhostGlobalVariables();
       
       // 決済済みフラグもリセット
       g_BuyGhostClosed = false;
@@ -673,8 +722,8 @@ void ProcessButtonClick(string buttonName)
       // ゴーストモードをOFFにした場合は、すべてのゴーストをリセット
       if(!g_GhostMode)
       {
-         ResetGhost(OP_BUY);
-         ResetGhost(OP_SELL);
+         ResetGhostPositions(OP_BUY);
+         ResetGhostPositions(OP_SELL);
       }
       else
       {
@@ -694,15 +743,15 @@ void ProcessButtonClick(string buttonName)
       
       
       // ゴーストオブジェクトを削除
-      DeleteAllGhostObjectsByType(OP_BUY);
-      DeleteAllGhostObjectsByType(OP_SELL);
+      DeleteObjectsByPrefix(g_ObjectPrefix + "GhostArrow_");
+      ClearGhostObjects();
       
       // ゴーストポジションをリセット
-      ResetGhost(OP_BUY);  // 両方のゴーストをリセット
-      ResetGhost(OP_SELL);
+      ResetGhostPositions(OP_BUY);  // 両方のゴーストをリセット
+      ResetGhostPositions(OP_SELL);
       
       // グローバル変数からも完全にクリア
-      ClearGhostPositionsFromGlobal();
+      ClearGhostGlobalVariables();
       
       // 決済済みフラグもリセット
       g_BuyGhostClosed = false;
@@ -959,10 +1008,10 @@ ChartRedraw(); // チャートを再描画
 //+------------------------------------------------------------------+
 //| 水平線を作成                                                     |
 //+------------------------------------------------------------------+
-void CreateHorizontalLine(string name, double price, color lineColor, int style, int width)
+void CreateHorizontalLine(string lineName, double price, color lineColor, int lineStyle, int lineWidth)
 {
 // オブジェクト名にプレフィックスを追加（複数チャート対策）
-string objectName = g_ObjectPrefix + name;
+string objectName = g_ObjectPrefix + lineName;
 
 #ifdef __MQL5__
    if(ObjectFind(0, objectName) >= 0)
@@ -975,8 +1024,8 @@ string objectName = g_ObjectPrefix + name;
 #ifdef __MQL5__
    ObjectCreate(0, objectName, OBJ_HLINE, 0, 0, price);
    ObjectSetInteger(0, objectName, OBJPROP_COLOR, lineColor);
-   ObjectSetInteger(0, objectName, OBJPROP_STYLE, style);
-   ObjectSetInteger(0, objectName, OBJPROP_WIDTH, width);
+   ObjectSetInteger(0, objectName, OBJPROP_STYLE, lineStyle);
+   ObjectSetInteger(0, objectName, OBJPROP_WIDTH, lineWidth);
    ObjectSetInteger(0, objectName, OBJPROP_BACK, false);
    ObjectSetInteger(0, objectName, OBJPROP_SELECTABLE, true);
    ObjectSetInteger(0, objectName, OBJPROP_SELECTED, false);
@@ -984,8 +1033,8 @@ string objectName = g_ObjectPrefix + name;
 #else
    ObjectCreate(objectName, OBJ_HLINE, 0, 0, price);
    ObjectSet(objectName, OBJPROP_COLOR, lineColor);
-   ObjectSet(objectName, OBJPROP_STYLE, style);
-   ObjectSet(objectName, OBJPROP_WIDTH, width);
+   ObjectSet(objectName, OBJPROP_STYLE, lineStyle);
+   ObjectSet(objectName, OBJPROP_WIDTH, lineWidth);
    ObjectSet(objectName, OBJPROP_BACK, false);
    ObjectSet(objectName, OBJPROP_SELECTABLE, true);
    ObjectSet(objectName, OBJPROP_SELECTED, false);
@@ -1001,10 +1050,10 @@ SaveObjectName(objectName, g_LineNames, g_LineObjectCount);
 //+------------------------------------------------------------------+
 //| 価格ラベルを作成                                                  |
 //+------------------------------------------------------------------+
-void CreatePriceLabel(string name, string text, double price, color textColor, bool isAbove)
+void CreatePriceLabel(string labelName, string text, double price, color textColor, bool isLeft)
 {
 // オブジェクト名にプレフィックスを追加（複数チャート対策）
-string objectName = g_ObjectPrefix + name;
+string objectName = g_ObjectPrefix + labelName;
 
 // 既存のラベルがあれば削除
 #ifdef __MQL5__
@@ -1019,15 +1068,15 @@ string objectName = g_ObjectPrefix + name;
 datetime labelTime = TimeCurrent() + 1800; // 現在時刻から30分後の位置に表示
 
 #ifdef __MQL5__
-   ObjectCreate(0, objectName, OBJ_TEXT, 0, labelTime, price + (isAbove ? 25*_Point : -25*_Point));
+   ObjectCreate(0, objectName, OBJ_TEXT, 0, labelTime, price + (isLeft ? 25*_Point : -25*_Point));
    ObjectSetString(0, objectName, OBJPROP_TEXT, text);
-   ObjectSetString(0, objectName, OBJPROP_FONT, "Arial Bold");
+   ObjectSetString(0, objectName, OBJPROP_FONT, "Segoe UI Semibold");
    ObjectSetInteger(0, objectName, OBJPROP_FONTSIZE, 8);
    ObjectSetInteger(0, objectName, OBJPROP_COLOR, textColor);
    ObjectSetInteger(0, objectName, OBJPROP_BACK, false);
    ObjectSetInteger(0, objectName, OBJPROP_SELECTABLE, false);
 #else
-   ObjectCreate(objectName, OBJ_TEXT, 0, labelTime, price + (isAbove ? 25*Point : -25*Point));
+   ObjectCreate(objectName, OBJ_TEXT, 0, labelTime, price + (isLeft ? 25*Point : -25*Point));
    ObjectSetText(objectName, text, 8, "Arial Bold", textColor);
    ObjectSet(objectName, OBJPROP_BACK, false);
    ObjectSet(objectName, OBJPROP_SELECTABLE, false);

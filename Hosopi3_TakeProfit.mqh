@@ -3,6 +3,7 @@
 //|                        Copyright 2025                            |
 //+------------------------------------------------------------------+
 #include "Hosopi3_Defines.mqh"
+#include "Hosopi3_Compat.mqh"
 #include "Hosopi3_Trading.mqh"
 #include "Hosopi3_Utils.mqh"
 #include "Hosopi3_Ghost.mqh"
@@ -308,7 +309,8 @@ void CheckGhostTrailingStopConditions(int side)
          stopPrice = currentPrice - TrailingOffset * pointValue;
          
          // 各ゴーストポジションのストップロスを更新
-         for(int i = 0; i < g_GhostBuyCount; i++)
+         int buyMaxIndex = MathMin(g_GhostBuyCount, 40);
+         for(int i = 0; i < buyMaxIndex; i++)
          {
             if(g_GhostBuyPositions[i].isGhost) // 有効なゴーストのみ
             {
@@ -344,7 +346,8 @@ void CheckGhostTrailingStopConditions(int side)
          stopPrice = currentPrice + TrailingOffset * pointValue;
          
          // 各ゴーストポジションのストップロスを更新
-         for(int i = 0; i < g_GhostSellCount; i++)
+         int sellMaxIndex = MathMin(g_GhostSellCount, 40);
+         for(int i = 0; i < sellMaxIndex; i++)
          {
             if(g_GhostSellPositions[i].isGhost) // 有効なゴーストのみ
             {
@@ -474,7 +477,8 @@ void ManageTakeProfit(int side)
             // ゴーストポジションをリセット
             if(operationType == OP_BUY) {
                // ゴーストポジションの状態をリセット
-               for(int i = 0; i < g_GhostBuyCount; i++) {
+               int buyMaxIndex = MathMin(g_GhostBuyCount, 40);
+               for(int i = 0; i < buyMaxIndex; i++) {
                   g_GhostBuyPositions[i].isGhost = false;  // ゴーストフラグをオフに
                }
                // 決済済みフラグを設定
@@ -482,7 +486,8 @@ void ManageTakeProfit(int side)
                g_GhostBuyCount = 0;
             } else {
                // ゴーストポジションの状態をリセット
-               for(int i = 0; i < g_GhostSellCount; i++) {
+               int sellMaxIndex = MathMin(g_GhostSellCount, 40);
+               for(int i = 0; i < sellMaxIndex; i++) {
                   g_GhostSellPositions[i].isGhost = false;  // ゴーストフラグをオフに
                }
                // 決済済みフラグを設定
@@ -643,7 +648,8 @@ void ManageTakeProfit(int side)
             // ゴーストポジションをリセット（リアルポジションの有無に関わらず）
             if(operationType == OP_BUY) {
                // ゴーストポジションの状態をリセット
-               for(int i = 0; i < g_GhostBuyCount; i++) {
+               int buyMaxIndex = MathMin(g_GhostBuyCount, 40);
+               for(int i = 0; i < buyMaxIndex; i++) {
                   g_GhostBuyPositions[i].isGhost = false;  // ゴーストフラグをオフに
                }
                // 決済済みフラグを設定
@@ -651,7 +657,8 @@ void ManageTakeProfit(int side)
                g_GhostBuyCount = 0;
             } else {
                // ゴーストポジションの状態をリセット
-               for(int i = 0; i < g_GhostSellCount; i++) {
+               int sellMaxIndex = MathMin(g_GhostSellCount, 40);
+               for(int i = 0; i < sellMaxIndex; i++) {
                   g_GhostSellPositions[i].isGhost = false;  // ゴーストフラグをオフに
                }
                // 決済済みフラグを設定

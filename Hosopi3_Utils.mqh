@@ -4,6 +4,7 @@
 //|                    MQL4/MQL5 共通化バージョン                     |
 //+------------------------------------------------------------------+
 #include "Hosopi3_Defines.mqh"
+#include "Hosopi3_Compat.mqh"
 
 //+------------------------------------------------------------------+
 //| MQL4/MQL5 互換性のための定義                                      |
@@ -38,6 +39,388 @@ void InitializeGlobalVariables()
    
    // 時間関連初期化
    g_LastUpdateTime = 0;
+}
+
+//+------------------------------------------------------------------+
+//| Manager.mqhで使用される関数実装                                   |
+//+------------------------------------------------------------------+
+
+// アクティブなリアルポジション数を取得
+int GetActivePositionCount(int type)
+{
+   int count = 0;
+   #ifdef __MQL5__
+      for(int i = PositionsTotal() - 1; i >= 0; i--)
+      {
+         if(PositionGetTicket(i) > 0)
+         {
+            if(PositionGetString(POSITION_SYMBOL) == Symbol() &&
+               PositionGetInteger(POSITION_MAGIC) == MagicNumber)
+            {
+               int posType = (int)PositionGetInteger(POSITION_TYPE);
+               if(posType == type) count++;
+            }
+         }
+      }
+   #else
+      for(int i = OrdersTotal() - 1; i >= 0; i--)
+      {
+         if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+         {
+            if(OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
+            {
+               if(OrderType() == type) count++;
+            }
+         }
+      }
+   #endif
+   return count;
+}
+
+// アクティブなゴーストポジション数を取得
+int GetActiveGhostPositionCount(int type)
+{
+   int count = 0;
+   int maxIndex = MathMin(MAX_GHOST_POSITIONS, 40); // 安全な上限設定
+   
+   if(type == OP_BUY)
+   {
+      for(int i = 0; i < maxIndex; i++)
+      {
+         if(g_GhostBuyPositions[i].isGhost) count++;
+      }
+   }
+   else if(type == OP_SELL)
+   {
+      for(int i = 0; i < maxIndex; i++)
+      {
+         if(g_GhostSellPositions[i].isGhost) count++;
+      }
+   }
+   return count;
+}
+
+// Manager.mqhで使用される関数
+int combined_position_count(int type) 
+{
+   int realCount = GetActivePositionCount(type);
+   int ghostCount = GetActiveGhostPositionCount(type);
+   return realCount + ghostCount;
+}
+
+double GetLastCombinedPositionLot(int type) 
+{
+   // 最後のポジションのロットサイズを取得（リアルとゴーストの両方から）
+   double lastLot = 0.0;
+   datetime lastTime = 0;
+   string debugInfo = "GetLastCombinedPositionLot(" + IntegerToString(type) + "):";
+   
+   // リアルポジションから最後のロットを確認
+   #ifdef __MQL5__
+      for(int i = PositionsTotal() - 1; i >= 0; i--)
+      {
+         if(PositionGetTicket(i) > 0)
+         {
+            if(PositionGetString(POSITION_SYMBOL) == Symbol() &&
+               PositionGetInteger(POSITION_MAGIC) == MagicNumber)
+            {
+               int posType = (int)PositionGetInteger(POSITION_TYPE);
+               if(posType == type)
+               {
+                  datetime openTime = (datetime)PositionGetInteger(POSITION_TIME);
+                  if(openTime > lastTime)
+                  {
+                     lastTime = openTime;
+                     lastLot = PositionGetDouble(POSITION_VOLUME);
+                     debugInfo += " リアル=" + DoubleToString(lastLot, 2) + "@" + TimeToString(openTime);
+                  }
+               }
+            }
+         }
+      }
+   #else
+      for(int i = OrdersTotal() - 1; i >= 0; i--)
+      {
+         if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+         {
+            if(OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
+            {
+               if(OrderType() == type)
+               {
+                  datetime openTime = OrderOpenTime();
+                  if(openTime > lastTime)
+                  {
+                     lastTime = openTime;
+                     lastLot = OrderLots();
+                  }
+               }
+            }
+         }
+      }
+   #endif
+   
+   // ゴーストポジションからも最後のロットを確認
+   if(type == OP_BUY)
+   {
+      int maxIndex = MathMin(MAX_GHOST_POSITIONS, 40);
+      for(int i = 0; i < maxIndex; i++)
+      {
+         if(g_GhostBuyPositions[i].isGhost)
+         {
+            if(g_GhostBuyPositions[i].openTime > lastTime)
+            {
+               lastTime = g_GhostBuyPositions[i].openTime;
+               lastLot = g_GhostBuyPositions[i].lot;
+               debugInfo += " ゴーストBUY=" + DoubleToString(lastLot, 2) + "@" + TimeToString(lastTime);
+            }
+         }
+      }
+   }
+   else
+   {
+      int maxIndex = MathMin(MAX_GHOST_POSITIONS, 40);
+      for(int i = 0; i < maxIndex; i++)
+      {
+         if(g_GhostSellPositions[i].isGhost)
+         {
+            if(g_GhostSellPositions[i].openTime > lastTime)
+            {
+               lastTime = g_GhostSellPositions[i].openTime;
+               lastLot = g_GhostSellPositions[i].lot;
+               debugInfo += " ゴーストSELL=" + DoubleToString(lastLot, 2) + "@" + TimeToString(lastTime);
+            }
+         }
+      }
+   }
+   
+   return lastLot > 0 ? lastLot : 0.01;
+}
+
+double GetLastCombinedPositionPrice(int type) 
+{
+   // 最後のポジションの価格を取得（リアルとゴーストの両方から）
+   double lastPrice = 0.0;
+   datetime lastTime = 0;
+   
+   // リアルポジションから最後の価格を確認
+   #ifdef __MQL5__
+      for(int i = PositionsTotal() - 1; i >= 0; i--)
+      {
+         if(PositionGetTicket(i) > 0)
+         {
+            if(PositionGetString(POSITION_SYMBOL) == Symbol() &&
+               PositionGetInteger(POSITION_MAGIC) == MagicNumber)
+            {
+               int posType = (int)PositionGetInteger(POSITION_TYPE);
+               if(posType == type)
+               {
+                  datetime openTime = (datetime)PositionGetInteger(POSITION_TIME);
+                  if(openTime > lastTime)
+                  {
+                     lastTime = openTime;
+                     lastPrice = PositionGetDouble(POSITION_PRICE_OPEN);
+                  }
+               }
+            }
+         }
+      }
+   #else
+      for(int i = OrdersTotal() - 1; i >= 0; i--)
+      {
+         if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+         {
+            if(OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
+            {
+               if(OrderType() == type)
+               {
+                  datetime openTime = OrderOpenTime();
+                  if(openTime > lastTime)
+                  {
+                     lastTime = openTime;
+                     lastPrice = OrderOpenPrice();
+                  }
+               }
+            }
+         }
+      }
+   #endif
+   
+   // ゴーストポジションからも最後の価格を確認
+   if(type == OP_BUY)
+   {
+      int maxIndex = MathMin(MAX_GHOST_POSITIONS, 40);
+      for(int i = 0; i < maxIndex; i++)
+      {
+         if(g_GhostBuyPositions[i].isGhost)
+         {
+            if(g_GhostBuyPositions[i].openTime > lastTime)
+            {
+               lastTime = g_GhostBuyPositions[i].openTime;
+               lastPrice = g_GhostBuyPositions[i].openPrice;
+            }
+         }
+      }
+   }
+   else
+   {
+      int maxIndex = MathMin(MAX_GHOST_POSITIONS, 40);
+      for(int i = 0; i < maxIndex; i++)
+      {
+         if(g_GhostSellPositions[i].isGhost)
+         {
+            if(g_GhostSellPositions[i].openTime > lastTime)
+            {
+               lastTime = g_GhostSellPositions[i].openTime;
+               lastPrice = g_GhostSellPositions[i].openPrice;
+            }
+         }
+      }
+   }
+   
+   return lastPrice;
+}
+void CleanupAndRebuildGhostObjects() 
+{
+    ClearGhostObjects();
+    DisplayAllGhostEntryPoints();
+    DisplayGhostInfo();
+}
+
+void OnTimerHandler() 
+{
+    // タイマーイベントの処理（必要に応じて実装）
+}
+
+void ProcessStrategyLogic() 
+{
+    // インジケーター戦略が有効でない場合はスキップ
+    if(!g_EnableIndicatorsEntry)
+        return;
+    
+    // バックテスト時は頻度を下げる
+    static datetime lastProcessTime = 0;
+    bool isTesting = IsTesting();
+    int processInterval = isTesting ? 60 : 1; // バックテスト時は60秒間隔
+    
+    if(TimeCurrent() - lastProcessTime < processInterval)
+        return;
+    
+    lastProcessTime = TimeCurrent();
+    
+    // 戦略システムの更新
+    UpdateStrategySystem();
+    
+    // Buy側とSell側のエントリー判定
+    ProcessRealEntries(0); // Buy
+    ProcessRealEntries(1); // Sell
+}
+
+void CheckLimitTakeProfitExecutions() 
+{
+    // 利確処理のチェック（TakeProfit.mqhで実装済み）
+}
+
+void ResetGhostClosedFlags() 
+{
+    g_BuyGhostClosed = false;
+    g_SellGhostClosed = false;
+    g_BuyClosedRecently = false;
+    g_SellClosedRecently = false;
+}
+
+void RecreateGhostEntryPoints() 
+{
+    DisplayAllGhostEntryPoints();
+}
+
+void RecreateValidGhostLines() 
+{
+    // 有効なゴーストラインの再作成
+    DisplayAllGhostEntryPoints();
+}
+
+void DeleteAllEntryPoints() 
+{
+    DeleteObjectsByPrefix(g_ObjectPrefix + "GhostArrow_");
+}
+
+void ResetSpecificGhost(int type) 
+{
+    ResetGhostPositions(type);
+}
+bool IsConstantEntryEnabled() { return false; }
+bool ShouldProcessRealEntry(int side)
+{
+    // インジケーター戦略が有効な場合のみチェック
+    if(!g_EnableIndicatorsEntry)
+        return false;
+    
+    // 戦略評価関数を呼び出し
+    return EvaluateStrategyForEntry(side);
+}
+
+// Table.mqhで使用される関数
+double CalculateCombinedProfit(int type) 
+{
+   double totalProfit = 0.0;
+   double realProfit = 0.0;
+   double ghostProfit = 0.0;
+   
+   // リアルポジションの利益を計算
+   #ifdef __MQL5__
+      for(int i = PositionsTotal() - 1; i >= 0; i--)
+      {
+         if(PositionSelectByTicket(PositionGetTicket(i)))
+         {
+            if(PositionGetSymbol(i) == Symbol() && PositionGetInteger(POSITION_MAGIC) == MagicNumber)
+            {
+               if((int)PositionGetInteger(POSITION_TYPE) == type)
+               {
+                  double posProfit = PositionGetDouble(POSITION_PROFIT) + PositionGetDouble(POSITION_SWAP);
+                  realProfit += posProfit;
+               }
+            }
+         }
+      }
+   #else
+      for(int i = OrdersTotal() - 1; i >= 0; i--)
+      {
+         if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+         {
+            if(OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
+            {
+               if(OrderType() == type)
+               {
+                  double orderProfit = OrderProfit() + OrderSwap() + OrderCommission();
+                  realProfit += orderProfit;
+               }
+            }
+         }
+      }
+   #endif
+   
+   // ゴーストポジションの利益を追加
+   ghostProfit = CalculateGhostProfit(type);
+   totalProfit = realProfit + ghostProfit;
+   
+   // Print("DEBUG: CalculateCombinedProfit Type=", type, " Real=", realProfit, " Ghost=", ghostProfit, " Total=", totalProfit);
+   
+   return totalProfit;
+}
+
+// TakeProfit.mqhで使用される関数
+void DeleteGhostLinesAndPreventRecreation(int operationType) 
+{
+    string prefix = (operationType == OP_BUY) ? "GhostLineBuy" : "GhostLineSell";
+    DeleteObjectsByPrefix(g_ObjectPrefix + prefix);
+}
+
+// Ghost関数は各専用ファイルで実装済み
+
+void DeleteAllGhostObjectsByType(int type) 
+{
+    string typeStr = (type == OP_BUY) ? "0" : "1";
+    DeleteObjectsByPrefix(g_ObjectPrefix + "GhostArrow_" + typeStr);
 }
 
 //+------------------------------------------------------------------+
@@ -875,7 +1258,8 @@ int ghost_position_count(int type)
    
    if(type == OP_BUY)
    {
-      for(int i = 0; i < g_GhostBuyCount; i++)
+      int maxIndex = MathMin(g_GhostBuyCount, 40);
+      for(int i = 0; i < maxIndex; i++)
       {
          if(g_GhostBuyPositions[i].isGhost)
             count++;
@@ -883,7 +1267,8 @@ int ghost_position_count(int type)
    }
    else if(type == OP_SELL)
    {
-      for(int i = 0; i < g_GhostSellCount; i++)
+      int maxIndex = MathMin(g_GhostSellCount, 40);
+      for(int i = 0; i < maxIndex; i++)
       {
          if(g_GhostSellPositions[i].isGhost)
             count++;

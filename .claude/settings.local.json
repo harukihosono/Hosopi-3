@@ -5,9 +5,34 @@
       "Bash(git pull:*)",
       "Bash(git push:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "WebSearch",
+      "Bash(MetaEditor.exe /compile Hosopi3_EA.mq4)",
+      "Bash(\"/c/Program Files/MetaTrader 5/metaeditor64.exe\" /compile Hosopi3_EA.mq4)",
+      "Read(/C:\\/**)",
+      "Bash(\"/c/Program Files/MetaTrader/metaeditor64.exe\" /compile Hosopi3_EA.mq4)",
+      "Read(/C:\\Users\\lukeh\\AppData\\Roaming\\MetaQuotes\\Terminal\\53785E099C827DB68A545C249CDBCE06\\MQL5\\Experts/**)",
+      "Bash(\"C:/Program Files/MetaTrader 5/metaeditor64.exe\" /compile \"C:\\Users\\lukeh\\AppData\\Roaming\\MetaQuotes\\Terminal\\53785E099C927DB68A545C249CDBCE06\\MQL5\\Experts\\Hosopi-3\\Hosopi3_EA.mq4\")",
+      "Bash(\"/c/Program Files/MetaTrader 5/metaeditor64.exe\" /compile \"Hosopi3_EA.mq4\")",
+      "Bash(\"/c/Program Files/MetaTrader 5/metaeditor64.exe\" /compile \"C:\\Users\\lukeh\\AppData\\Roaming\\MetaQuotes\\Terminal\\53785E099C927DB68A545C249CDBCE06\\MQL5\\Experts\\Hosopi-3\\Hosopi3_EA.mq4\")",
+      "Read(/C:\\/**)",
+      "Read(/C:\\c\\Program Files/**)",
+      "Read(/C:\\c\\Program Files/**)",
+      "Read(/C:\\Program Files/**)",
+      "Read(/C:\\c/**)",
+      "Bash(\"/c/Program Files/MetaTrader/metaeditor64.exe\" /compile \"Hosopi3_EA.mq4\")",
+      "Bash(grep:*)",
+      "Bash(\"/c/Program Files/MetaTrader/metaeditor64.exe\" /compile \"Hosopi3_EA.mq5\")",
+      "Bash(\"C:/Program Files/MetaTrader 5/metaeditor64.exe\" /compile \"Hosopi3_EA.mq4\")",
+      "Bash(\"/c/Program Files/FXGT MT5 Terminal/metaeditor64.exe\" /compile \"Hosopi3_EA.mq5\")",
+      "Bash(\"C:/Program Files/MetaTrader 5/metaeditor64.exe\" /compile \"Hosopi3_EA.mq5\")",
+      "Bash(\"/c/Program Files/MetaTrader 5/metaeditor64.exe\" /compile \"Hosopi3_EA.mq5\")",
+      "Bash(git log:*)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "additionalDirectories": [
+      "C:\\c"
+    ]
   }
 }

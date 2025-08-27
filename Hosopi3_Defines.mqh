@@ -2,7 +2,8 @@
 //|               Hosopi 3 - 定義・列挙型・グローバル変数             |
 //|                         Copyright 2025                           |
 //+------------------------------------------------------------------+
-
+#ifndef HOSOPI3_DEFINES_MQH
+#define HOSOPI3_DEFINES_MQH
 
 // ナンピンスキップの列挙型
 enum NANPIN_SKIP {
@@ -100,7 +101,11 @@ enum EVEN_ODD_STRATEGY {
     EVEN_HOUR_BOTH = 2,            // 偶数時間 両方向エントリー
     ODD_HOUR_BOTH = 3,             // 奇数時間 両方向エントリー
     EVEN_HOUR_BUY_ODD_HOUR_SELL = 4,  // 偶数時間Buy、奇数時間Sell
-    ODD_HOUR_BUY_EVEN_HOUR_SELL = 5   // 奇数時間Buy、偶数時間Sell
+    ODD_HOUR_BUY_EVEN_HOUR_SELL = 5,  // 奇数時間Buy、偶数時間Sell
+    EVEN_ONLY = 6,                 // 偶数時間のみ
+    ODD_ONLY = 7,                  // 奇数時間のみ
+    EVEN_BUY_ODD_SELL = 8,         // 偶数時間Buy、奇数時間Sell
+    ODD_BUY_EVEN_SELL = 9          // 奇数時間Buy、偶数時間Sell
 };
 
 // バンド系指標のターゲット
@@ -114,23 +119,35 @@ enum BAND_TARGET {
 enum BAND_CONDITION {
     PRICE_ABOVE = 0,           // 価格がライン上
     PRICE_BELOW = 1,           // 価格がライン下
-    CROSS_UP = 2,              // 上抜け（クロスアップ）
-    CROSS_DOWN = 3             // 下抜け（クロスダウン）
+    PRICE_TOUCH = 2,           // 価格がラインタッチ
+    CROSS_UP = 3,              // 上抜け（クロスアップ）
+    CROSS_DOWN = 4             // 下抜け（クロスダウン）
 };
 
 // ポジション情報の構造体
 struct PositionInfo {
     int type;           // 注文タイプ (OP_BUY/OP_SELL)
     double lots;        // ロットサイズ
+    double lot;         // ロットサイズ（別名）
     string symbol;      // 通貨ペア
     double price;       // 価格
+    double openPrice;   // オープン価格（別名）
     double profit;      // 利益/損失
     int ticket;         // チケット番号（ゴーストの場合は0）
     datetime openTime;  // オープン時間
     bool isGhost;       // ゴーストフラグ
     int level;          // ナンピンレベル
     double stopLoss;    // ストップロスレベル
+    double takeProfit;  // テイクプロフィット
+    double swap;        // スワップ
+    double commission;  // 手数料
+    string comment;     // コメント
+    int magic;          // マジックナンバー
+    int entryPoint;     // エントリーポイント
 };
+
+//--- ゴーストポジション関連定数
+#define MAX_GHOST_POSITIONS    40       // 最大ゴーストポジション数
 
 //--- GUI関連定数
 #define PANEL_WIDTH            300      // パネル幅
@@ -145,29 +162,42 @@ struct PositionInfo {
 //--- テーブル関連定数
 #define TABLE_WIDTH            640      // テーブル幅
 #define TABLE_ROW_HEIGHT       22       // テーブル行の高さ
-#define TABLE_HEADER_BG        C'40,40,60'  // テーブルヘッダー背景色
-#define TABLE_ROW_BG1          C'24,24,32'  // 奇数行背景色
-#define TABLE_ROW_BG2          C'32,32,48'  // 偶数行背景色
-#define TABLE_TEXT_COLOR       C'220,220,220' // テーブルテキスト色
-#define TABLE_BUY_COLOR        C'0,160,255'   // Buy色
-#define TABLE_SELL_COLOR       C'255,80,80'   // Sell色
-#define TABLE_GHOST_COLOR      C'128,128,128' // ゴースト色
+#define TABLE_HEADER_BG        C'42,45,48'  // テーブルヘッダー背景色（ダークモード）
+#define TABLE_ROW_BG1          C'36,39,42'  // 奇数行背景色（ダーク）
+#define TABLE_ROW_BG2          C'32,34,37'  // 偶数行背景色（ダーク）
+#define TABLE_TEXT_COLOR       C'220,221,222' // 明るいテーブルテキスト色
+#define TABLE_BUY_COLOR        C'52,168,83'   // 優しいグリーン（Buy色）
+#define TABLE_SELL_COLOR       C'234,67,53'   // 優しいレッド（Sell色）
+#define TABLE_GHOST_COLOR      C'154,160,166' // 中間グレー（ゴースト色）
 #define MAX_VISIBLE_ROWS       20       // 最大表示行数
 
-//--- 色定義
-#define COLOR_PANEL_BG         C'8,8,16'      // パネル背景色
-#define COLOR_PANEL_BORDER     C'64,64,96'    // パネル枠線色
-#define COLOR_TITLE_BG         C'32,32,64'    // タイトル背景色
-#define COLOR_TITLE_TEXT       C'255,255,255' // タイトルテキスト色
-#define COLOR_BUTTON_BUY       C'0,128,255'   // BUYボタン色
-#define COLOR_BUTTON_SELL      C'255,64,64'   // SELLボタン色
-#define COLOR_BUTTON_ACTIVE    C'0,160,0'     // アクティブボタン色
-#define COLOR_BUTTON_INACTIVE  C'40,40,56'    // 非アクティブボタン色
-#define COLOR_BUTTON_NEUTRAL   C'64,64,80'    // 中立ボタン色
-#define COLOR_BUTTON_CLOSE_ALL C'255,215,0'   // 全決済ボタン色
-#define COLOR_TEXT_LIGHT       C'240,240,240' // 明るいテキスト色
-#define COLOR_TEXT_DARK        C'32,32,48'    // 暗いテキスト色
-#define COLOR_STATUS_BG        C'24,24,36'    // ステータスバー背景色
+//--- ダークモード配色パレット（優しい色合い）
+#define COLOR_PANEL_BG         C'32,34,37'    // ダークグレー背景色
+#define COLOR_PANEL_BORDER     C'60,63,65'    // ミディアムグレー枠線色
+#define COLOR_TITLE_BG         C'42,45,48'    // ダークなタイトル背景色
+#define COLOR_TITLE_TEXT       C'220,221,222' // 明るいテキスト色
+#define COLOR_BUTTON_BUY       C'52,168,83'   // 優しいグリーン（BUYボタン）
+#define COLOR_BUTTON_SELL      C'234,67,53'   // 優しいレッド（SELLボタン）
+#define COLOR_BUTTON_ACTIVE    C'66,165,245'  // 明るいブルー（アクティブ）
+#define COLOR_BUTTON_INACTIVE  C'95,99,104'   // グレー（非アクティブ）
+#define COLOR_BUTTON_NEUTRAL   C'138,142,147' // ライトグレー（中立）
+#define COLOR_BUTTON_CLOSE_ALL C'251,188,5'   // 優しいオレンジ（全決済ボタン）
+#define COLOR_TEXT_LIGHT       C'232,234,237' // 明るいテキスト色
+#define COLOR_TEXT_DARK        C'154,160,166' // 中間テキスト色
+#define COLOR_TEXT_WHITE       C'255,255,255' // 純白テキスト（CLOSEALLボタン用）
+
+// エントリー種別色分け定義
+#define COLOR_ENTRY_DIRECT     C'66,165,245'  // 直接エントリー（明るいブルー）
+#define COLOR_ENTRY_GHOST      C'156,39,176'  // ゴーストエントリー（パープル）
+#define COLOR_ENTRY_LEVEL      C'255,152,0'   // レベルエントリー（オレンジ）
+#define COLOR_STATUS_BG        C'36,39,42'    // ステータスバー背景色
+
+// セクション別色分け用の追加色定義（ダークモード対応）
+#define COLOR_SECTION_BASIC    C'45,49,66'    // 基本設定セクション（ダークブルー）
+#define COLOR_SECTION_TRADING  C'66,49,45'    // 取引設定セクション（ダークオレンジ）
+#define COLOR_SECTION_RISK     C'66,45,49'    // リスク管理セクション（ダークピンク）
+#define COLOR_SECTION_DISPLAY  C'49,66,45'    // 表示設定セクション（ダークグリーン）
+#define COLOR_SECTION_ADVANCED C'60,45,66'    // 高度設定セクション（ダークパープル）
 
 //--- グローバル変数宣言
 
@@ -195,12 +225,16 @@ bool g_UseEvenOddHoursEntry = false; // 偶数/奇数時間エントリー使用
 // 機能制御設定用の追加グローバル変数
 bool g_EnableNanpin = true;         // ナンピン機能有効フラグ
 bool g_EnableGhostEntry = true;     // ゴーストエントリー機能有効フラグ
-bool g_EnableIndicatorsEntry = false; // テクニカル指標エントリー有効フラグ
+bool g_EnableIndicatorsEntry = true; // テクニカル指標エントリー有効フラグ
 bool g_EnableTimeEntry = false;      // 時間ベースエントリー有効フラグ
 // bool g_DebugMode = false;            // デバッグモード無効
 bool g_EnableFixedTP = true;        // 固定利確有効フラグ
 bool g_EnableIndicatorsTP = false;  // テクニカル指標利確有効フラグ
 bool g_EnableTrailingStop = false;  // トレーリングストップ有効フラグ
+
+// 戦略エントリー条件管理用の変数
+datetime g_LastBuyEntryTime = 0;     // 最後のBuyエントリー時間
+datetime g_LastSellEntryTime = 0;    // 最後のSellエントリー時間
 
 // 片側決済後の再エントリー制御用フラグと時間記録
 bool g_BuyClosedRecently = false;    // Buy側が最近決済されたフラグ
@@ -241,6 +275,8 @@ datetime g_LastInitialTimeAllowedCheckTime[2] = {0, 0}; // [0]=Buy, [1]=Sell
 
 // MQL5専用の定義
 #ifdef __MQL5__
-   // オーダーフィリングモードのグローバル変数
-   ENUM_ORDER_TYPE_FILLING OrderFillingMode;
+   // オーダーフィリングモードのパラメータ
+   input ENUM_ORDER_TYPE_FILLING OrderFillingMode = ORDER_FILLING_FOK;
 #endif
+
+#endif // HOSOPI3_DEFINES_MQH

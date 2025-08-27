@@ -4,6 +4,7 @@
 //+------------------------------------------------------------------+
 #include "Hosopi3_Compat.mqh"
 #include "Hosopi3_Defines.mqh"
+#include "Hosopi3_Compat.mqh"
 #include "Hosopi3_Trading.mqh"
 #include "Hosopi3_Utils.mqh"
 #include "Hosopi3_GUI.mqh"
@@ -153,10 +154,10 @@ void ExecuteRealEntry(int type, string entryReason)
             lots = g_LotTable[0];
             Print("警告: 最後のポジションのロットサイズを取得できませんでした。初期ロット", DoubleToString(lots, 2), "を使用します");
          } else {
-            // 0.01ロットの場合のみ、かつマーチン倍率が1.3より大きい場合のみ特別処理
-            if(MathAbs(lastLotSize - 0.01) < 0.001 && LotMultiplier > 1.3) {
+            // 0.01ロット特別処理（パラメータで有効/無効を選択可能）
+            if(Enable001LotFix && MathAbs(lastLotSize - 0.01) < 0.001) {
                lots = 0.02;
-               Print("0.01ロット検出 + マーチン倍率>1.3: 次のロットを0.02に固定します");
+               Print("0.01ロット検出: 次のロットを0.02に強制固定します (Enable001LotFix=true)");
             } else {
                // それ以外は通常のマーチンゲール計算
                lots = lastLotSize * LotMultiplier;
@@ -212,22 +213,22 @@ void ExecuteRealNanpin(int typeOrder)
       return;
    }
    
-   // 現在のポジション数を確認
-   int posCount = position_count(typeOrder);
-   if(posCount <= 0)
+   // 現在のポジション数を確認（ゴースト含む）
+   int realPosCount = position_count(typeOrder);
+   int totalPosCount = combined_position_count(typeOrder);
+   
+   if(totalPosCount <= 0)
    {
-      Print("リアルポジションが存在しないため、リアルナンピンはスキップされました");
+      Print("ポジション（リアル・ゴースト含む）が存在しないため、リアルナンピンはスキップされました");
       return;
    }
    
-   if(posCount >= (int)MaxPositions)
+   if(totalPosCount >= (int)MaxPositions)
    {
       Print("すでに最大ポジション数に達しているため、リアルナンピンはスキップされました");
       return;
    }
    
-   // 合計ポジション数（ゴースト＋リアル）を取得
-   int totalPositionCount = combined_position_count(typeOrder);
    
    // ===== ロットサイズの選択ロジックを修正 =====
    double lotsToUse;
@@ -235,7 +236,7 @@ void ExecuteRealNanpin(int typeOrder)
    // 個別指定モードが有効な場合
    if(IndividualLotEnabled == ON_MODE) {
       // 合計ポジション数に対応する次のレベルのロットを使用
-      int nextLevel = totalPositionCount; // 次のポジションレベル
+      int nextLevel = totalPosCount; // 次のポジションレベル
       
       // 配列の範囲を超えないようにチェック
       if(nextLevel >= 0 && nextLevel < ArraySize(g_LotTable)) {
@@ -258,10 +259,10 @@ void ExecuteRealNanpin(int typeOrder)
          lastLotSize = InitialLot;
       }
       
-      // 0.01ロットの場合のみ、かつマーチン倍率が1.3より大きい場合のみ特別処理
-      if(MathAbs(lastLotSize - 0.01) < 0.001 && LotMultiplier > 1.3) {
+      // 0.01ロット特別処理（パラメータで有効/無効を選択可能）
+      if(Enable001LotFix && MathAbs(lastLotSize - 0.01) < 0.001) {
          lotsToUse = 0.02;
-         Print("0.01ロット検出 + マーチン倍率>1.3:次のロットを0.02に固定します");
+         Print("0.01ロット検出:次のロットを0.02に強制固定します (Enable001LotFix=true)");
       }
       else {
          // それ以外は通常のマーチンゲール計算
@@ -459,6 +460,50 @@ void ExecuteEntryFromLevel(int type, int level)
    }
 }
 
+//+------------------------------------------------------------------+
+//| 戦略エントリー条件チェック関数                                    |
+//+------------------------------------------------------------------+
+bool CheckStrategyEntryCondition(int operationType)
+{
+   // 現在のローソク足時間を取得
+   datetime currentCandleTime = iTime(Symbol(), PERIOD_CURRENT, 0);
+   
+   switch(Strategy_Entry_Condition)
+   {
+      case STRATEGY_NO_SAME_DIRECTION:
+         {
+            // 同方向のポジション（リアル＋ゴースト）数をチェック
+            int realCount = position_count(operationType);
+            int ghostCount = ghost_position_count(operationType);
+            return (realCount + ghostCount == 0);
+         }
+         
+      case STRATEGY_NO_POSITIONS:
+         {
+            // 全ポジション（リアル＋ゴースト）数をチェック
+            int totalBuy = position_count(OP_BUY) + ghost_position_count(OP_BUY);
+            int totalSell = position_count(OP_SELL) + ghost_position_count(OP_SELL);
+            return (totalBuy + totalSell == 0);
+         }
+         
+      case STRATEGY_ALWAYS_ALLOW:
+         {
+            // 常にエントリー許可
+            return true;
+         }
+         
+      case STRATEGY_DIFFERENT_CANDLE:
+         {
+            // 異なるローソク足でのみエントリー許可
+            datetime lastEntryTime = (operationType == OP_BUY) ? g_LastBuyEntryTime : g_LastSellEntryTime;
+            return (lastEntryTime != currentCandleTime);
+         }
+         
+      default:
+         return false;
+   }
+}
+
 // Hosopi3_Manager.mqh の OnTickManager関数内の最初の部分を修正 (バックテスト高速化対応)
 void OnTickManager()
 {
@@ -582,15 +627,29 @@ void OnTickManager()
    // ナンピン機能が有効な場合、常にナンピン条件をチェック（手動エントリー対応）
    if(EnableNanpin)
    {
-      // Buy側のリアルポジションがある場合
-      if(position_count(OP_BUY) > 0)
+      // Buy側のポジション（リアルまたはゴースト）がある場合
+      int buyTotal = combined_position_count(OP_BUY);
+      if(buyTotal > 0)
       {
+         int buyReal = position_count(OP_BUY);
+         int buyGhost = ghost_position_count(OP_BUY);
+         if(buyGhost > 0 && buyReal == 0)
+         {
+            Print("【ゴーストのみ検出】 Buy ゴースト=", buyGhost, " → ナンピンチェック実行");
+         }
          CheckNanpinConditions(0); // Buy側のナンピン条件チェック
       }
       
-      // Sell側のリアルポジションがある場合
-      if(position_count(OP_SELL) > 0)
+      // Sell側のポジション（リアルまたはゴースト）がある場合
+      int sellTotal = combined_position_count(OP_SELL);
+      if(sellTotal > 0)
       {
+         int sellReal = position_count(OP_SELL);
+         int sellGhost = ghost_position_count(OP_SELL);
+         if(sellGhost > 0 && sellReal == 0)
+         {
+            Print("【ゴーストのみ検出】 Sell ゴースト=", sellGhost, " → ナンピンチェック実行");
+         }
          CheckNanpinConditions(1); // Sell側のナンピン条件チェック
       }
    }
@@ -678,10 +737,17 @@ void CheckNanpinConditions(int side)
       realPositionCount = position_count_all(operationType);
    }
    
+   // ゴーストポジションも含めた合計カウントを取得
+   int totalPositionCount = combined_position_count(operationType);
+   int ghostPositionCount = ghost_position_count(operationType);
+   
+   Print("【ナンピンチェック開始】 ", (side == 0 ? "Buy" : "Sell"), 
+         " リアル=", realPositionCount, " ゴースト=", ghostPositionCount, " 合計=", totalPositionCount);
+   
    // ポジションがないか最大数に達している場合はスキップ
-   if(realPositionCount <= 0 || realPositionCount >= (int)MaxPositions)
+   if(totalPositionCount <= 0 || totalPositionCount >= (int)MaxPositions)
    {
-      if(realPositionCount >= (int)MaxPositions)
+      if(totalPositionCount >= (int)MaxPositions)
          Print("CheckNanpinConditions: 最大ポジション数(", (int)MaxPositions, ")に達しているため、ナンピンをスキップします");
       return;
    }
@@ -719,8 +785,7 @@ void CheckNanpinConditions(int side)
       }
    }
 
-   // 合計ポジション数（ゴースト＋リアル）を取得
-   int totalPositionCount = combined_position_count(operationType);
+   // 合計ポジション数は既に上で取得済み
    
    // 最後のポジション価格を取得
    double lastPrice = GetLastCombinedPositionPrice(operationType);
@@ -760,8 +825,104 @@ void CheckNanpinConditions(int side)
    // ナンピン条件が満たされた場合
    if(nanpinCondition)
    {
-      Print(direction, " リアルナンピン条件成立、実行を開始します");
-      ExecuteRealNanpin(operationType);
+      Print(direction, " ナンピン条件成立（リアル:", realPositionCount, " ゴースト:", totalPositionCount - realPositionCount, "）");
+      
+      // ナンピンスキップレベルのチェック
+      int nextLevel = totalPositionCount + 1; // 次のポジションレベル
+      
+      // スキップレベル以下の場合はゴーストナンピン、それ以外はリアルナンピン
+      if(NanpinSkipLevel != SKIP_NONE && nextLevel <= (int)NanpinSkipLevel)
+      {
+         Print("【ゴーストナンピン実行】 次レベル=", nextLevel, " スキップ設定=", (int)NanpinSkipLevel, 
+               " リアル=", realPositionCount, " ゴースト=", totalPositionCount - realPositionCount);
+         
+         // ゴーストナンピンを実行
+         double price = (operationType == OP_BUY) ? GetAskPrice() : GetBidPrice();
+         
+         // ロットサイズを決定
+         double lot;
+         if(IndividualLotEnabled == ON_MODE)
+         {
+            // 個別指定モードの場合、テーブルから取得
+            if(nextLevel - 1 < ArraySize(g_LotTable))
+            {
+               lot = g_LotTable[nextLevel - 1]; // 個別指定ロット
+               Print("【ロット計算】個別指定モード: レベル", nextLevel, " → テーブルロット=", lot);
+               
+               // 個別指定モードでも、前のロットとの比率を確認
+               double lastLot = GetLastCombinedPositionLot(operationType);
+               if(lastLot > 0)
+               {
+                  double actualMultiplier = lot / lastLot;
+                  Print("【ロット計算】実際の倍率: ", DoubleToString(actualMultiplier, 2), 
+                        "倍 (", DoubleToString(lastLot, 2), " → ", DoubleToString(lot, 2), ")");
+               }
+            }
+            else
+            {
+               lot = g_LotTable[ArraySize(g_LotTable) - 1]; // 最大レベルのロット
+               Print("【ロット計算】個別指定モード: 最大レベルのロット=", lot);
+            }
+         }
+         else
+         {
+            // マーチンゲールモード（自動計算）
+            Print("【デバッグ】マーチンゲールモード開始: operationType=", operationType);
+            
+            double lastLot = GetLastCombinedPositionLot(operationType);
+            Print("【デバッグ】GetLastCombinedPositionLot結果: ", DoubleToString(lastLot, 2));
+            
+            if(lastLot > 0)
+            {
+               // 0.01ロット特別処理（パラメータで有効/無効を選択可能）
+               if(Enable001LotFix && MathAbs(lastLot - 0.01) < 0.001)
+               {
+                  lot = 0.02;
+                  Print("【ロット計算】0.01ロット特別処理: 次のロットを0.02に強制固定 (Enable001LotFix=true)");
+                  Print("  前回ロット: ", DoubleToString(lastLot, 2));
+                  Print("  固定ロット: ", DoubleToString(lot, 2));
+                  Print("  実際の倍率: ", DoubleToString(lot / lastLot, 2), "倍");
+               }
+               else
+               {
+                  // 通常のマーチンゲール計算
+                  double calculatedLot = lastLot * LotMultiplier;
+                  lot = NormalizeVolume(calculatedLot);
+                  
+                  Print("【ロット計算】マーチンゲール自動計算: ");
+                  Print("  前回ロット: ", DoubleToString(lastLot, 2));
+                  Print("  マーチン倍率: ", DoubleToString(LotMultiplier, 2));
+                  Print("  計算結果: ", DoubleToString(calculatedLot, 2));
+                  Print("  正規化後: ", DoubleToString(lot, 2));
+                  Print("  実際の倍率: ", DoubleToString(lot / lastLot, 2), "倍");
+               }
+            }
+            else
+            {
+               // 最初のエントリー
+               lot = InitialLot;
+               Print("【ロット計算】初期ロット使用: ", DoubleToString(lot, 2));
+               Print("【警告】最後のポジションロットが取得できませんでした");
+            }
+         }
+         
+         string comment = "ゴーストナンピン Lv" + IntegerToString(nextLevel);
+         
+         // EnableGhostEntryのチェック
+         if(!EnableGhostEntry)
+         {
+            Print("【エラー】 EnableGhostEntry=false のためゴーストナンピンできません");
+            return;
+         }
+         
+         bool ghostResult = ExecuteGhostEntry(operationType, price, lot, comment, nextLevel);
+         Print("【ゴーストナンピン結果】 ", ghostResult ? "成功" : "失敗", " ロット=", lot);
+      }
+      else
+      {
+         Print("【リアルナンピン実行】 次レベル=", nextLevel, " スキップ設定=", (int)NanpinSkipLevel);
+         ExecuteRealNanpin(operationType);
+      }
    }
 }
 
@@ -801,9 +962,9 @@ int InitializeEA()
    if(IsTesting())
    {
       Print("バックテスト検出: ゴーストポジションをリセットします");
-      ResetGhost(OP_BUY);
-      ResetGhost(OP_SELL);
-      ClearGhostPositionsFromGlobal();
+      ResetGhostPositions(OP_BUY);
+      ResetGhostPositions(OP_SELL);
+      ClearGhostGlobalVariables();
    }
 
    // ゴーストモードは常に有効
@@ -843,9 +1004,9 @@ int InitializeEA()
       Print("既にリアルポジションが存在します - Buy: ", buyPositions, ", Sell: ", sellPositions);
       
       // 既存のゴーストポジションをクリア
-      ClearGhostPositionsFromGlobal();
-      ResetGhost(OP_BUY);
-      ResetGhost(OP_SELL);
+      ClearGhostGlobalVariables();
+      ResetGhostPositions(OP_BUY);
+      ResetGhostPositions(OP_SELL);
       
       // 平均取得価格ラインは表示
       if(AveragePriceLine == ON_MODE) {
@@ -869,6 +1030,13 @@ int InitializeEA()
             RecreateValidGhostLines();
          }
       }
+   }
+
+   // 戦略システムを初期化
+   if(!InitializeStrategySystem())
+   {
+      Print("戦略システム初期化に失敗しました");
+      return(INIT_FAILED);
    }
 
    // グローバル変数とinputの設定を同期
@@ -903,9 +1071,9 @@ void DeinitializeEA(const int reason)
    if(IsTesting())
    {
       Print("バックテスト終了: ゴーストポジションをリセットします");
-      ResetGhost(OP_BUY);
-      ResetGhost(OP_SELL);
-      ClearGhostPositionsFromGlobal();
+      ResetGhostPositions(OP_BUY);
+      ResetGhostPositions(OP_SELL);
+      ClearGhostGlobalVariables();
       
       // キャッシュをリセット
       ResetTradingCaches();
@@ -916,6 +1084,9 @@ void DeinitializeEA(const int reason)
       SaveGhostPositionsToGlobal();
       Print("チャート時間足変更・再コンパイルのためゴーストポジション情報を保存しました");
    }
+   
+   // 戦略システムを終了
+   DeinitializeStrategySystem();
    
    // GUIを削除
    DeleteGUI();
@@ -1089,14 +1260,9 @@ void ProcessRealEntries(int side)
    int operationType = (side == 0) ? OP_BUY : OP_SELL;
    int existingCount = position_count(operationType);
    
-   if(existingCount > 0) {
-      Print("ProcessRealEntries: 既に", direction, "リアルポジションが存在するため、新規エントリーはスキップします");
-      return;
-   }
-   
-   // 常時エントリー戦略でない場合のみ、既存ポジションチェックを行う
-   if(existingCount > 0 && !IsConstantEntryEnabled()) {
-      Print("ProcessRealEntries: 既に", direction, "リアルポジションが存在するため、新規エントリーはスキップします");
+   // 戦略エントリー条件をチェック  
+   if(!CheckStrategyEntryCondition(operationType)) {
+      Print("ProcessRealEntries: ", direction, " 戦略エントリー条件に合致しないため、スキップします");
       return;
    }
    
@@ -1137,7 +1303,55 @@ void ProcessRealEntries(int side)
    bool entrySignal = ShouldProcessRealEntry(side);
    
    if(entrySignal) {
-     
-      ExecuteRealEntry(operationType, "インジケーターシグナル");
+      Print("ProcessRealEntries: ", side == 0 ? "Buy" : "Sell", " 戦略シグナル検出");
+      
+      // バックテスト時または自動売買が無効な場合はゴーストエントリーを実行
+      if(IsTesting() || !EnableAutomaticTrading)
+      {
+         Print("【戦略ゴーストエントリー実行】 バックテスト=", IsTesting(), " 自動売買=", EnableAutomaticTrading);
+         
+         // ナンピンスキップレベルのチェック
+         int currentLevel = combined_position_count(operationType) + 1; // 現在のレベル（リアル+ゴースト）
+         
+         // ナンピンスキップレベル以下の場合、ゴーストエントリーを実行（SKIP_NONEの場合は実行しない）
+         if(NanpinSkipLevel != SKIP_NONE && currentLevel <= (int)NanpinSkipLevel)
+         {
+            Print("【ナンピンスキップチェック】 現在レベル=", currentLevel, " スキップ設定=", (int)NanpinSkipLevel, " → ゴーストエントリー実行");
+            
+            // ゴーストエントリーを実行
+            double price = (operationType == OP_BUY) ? GetAskPrice() : GetBidPrice();
+            double lot = g_LotTable[currentLevel - 1]; // 現在レベルのロット使用
+            string comment = "戦略シグナル: " + (side == 0 ? "Buy" : "Sell") + " Lv" + IntegerToString(currentLevel);
+            int entryPoint = currentLevel;
+            
+            Print("【ゴーストエントリー詳細】 価格=", price, " ロット=", lot, " タイプ=", operationType, " レベル=", currentLevel);
+            bool ghostResult = ExecuteGhostEntry(operationType, price, lot, comment, entryPoint);
+            Print("【ゴーストエントリー結果】 ", ghostResult ? "成功" : "失敗");
+            
+            // エントリー成功時にローソク足時間を記録
+            if(ghostResult) {
+               datetime currentCandleTime = iTime(Symbol(), PERIOD_CURRENT, 0);
+               if(operationType == OP_BUY) {
+                  g_LastBuyEntryTime = currentCandleTime;
+               } else {
+                  g_LastSellEntryTime = currentCandleTime;
+               }
+            }
+         }
+         else
+         {
+            if(NanpinSkipLevel == SKIP_NONE) {
+               Print("【ナンピンスキップ適用】 スキップ設定=NONE → 常にリアルエントリー実行");
+            } else {
+               Print("【ナンピンスキップ適用】 現在レベル=", currentLevel, " スキップ設定=", (int)NanpinSkipLevel, " → リアルエントリーが必要");
+            }
+            // スキップレベルを超えた場合またはSKIP_NONEの場合はリアルエントリーを実行
+            ExecuteRealEntry(operationType, "戦略シグナル（スキップ後）");
+         }
+      }
+      else
+      {
+         ExecuteRealEntry(operationType, "インジケーターシグナル");
+      }
    } 
 }

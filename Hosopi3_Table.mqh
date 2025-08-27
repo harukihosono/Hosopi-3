@@ -3,137 +3,12 @@
 //|                       Copyright 2025                             |
 //+------------------------------------------------------------------+
 #include "Hosopi3_Defines.mqh"
+#include "Hosopi3_Compat.mqh"   // 互換性層
 #include "Hosopi3_Trading.mqh"
 #include "Hosopi3_Utils.mqh"
 #include "Hosopi3_Ghost.mqh"
 
-//+------------------------------------------------------------------+
-//| MQL4/MQL5互換性のためのマクロ定義                                |
-//+------------------------------------------------------------------+
-#ifdef __MQL5__
-   #define OBJPROP_CORNER_MQL4     OBJPROP_CORNER
-   #define OBJPROP_XDISTANCE_MQL4  OBJPROP_XDISTANCE
-   #define OBJPROP_YDISTANCE_MQL4  OBJPROP_YDISTANCE
-   #define OBJPROP_XSIZE_MQL4      OBJPROP_XSIZE
-   #define OBJPROP_YSIZE_MQL4      OBJPROP_YSIZE
-   #define OBJPROP_BGCOLOR_MQL4    OBJPROP_BGCOLOR
-   #define OBJPROP_COLOR_MQL4      OBJPROP_COLOR
-   #define OBJPROP_WIDTH_MQL4      OBJPROP_WIDTH
-   #define OBJPROP_BACK_MQL4       OBJPROP_BACK
-   #define OBJPROP_SELECTABLE_MQL4 OBJPROP_SELECTABLE
-   #define OBJPROP_ZORDER_MQL4     OBJPROP_ZORDER
-   
-   // MQL5用の関数ラッパー
-   void ObjectSetMQL4(string name, int prop, double value)
-   {
-      switch(prop)
-      {
-         case OBJPROP_CORNER:
-         case OBJPROP_XDISTANCE:
-         case OBJPROP_YDISTANCE:
-         case OBJPROP_XSIZE:
-         case OBJPROP_YSIZE:
-         case OBJPROP_COLOR:
-         case OBJPROP_WIDTH:
-         case OBJPROP_BGCOLOR:
-         case OBJPROP_BORDER_TYPE:
-            ObjectSetInteger(0, name, (ENUM_OBJECT_PROPERTY_INTEGER)prop, (long)value);
-            break;
-         case OBJPROP_ZORDER:
-            ObjectSetInteger(0, name, OBJPROP_ZORDER, (long)value);
-            break;
-         case OBJPROP_BACK:
-         case OBJPROP_SELECTABLE:
-            ObjectSetInteger(0, name, (ENUM_OBJECT_PROPERTY_INTEGER)prop, (bool)value);
-            break;
-      }
-   }
-   
-   bool ObjectCreateMQL4(string name, int type, int window, datetime time1, double price1)
-   {
-      return ObjectCreate(0, name, (ENUM_OBJECT)type, window, time1, price1);
-   }
-   
-   bool ObjectDeleteMQL4(string name)
-   {
-      return ObjectDelete(0, name);
-   }
-   
-   int ObjectFindMQL4(string name)
-   {
-      return ObjectFind(0, name);
-   }
-   
-   bool ObjectSetTextMQL4(string name, string text, int font_size, string font_name, color text_color)
-   {
-      ObjectSetString(0, name, OBJPROP_TEXT, text);
-      ObjectSetInteger(0, name, OBJPROP_FONTSIZE, font_size);
-      ObjectSetString(0, name, OBJPROP_FONT, font_name);
-      ObjectSetInteger(0, name, OBJPROP_COLOR, text_color);
-      return true;
-   }
-   
-   int ObjectsTotalMQL4()
-   {
-      return ObjectsTotal(0, -1, -1);
-   }
-   
-   string ObjectNameMQL4(int index)
-   {
-      return ObjectName(0, index, -1, -1);
-   }
-   
-   #define Bars Bars(_Symbol, _Period)
-   
-   // MQL5でIsTesting()を実装
-   bool IsTesting()
-   {
-      return (bool)MQLInfoInteger(MQL_TESTER);
-   }
-   
-   // MQL5でMarketInfo()を実装
-   double MarketInfo(string symbol, int mode)
-   {
-      switch(mode)
-      {
-         case MODE_TICKVALUE:
-            return SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE);
-         case MODE_TICKSIZE:
-            return SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
-         case MODE_POINT:
-            return SymbolInfoDouble(symbol, SYMBOL_POINT);
-         case MODE_DIGITS:
-            return (double)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
-         case MODE_SPREAD:
-            return (double)SymbolInfoInteger(symbol, SYMBOL_SPREAD);
-         default:
-            return 0;
-      }
-   }
-  
-   
-#else
-   // MQL4の場合はそのまま使用
-   #define OBJPROP_CORNER_MQL4     OBJPROP_CORNER
-   #define OBJPROP_XDISTANCE_MQL4  OBJPROP_XDISTANCE
-   #define OBJPROP_YDISTANCE_MQL4  OBJPROP_YDISTANCE
-   #define OBJPROP_XSIZE_MQL4      OBJPROP_XSIZE
-   #define OBJPROP_YSIZE_MQL4      OBJPROP_YSIZE
-   #define OBJPROP_BGCOLOR_MQL4    OBJPROP_BGCOLOR
-   #define OBJPROP_COLOR_MQL4      OBJPROP_COLOR
-   #define OBJPROP_WIDTH_MQL4      OBJPROP_WIDTH
-   #define OBJPROP_BACK_MQL4       OBJPROP_BACK
-   #define OBJPROP_SELECTABLE_MQL4 OBJPROP_SELECTABLE
-   #define OBJPROP_ZORDER_MQL4     OBJPROP_ZORDER
-   
-   #define ObjectSetMQL4         ObjectSet
-   #define ObjectCreateMQL4      ObjectCreate
-   #define ObjectDeleteMQL4      ObjectDelete
-   #define ObjectFindMQL4        ObjectFind
-   #define ObjectSetTextMQL4     ObjectSetText
-   #define ObjectsTotalMQL4      ObjectsTotal
-   #define ObjectNameMQL4        ObjectName
-#endif
+// 互換性は Hosopi3_Compat.mqh で管理
 
 //+------------------------------------------------------------------+
 //| ポジションテーブルを作成する - レイアウトパターン対応版           |
@@ -327,13 +202,15 @@ void UpdatePositionTable()
    ArrayResize(allPositions, totalPositions);
    
    // Buy ゴーストポジションをコピー
-   for(int i = 0; i < g_GhostBuyCount; i++) {
+   int buyMaxIndex = MathMin(g_GhostBuyCount, 40);
+   for(int i = 0; i < buyMaxIndex; i++) {
       allPositions[i] = g_GhostBuyPositions[i];
    }
    
    // Sell ゴーストポジションをコピー
-   for(int i = 0; i < g_GhostSellCount; i++) {
-      allPositions[g_GhostBuyCount + i] = g_GhostSellPositions[i];
+   int sellMaxIndex = MathMin(g_GhostSellCount, 40);
+   for(int i = 0; i < sellMaxIndex; i++) {
+      allPositions[buyMaxIndex + i] = g_GhostSellPositions[i];
    }
    
    // リアル注文を配列に追加
@@ -771,13 +648,33 @@ void UpdatePositionTable()
                           #endif
                           ;
          
-         double tickValue = MarketInfo(Symbol(), MODE_TICKVALUE);
-         double point = MarketInfo(Symbol(), MODE_POINT);
+         #ifdef __MQL5__
+            double tickValue = SymbolInfoDouble(Symbol(), SYMBOL_TRADE_TICK_VALUE);
+            double point = SymbolInfoDouble(Symbol(), SYMBOL_POINT);
+         #else
+            double tickValue = MarketInfo(Symbol(), MODE_TICKVALUE);
+            double point = MarketInfo(Symbol(), MODE_POINT);
+         #endif
          
+         // 正しい利益計算式を使用
          if(isGhostBuy) {
-            profit = (GetBidPrice() - allPositions[i].price) * allPositions[i].lots * tickValue / point;
+            // Buy: 現在価格 - エントリー価格
+            double currentPrice = GetBidPrice();
+            double priceDiff = currentPrice - allPositions[i].price;
+            profit = (priceDiff / point) * tickValue * allPositions[i].lots;
+            
+            // Print("DEBUG: TableGhostBuy - Entry=", allPositions[i].price, 
+            //       " Current=", currentPrice, " Diff=", priceDiff,
+            //       " Profit=", NormalizeDouble(profit, 2), " Lot=", allPositions[i].lots);
          } else {
-            profit = (allPositions[i].price - GetAskPrice()) * allPositions[i].lots * tickValue / point;
+            // Sell: エントリー価格（Bid） - 現在決済価格（Ask）
+            double currentPrice = GetAskPrice();  // Sell決済はAsk価格
+            double priceDiff = allPositions[i].price - currentPrice;  // Bid(entry) - Ask(current)
+            profit = (priceDiff / point) * tickValue * allPositions[i].lots;
+            
+            // Print("DEBUG: TableGhostSell - EntryBid=", allPositions[i].price, 
+            //       " CurrentAsk=", currentPrice, " Diff=", priceDiff,
+            //       " Profit=", NormalizeDouble(profit, 2), " Lot=", allPositions[i].lots);
          }
       } else {
          // リアルポジションの場合は実際の損益を取得
@@ -1080,7 +977,7 @@ void ShowPositionDetails(int index, PositionInfo &pos)
       if(isBuy) {
          profit = (GetBidPrice() - pos.price) * pos.lots * tickValue / point;
       } else {
-         profit = (pos.price - GetAskPrice()) * pos.lots * tickValue / point;
+         profit = (pos.price - GetBidPrice()) * pos.lots * tickValue / point;
       }
    } else {
       // リアルポジションの場合は実際の損益を取得
