@@ -221,6 +221,7 @@ bool g_GhostMode = true;      // ゴーストモードフラグ
 bool g_ArrowsVisible = true;  // 矢印表示制御用フラグ
 bool g_AvgPriceVisible = true; // 平均取得単価表示制御用フラグ
 bool g_UseEvenOddHoursEntry = false; // 偶数/奇数時間エントリー使用フラグ
+bool g_PanelMinimized = false; // パネル最小化状態フラグ
 
 // 機能制御設定用の追加グローバル変数
 bool g_EnableNanpin = true;         // ナンピン機能有効フラグ

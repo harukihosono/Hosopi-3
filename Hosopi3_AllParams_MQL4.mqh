@@ -15,7 +15,7 @@
 //==================================================================
 //                        基本設定
 //==================================================================
-input string BasicSettingsTitle = "基本的なEA動作設定"; // 基本設定
+input string BasicSettingsTitle = "1. 基本的なEA動作設定"; // 基本設定
 input int MagicNumber = 99899;                      // マジックナンバー
 input string EAComment = "Hosopi3";                 // コメント
 input ENTRY_MODE EntryMode = MODE_BOTH;             // エントリー方向制御
@@ -26,7 +26,7 @@ input int Slippage = 100;                          // スリッページ許容�
 //==================================================================
 //                    ナンピンマーチン設定
 //==================================================================
-input string NanpinSettingsTitle = "ナンピンマーチンゲール設定"; // ナンピン設定
+input string NanpinSettingsTitle = "2. ナンピンマーチンゲール設定"; // ナンピン設定
 input double InitialLot = 0.01;                    // 初期ロットサイズ
 input MAX_POSITIONS MaxPositions = POS_15;         // 最大ポジション数
 input double LotMultiplier = 1.8;                  // ロット倍率
@@ -39,7 +39,7 @@ input int NanpinInterval = 0;                      // ナンピン最小間隔�
 //==================================================================
 //                      利確設定
 //==================================================================
-input string TakeProfitSettingsTitle = "利確設定：LIMIT=MT標準TP MARKET=EA監視決済"; // 利確設定
+input string TakeProfitSettingsTitle = "3. 利確設定：LIMIT=MT標準TP MARKET=EA監視決済"; // 利確設定
 input TP_MODE TakeProfitMode = TP_FIXED;           // 利確方式：FIXED=固定pips LIMIT=指値 MARKET=成行決済
 input int TakeProfitPoints = 2000;                 // 利確幅（Point）※FIXED/LIMIT/MARKET全てで使用
 input bool EnableBreakEvenByPositions = false;    // ポジション数による建値決済
@@ -52,7 +52,7 @@ input int FinalStopLossPoints = 10000;             // 最終損切り幅（Point
 //==================================================================
 //                    トレーリング設定
 //==================================================================
-input string TrailingSettingsTitle = "トレーリングストップ設定"; // トレーリング設定
+input string TrailingSettingsTitle = "4. トレーリングストップ設定"; // トレーリング設定
 input bool EnableTrailingStop = false;            // トレーリングストップ有効化
 input int TrailingTrigger = 1000;                  // トレール開始利益（Point）
 input int TrailingOffset = 500;                    // トレールオフセット（Point）
@@ -60,7 +60,7 @@ input int TrailingOffset = 500;                    // トレールオフセッ�
 //==================================================================
 //                    資金管理設定
 //==================================================================
-input string RiskManagementTitle = "資金管理・リスク制御設定"; // 資金管理設定
+input string RiskManagementTitle = "5. 資金管理・リスク制御設定"; // 資金管理設定
 input ON_OFF EquityControl_Active = ON_MODE;       // 有効証拠金チェック有効化
 input double MinimumEquity = 10000.0;              // 最低有効証拠金
 input bool EnableCloseInterval = false;           // 決済後インターバル機能
@@ -69,7 +69,7 @@ input int CloseInterval = 30;                      // 決済後インターバ�
 //==================================================================
 //                    ゴーストエントリー設定
 //==================================================================
-input string GhostSettingsTitle = "ゴーストエントリー機能設定"; // ゴースト設定
+input string GhostSettingsTitle = "6. ゴーストエントリー機能設定"; // ゴースト設定
 input bool EnableGhostEntry = true;               // ゴーストエントリー機能有効化
 input color GhostBuyColor = clrDeepSkyBlue;       // ゴーストBuy色
 input color GhostSellColor = clrCrimson;          // ゴーストSell色
@@ -78,7 +78,7 @@ input int GhostArrowSize = 3;                      // ゴースト矢印サイ�
 //==================================================================
 //                    時間フィルター設定
 //==================================================================
-input string TimeFilterTitle = "時間帯・曜日制御設定"; // 時間フィルター設定
+input string TimeFilterTitle = "7. 時間帯・曜日制御設定"; // 時間フィルター設定
 input USE_TIMES set_time = GMT9;                   // 時間取得方法
 input int natu = 6;                               // 夏時間オフセット（時間）
 input int huyu = 7;                               // 冬時間オフセット（時間）
@@ -113,7 +113,7 @@ input int CommonEndMinute = 59;                    // 共通終了分
 //==================================================================
 //                    偶数奇数戦略設定
 //==================================================================
-input string EvenOddStrategyTitle = "偶数奇数時間戦略設定"; // 偶数奇数戦略設定
+input string EvenOddStrategyTitle = "8. 偶数奇数時間戦略設定"; // 偶数奇数戦略設定
 input EVEN_ODD_STRATEGY EvenOdd_Entry_Strategy = EVEN_ODD_DISABLED; // 偶数奇数戦略
 input bool EvenOdd_UseJPTime = true;                // 日本時間を使用する
 input bool EvenOdd_IncludeWeekends = false;         // 週末も含める
@@ -123,11 +123,11 @@ input bool EvenOdd_IncludeWeekends = false;         // 週末も含める
 //==================================================================
 
 // 戦略エントリー条件設定
-input string StrategyConditionTitle = "戦略エントリー条件設定"; // 戦略エントリー条件
+input string StrategyConditionTitle = "9. 戦略エントリー条件設定"; // 戦略エントリー条件
 input STRATEGY_ENTRY_CONDITION Strategy_Entry_Condition = STRATEGY_NO_SAME_DIRECTION; // 戦略エントリー条件
 
 // 移動平均線（MA）戦略設定
-input string MAStrategyTitle = "移動平均線戦略設定"; // MA戦略設定
+input string MAStrategyTitle = "10. 移動平均線戦略設定"; // MA戦略設定
 input MA_ENTRY_TYPE MA_Entry_Strategy = MA_ENTRY_ENABLED;  // MA戦略の有効/無効
 input MA_STRATEGY_TYPE MA_Buy_Signal = MA_GOLDEN_CROSS;     // MA買いシグナルタイプ
 input MA_STRATEGY_TYPE MA_Sell_Signal = MA_DEAD_CROSS;      // MA売りシグナルタイプ
@@ -143,7 +143,7 @@ input STRATEGY_DIRECTION MA_Buy_Direction = TREND_FOLLOWING; // MA買い戦略�
 input STRATEGY_DIRECTION MA_Sell_Direction = TREND_FOLLOWING; // MA売り戦略方向
 
 // RSI戦略設定
-input string RSIStrategyTitle = "RSI戦略設定"; // RSI戦略設定
+input string RSIStrategyTitle = "11. RSI戦略設定"; // RSI戦略設定
 input RSI_ENTRY_TYPE RSI_Entry_Strategy = RSI_ENTRY_DISABLED; // RSI戦略の有効/無効
 input RSI_STRATEGY_TYPE RSI_Buy_Signal = RSI_OVERSOLD;      // RSI買いシグナルタイプ
 input RSI_STRATEGY_TYPE RSI_Sell_Signal = RSI_OVERBOUGHT;   // RSI売りシグナルタイプ
@@ -157,7 +157,7 @@ input STRATEGY_DIRECTION RSI_Buy_Direction = TREND_FOLLOWING; // RSI買い戦略
 input STRATEGY_DIRECTION RSI_Sell_Direction = TREND_FOLLOWING; // RSI売り戦略方向
 
 // ボリンジャーバンド戦略設定
-input string BBStrategyTitle = "ボリンジャーバンド戦略設定"; // BB戦略設定
+input string BBStrategyTitle = "12. ボリンジャーバンド戦略設定"; // BB戦略設定
 input BOLLINGER_ENTRY_TYPE BB_Entry_Strategy = BB_ENTRY_DISABLED; // BB戦略の有効/無効
 input BB_STRATEGY_TYPE BB_Buy_Signal = BB_TOUCH_LOWER;       // BB買いシグナルタイプ
 input BB_STRATEGY_TYPE BB_Sell_Signal = BB_TOUCH_UPPER;      // BB売りシグナルタイプ
@@ -170,7 +170,7 @@ input STRATEGY_DIRECTION BB_Buy_Direction = TREND_FOLLOWING;  // BB買い戦略�
 input STRATEGY_DIRECTION BB_Sell_Direction = TREND_FOLLOWING; // BB売り戦略方向
 
 // RCI戦略設定
-input string RCIStrategyTitle = "RCI戦略設定"; // RCI戦略設定
+input string RCIStrategyTitle = "13. RCI戦略設定"; // RCI戦略設定
 input RCI_ENTRY_TYPE RCI_Entry_Strategy = RCI_ENTRY_DISABLED; // RCI戦略の有効/無効
 input RCI_STRATEGY_TYPE RCI_Buy_Signal = RCI_BELOW_MINUS_THRESHOLD; // RCI買いシグナルタイプ
 input RCI_STRATEGY_TYPE RCI_Sell_Signal = RCI_ABOVE_PLUS_THRESHOLD; // RCI売りシグナルタイプ
@@ -184,7 +184,7 @@ input STRATEGY_DIRECTION RCI_Buy_Direction = TREND_FOLLOWING; // RCI買い戦略
 input STRATEGY_DIRECTION RCI_Sell_Direction = TREND_FOLLOWING; // RCI売り戦略方向
 
 // ストキャスティクス戦略設定
-input string StochStrategyTitle = "ストキャスティクス戦略設定"; // Stoch戦略設定
+input string StochStrategyTitle = "14. ストキャスティクス戦略設定"; // Stoch戦略設定
 input STOCH_ENTRY_TYPE Stoch_Entry_Strategy = STOCH_ENTRY_DISABLED; // Stoch戦略の有効/無効
 input STOCH_STRATEGY_TYPE Stoch_Buy_Signal = STOCH_OVERSOLD;  // Stoch買いシグナルタイプ
 input STOCH_STRATEGY_TYPE Stoch_Sell_Signal = STOCH_OVERBOUGHT; // Stoch売りシグナルタイプ
@@ -201,7 +201,7 @@ input STRATEGY_DIRECTION Stoch_Buy_Direction = TREND_FOLLOWING; // Stoch買い�
 input STRATEGY_DIRECTION Stoch_Sell_Direction = TREND_FOLLOWING; // Stoch売り戦略方向
 
 // CCI戦略設定
-input string CCIStrategyTitle = "CCI戦略設定"; // CCI戦略設定
+input string CCIStrategyTitle = "15. CCI戦略設定"; // CCI戦略設定
 input CCI_ENTRY_TYPE CCI_Entry_Strategy = CCI_ENTRY_DISABLED; // CCI戦略の有効/無効
 input CCI_STRATEGY_TYPE CCI_Buy_Signal = CCI_OVERSOLD;       // CCI買いシグナルタイプ
 input CCI_STRATEGY_TYPE CCI_Sell_Signal = CCI_OVERBOUGHT;    // CCI売りシグナルタイプ
@@ -215,7 +215,7 @@ input STRATEGY_DIRECTION CCI_Buy_Direction = TREND_FOLLOWING; // CCI買い戦略
 input STRATEGY_DIRECTION CCI_Sell_Direction = TREND_FOLLOWING; // CCI売り戦略方向
 
 // ADX戦略設定
-input string ADXStrategyTitle = "ADX戦略設定"; // ADX戦略設定
+input string ADXStrategyTitle = "16. ADX戦略設定"; // ADX戦略設定
 input ADX_ENTRY_TYPE ADX_Entry_Strategy = ADX_ENTRY_DISABLED; // ADX戦略の有効/無効
 input ADX_STRATEGY_TYPE ADX_Buy_Signal = ADX_PLUS_DI_CROSS_MINUS_DI; // ADX買いシグナルタイプ
 input ADX_STRATEGY_TYPE ADX_Sell_Signal = ADX_MINUS_DI_CROSS_PLUS_DI; // ADX売りシグナルタイプ
@@ -228,20 +228,20 @@ input STRATEGY_DIRECTION ADX_Buy_Direction = TREND_FOLLOWING; // ADX買い戦略
 input STRATEGY_DIRECTION ADX_Sell_Direction = TREND_FOLLOWING; // ADX売り戦略方向
 
 // テクニカル指標条件判定設定
-input string ConditionTitle = "複数指標条件判定設定"; // 条件判定設定
+input string ConditionTitle = "17. 複数指標条件判定設定"; // 条件判定設定
 input CONDITION_TYPE Indicator_Condition_Type = OR_CONDITION; // 複数指標の条件判定方法
 
 //==================================================================
 //                  常時エントリー戦略設定
 //==================================================================
-input string ConstantEntryTitle = "常時エントリー戦略設定"; // 常時エントリー設定
+input string ConstantEntryTitle = "18. 常時エントリー戦略設定"; // 常時エントリー設定
 input CONSTANT_ENTRY_STRATEGY_TYPE ConstantEntryStrategy = CONSTANT_ENTRY_DISABLED; // 常時エントリー戦略
 input int ConstantEntryInterval = 0;                         // 常時エントリー間隔（分、0=無制限）
 
 //==================================================================
 //                  テクニカルフィルター設定
 //==================================================================
-input string TechnicalFilterTitle = "テクニカルフィルター設定"; // テクニカルフィルター設定
+input string TechnicalFilterTitle = "19. テクニカルフィルター設定"; // テクニカルフィルター設定
 input FILTER_TYPE FilterType = FILTER_NONE;        // フィルタータイプ
 input ENUM_TIMEFRAMES FilterTimeframe = PERIOD_CURRENT; // フィルター時間足
 input int FilterPeriod = 14;                       // フィルター期間
@@ -262,7 +262,7 @@ input ENUM_APPLIED_PRICE BollingerAppliedPrice = PRICE_CLOSE; // 適用価格
 //==================================================================
 //                        表示設定
 //==================================================================
-input string DisplaySettingsTitle = "画面表示・GUI設定"; // 表示設定
+input string DisplaySettingsTitle = "20. 画面表示・GUI設定"; // 表示設定
 input string PanelTitle = "Hosopi 3 EA";           // パネルタイトル
 input int PanelX = 20;                             // パネルX座標
 input int PanelY = 50;                             // パネルY座標
@@ -280,7 +280,7 @@ input bool EnablePriceLabels = true;              // 価格ラベル表示
 //==================================================================
 //                        通知設定
 //==================================================================
-input string NotificationTitle = "アラート・通知設定"; // 通知設定
+input string NotificationTitle = "21. アラート・通知設定"; // 通知設定
 input bool EnableGhostAlertNotification = false;  // ゴーストアラート通知
 input bool EnableGhostPushNotification = false;   // ゴーストプッシュ通知
 input bool NotifyGhostEntries = true;             // ゴーストエントリー通知
@@ -289,7 +289,7 @@ input bool NotifyGhostClosures = true;            // ゴースト決済通知
 //==================================================================
 //                      高度な設定
 //==================================================================
-input string AdvancedSettingsTitle = "高度な機能設定"; // 高度な設定
+input string AdvancedSettingsTitle = "22. 高度な機能設定"; // 高度な設定
 input bool EnableNanpin = true;                   // ナンピン機能有効化
 input POSITION_PROTECTION_MODE PositionProtection = PROTECTION_OFF; // ポジション保護モード
 input AVG_PRICE_CALCULATION_MODE AvgPriceCalculationMode = REAL_AND_GHOST; // 平均価格計算方法

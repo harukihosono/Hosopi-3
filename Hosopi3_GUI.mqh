@@ -47,7 +47,7 @@ void ApplyLayoutPattern()
 {
    // デフォルトのサイズを設定
    int defaultPanelWidth = PANEL_WIDTH;
-   int defaultPanelHeight = PANEL_HEIGHT + 170; // ゴーストボタン追加のため高さを拡大
+   int defaultPanelHeight = g_PanelMinimized ? TITLE_HEIGHT : (PANEL_HEIGHT + 170); // 最小化時は高さを縮小
    int defaultTableWidth = TABLE_WIDTH;
    
    // レイアウトパターンに応じて位置を調整
@@ -57,7 +57,7 @@ void ApplyLayoutPattern()
          g_EffectivePanelX = PanelX;
          g_EffectivePanelY = PanelY;
          g_EffectiveTableX = PanelX;
-         g_EffectiveTableY = PanelY + 500; // テーブルを下に配置
+         g_EffectiveTableY = PanelY + (g_PanelMinimized ? TITLE_HEIGHT + 20 : 500); // テーブルを下に配置
          break;
          
       case LAYOUT_SIDE_BY_SIDE: // 横並び (パネル左/テーブル右)
@@ -73,12 +73,12 @@ void ApplyLayoutPattern()
          g_EffectiveTableX = PanelX;
          g_EffectiveTableY = PanelY;
          break;
-         
+
       case LAYOUT_COMPACT: // コンパクト (小さいパネル)
          g_EffectivePanelX = PanelX;
          g_EffectivePanelY = PanelY;
          g_EffectiveTableX = PanelX;
-         g_EffectiveTableY = PanelY + 350; // 少し間隔を小さくする
+         g_EffectiveTableY = PanelY + (g_PanelMinimized ? TITLE_HEIGHT + 20 : 350); // 少し間隔を小さくする
          break;
          
       case LAYOUT_CUSTOM: // カスタム (位置を個別指定)
@@ -92,7 +92,7 @@ void ApplyLayoutPattern()
          g_EffectivePanelX = PanelX;
          g_EffectivePanelY = PanelY;
          g_EffectiveTableX = PanelX;
-         g_EffectiveTableY = PanelY + 500;
+         g_EffectiveTableY = PanelY + (g_PanelMinimized ? TITLE_HEIGHT + 20 : 500);
    }
    
 }
@@ -159,15 +159,38 @@ void CreateGUI()
    
    // パネルタイトル
    CreateTitleBar("TitleBar", adjustedPanelX, adjustedPanelY, panelWidth, TITLE_HEIGHT, COLOR_TITLE_BG, PanelTitle);
+
+   // 最小化ボタン
+   int minimizeButtonSize = TITLE_HEIGHT - 4;
+   CreateButton("btnMinimize", g_PanelMinimized ? "□" : "−",
+               adjustedPanelX + panelWidth - minimizeButtonSize - 2,
+               adjustedPanelY + 2,
+               minimizeButtonSize, minimizeButtonSize,
+               COLOR_BUTTON_NEUTRAL, COLOR_TEXT_WHITE);
    
    int buttonWidth = (panelWidth - (PANEL_MARGIN * 3)) / 2; // 2列のボタン用
    int fullWidth = panelWidth - (PANEL_MARGIN * 2); // 横いっぱいのボタン用
-   
+
+   // パネルが最小化されている場合は、タイトルバーとボタンのみ表示
+   if(g_PanelMinimized)
+   {
+      // 最小化時の高さに調整
+      int minimizedHeight = TITLE_HEIGHT;
+      #ifdef __MQL5__
+         ObjectSetInteger(0, g_ObjectPrefix + "MainPanel" + "BG", OBJPROP_YSIZE, minimizedHeight);
+      #else
+         ObjectSet(g_ObjectPrefix + "MainPanel" + "BG", OBJPROP_YSIZE, minimizedHeight);
+      #endif
+
+      ChartRedraw();
+      return; // 最小化時は他のボタンを作成しない
+   }
+
    // Y座標管理用変数
    int currentY = adjustedPanelY + TITLE_HEIGHT + PANEL_MARGIN;
    int sectionSpacing = PANEL_MARGIN * 3;  // セクション間のスペース
    int labelOffset = 20;  // セクションラベルのオフセット
-   
+
    // ========== 行1: 決済ボタン ==========
    
    // Sell決済ボタン (左)
@@ -811,6 +834,18 @@ void ProcessButtonClick(string buttonName)
       {
          Print("【重要】自動売買が無効になりました。戦略シグナルではゴーストエントリーのみ実行されます。");
       }
+   }
+
+   // Panel Minimize/Maximize
+   else if(buttonName == "btnMinimize")
+   {
+      g_PanelMinimized = !g_PanelMinimized;
+
+      // GUIを再構築
+      CreateGUI();
+      UpdateGUI();
+
+      Print("パネルを", g_PanelMinimized ? "最小化" : "復元", "しました");
    }
 
    // ===== 直接エントリー機能 =====
