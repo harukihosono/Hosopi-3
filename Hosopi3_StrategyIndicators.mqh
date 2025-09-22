@@ -98,7 +98,7 @@ bool InitializeIndicatorHandles()
         if(g_ma_buy_fast_handle == INVALID_HANDLE || g_ma_buy_slow_handle == INVALID_HANDLE ||
            g_ma_sell_fast_handle == INVALID_HANDLE || g_ma_sell_slow_handle == INVALID_HANDLE)
         {
-            Print("MAハンドル作成に失敗");
+            Print("ERROR: MAハンドル作成失敗");
             return false;
         }
     }
@@ -109,7 +109,7 @@ bool InitializeIndicatorHandles()
         g_rsi_handle = iRSI(Symbol(), RSI_Timeframe, RSI_Period, RSI_Price);
         if(g_rsi_handle == INVALID_HANDLE)
         {
-            Print("RSIハンドル作成に失敗");
+            Print("ERROR: RSIハンドル作成失敗");
             return false;
         }
     }
@@ -120,7 +120,7 @@ bool InitializeIndicatorHandles()
         g_bb_handle = iBands(Symbol(), BB_Timeframe, BB_Period, 0, BB_Deviation, BB_Price);
         if(g_bb_handle == INVALID_HANDLE)
         {
-            Print("ボリンジャーバンドハンドル作成に失敗");
+            Print("ERROR: ボリンジャーバンドハンドル作成失敗");
             return false;
         }
     }
@@ -131,7 +131,7 @@ bool InitializeIndicatorHandles()
         g_stoch_handle = iStochastic(Symbol(), Stoch_Timeframe, Stoch_K_Period, Stoch_D_Period, Stoch_Slowing, Stoch_Method, (ENUM_STO_PRICE)Stoch_Price_Field);
         if(g_stoch_handle == INVALID_HANDLE)
         {
-            Print("ストキャスティクスハンドル作成に失敗");
+            Print("ERROR: ストキャスティクスハンドル作成失敗");
             return false;
         }
     }
@@ -142,7 +142,7 @@ bool InitializeIndicatorHandles()
         g_cci_handle = iCCI(Symbol(), CCI_Timeframe, CCI_Period, CCI_Price);
         if(g_cci_handle == INVALID_HANDLE)
         {
-            Print("CCIハンドル作成に失敗");
+            Print("ERROR: CCIハンドル作成失敗");
             return false;
         }
     }
@@ -153,7 +153,7 @@ bool InitializeIndicatorHandles()
         g_adx_handle = iADX(Symbol(), ADX_Timeframe, ADX_Period);
         if(g_adx_handle == INVALID_HANDLE)
         {
-            Print("ADXハンドル作成に失敗");
+            Print("ERROR: ADXハンドル作成失敗");
             return false;
         }
     }
@@ -164,12 +164,12 @@ bool InitializeIndicatorHandles()
         g_envelope_handle = iEnvelopes(Symbol(), FilterTimeframe, FilterPeriod, 0, FilterMethod, PRICE_CLOSE, EnvelopeDeviation);
         if(g_envelope_handle == INVALID_HANDLE)
         {
-            Print("エンベロープハンドル作成に失敗");
+            Print("ERROR: エンベロープハンドル作成失敗");
             return false;
         }
     }
     
-    Print("全インジケーターハンドル初期化完了");
+    // インジケーターハンドル初期化完了
     return true;
 #else
     return true; // MQL4では不要

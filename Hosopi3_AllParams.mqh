@@ -58,7 +58,7 @@ input int NanpinInterval = 0;                      // ナンピン最小間隔�
 SECTION_GROUP("== 利確・損切設定 ==")
 SECTION_TITLE(TakeProfitSettings, "利確・損切りルール設定")
 SECTION_SPACER(TakeProfitSettings_Spacer)
-input TP_MODE TakeProfitMode = TP_FIXED;           // 利確方式
+input TP_MODE TakeProfitMode = TP_OFF;             // 利確方式
 input int TakeProfitPoints = 2000;                 // 固定利確幅（Point）
 input bool EnableBreakEvenByPositions = false;    // ポジション数による建値決済
 input int BreakEvenMinPositions = 3;               // 建値決済の最低ポジション数
@@ -97,7 +97,7 @@ SECTION_SPACER(GhostSettings_Spacer)
 input bool EnableGhostEntry = true;               // ゴーストエントリー機能有効化
 input color GhostBuyColor = clrDeepSkyBlue;       // ゴーストBuy色
 input color GhostSellColor = clrCrimson;          // ゴーストSell色
-input int GhostArrowSize = 3;                      // ゴースト矢印サイズ
+input int GhostArrowSize = 1;                      // ゴースト矢印サイズ
 
 //==================================================================
 //                    時間フィルター設定

@@ -132,7 +132,8 @@ enum STRATEGY_ENTRY_CONDITION
    STRATEGY_NO_SAME_DIRECTION = 0,    // 同方向ポジションがない場合のみ
    STRATEGY_NO_POSITIONS = 1,         // ポジションが全くない場合のみ
    STRATEGY_ALWAYS_ALLOW = 2,         // 常にエントリー許可（追加・両建て可）
-   STRATEGY_DIFFERENT_CANDLE = 3      // 異なるローソク足でのみエントリー
+   STRATEGY_DIFFERENT_CANDLE = 3,     // 異なるローソク足でのみエントリー
+   STRATEGY_CONSTANT_ENTRY = 4        // 常時エントリー戦略
 };
 
 // CCI戦略タイプ定義

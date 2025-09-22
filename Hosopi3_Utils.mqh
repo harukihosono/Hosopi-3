@@ -132,7 +132,7 @@ double GetLastCombinedPositionLot(int type)
                   {
                      lastTime = openTime;
                      lastLot = PositionGetDouble(POSITION_VOLUME);
-                     debugInfo += " リアル=" + DoubleToString(lastLot, 2) + "@" + TimeToString(openTime);
+                     // リアルポジションの最終ロットを取得
                   }
                }
             }
@@ -171,7 +171,7 @@ double GetLastCombinedPositionLot(int type)
             {
                lastTime = g_GhostBuyPositions[i].openTime;
                lastLot = g_GhostBuyPositions[i].lot;
-               debugInfo += " ゴーストBUY=" + DoubleToString(lastLot, 2) + "@" + TimeToString(lastTime);
+               // ゴーストBUYの最終ロットを取得
             }
          }
       }
@@ -187,7 +187,7 @@ double GetLastCombinedPositionLot(int type)
             {
                lastTime = g_GhostSellPositions[i].openTime;
                lastLot = g_GhostSellPositions[i].lot;
-               debugInfo += " ゴーストSELL=" + DoubleToString(lastLot, 2) + "@" + TimeToString(lastTime);
+               // ゴーストSELLの最終ロットを取得
             }
          }
       }
@@ -291,10 +291,10 @@ void OnTimerHandler()
     // タイマーイベントの処理（必要に応じて実装）
 }
 
-void ProcessStrategyLogic() 
+void ProcessStrategyLogic()
 {
-    // インジケーター戦略が有効でない場合はスキップ
-    if(!g_EnableIndicatorsEntry)
+    // インジケーター戦略が有効でない場合でも、常時エントリーが有効なら処理を継続
+    if(!g_EnableIndicatorsEntry && !IsConstantEntryEnabled())
         return;
     
     // バックテスト時は頻度を下げる
@@ -311,8 +311,18 @@ void ProcessStrategyLogic()
     UpdateStrategySystem();
     
     // Buy側とSell側のエントリー判定
-    ProcessRealEntries(0); // Buy
-    ProcessRealEntries(1); // Sell
+    // インジケーター戦略が有効な場合のみ処理
+    if(g_EnableIndicatorsEntry)
+    {
+        ProcessRealEntries(0); // Buy
+        ProcessRealEntries(1); // Sell
+    }
+
+    // 常時エントリー戦略が有効な場合の処理
+    if(IsConstantEntryEnabled())
+    {
+        ProcessConstantEntries();
+    }
 }
 
 void CheckLimitTakeProfitExecutions() 
@@ -348,15 +358,101 @@ void ResetSpecificGhost(int type)
 {
     ResetGhostPositions(type);
 }
-bool IsConstantEntryEnabled() { return false; }
+bool IsConstantEntryEnabled()
+{
+    return (ConstantEntryStrategy != CONSTANT_ENTRY_DISABLED);
+}
+
+// 常時エントリー用ポジション存在チェック（指定した側のポジションがあるかどうか）
+bool HasPositions(int operationType)
+{
+    // リアルポジションをチェック
+    int realCount = position_count(operationType);
+
+    // ゴーストポジションをチェック
+    int ghostCount = ghost_position_count(operationType);
+
+    // 指定した側のポジションがある場合はtrueを返す
+    return (realCount > 0 || ghostCount > 0);
+}
+
+// ローソク足チェック関数を削除（ノーポジならどんどんエントリーに変更）
 bool ShouldProcessRealEntry(int side)
 {
     // インジケーター戦略が有効な場合のみチェック
     if(!g_EnableIndicatorsEntry)
         return false;
-    
+
     // 戦略評価関数を呼び出し
     return EvaluateStrategyForEntry(side);
+}
+
+// 常時エントリー処理関数
+void ProcessConstantEntries()
+{
+    // 常時エントリーが有効でない場合は終了
+    if(!IsConstantEntryEnabled())
+        return;
+
+    // 自動売買が有効でない場合は終了
+    if(!g_AutoTrading)
+        return;
+
+    // ロングエントリーの処理
+    if(ConstantEntryStrategy == CONSTANT_ENTRY_LONG || ConstantEntryStrategy == CONSTANT_ENTRY_BOTH)
+    {
+        ProcessConstantEntry(OP_BUY);
+    }
+
+    // ショートエントリーの処理
+    if(ConstantEntryStrategy == CONSTANT_ENTRY_SHORT || ConstantEntryStrategy == CONSTANT_ENTRY_BOTH)
+    {
+        ProcessConstantEntry(OP_SELL);
+    }
+}
+
+// 常時エントリー個別処理関数
+void ProcessConstantEntry(int operationType)
+{
+    // ★ 重要：Buy側はBuyポジションのみチェック、Sell側はSellポジションのみチェック
+    if(HasPositions(operationType))
+    {
+        return;
+    }
+
+    // ローソク足チェックは削除 - ノーポジならどんどんエントリー
+
+    // 時間制限チェック（初回エントリーのみ）
+    if(!IsInitialEntryTimeAllowed(operationType))
+        return;
+
+    // ポジション保護モードチェック
+    int side = (operationType == OP_BUY) ? 0 : 1;
+    if(!IsEntryAllowedByProtectionMode(side))
+        return;
+
+    // 決済後インターバルチェック
+    if(!IsCloseIntervalElapsed(side))
+        return;
+
+    // 常時エントリー間隔チェック（無効化、ローソク足チェックで代替）
+    // if(ConstantEntryInterval > 0) { ... }
+
+    // エントリー実行
+    double price = (operationType == OP_BUY) ? SymbolInfoDouble(Symbol(), SYMBOL_ASK) : SymbolInfoDouble(Symbol(), SYMBOL_BID);
+    double lot = InitialLot;
+    string comment = "常時エントリー_" + ((operationType == OP_BUY) ? "BUY" : "SELL");
+
+    // ゴーストモードが有効な場合はゴーストエントリー
+    if(g_GhostMode)
+    {
+        ExecuteGhostEntry(operationType, price, lot, comment, -1);
+    }
+    else
+    {
+        // リアルエントリー処理はManager.mqhの関数を使用
+        ExecuteRealEntry(operationType, comment);
+    }
 }
 
 // Table.mqhで使用される関数
@@ -403,7 +499,7 @@ double CalculateCombinedProfit(int type)
    ghostProfit = CalculateGhostProfit(type);
    totalProfit = realProfit + ghostProfit;
    
-   // Print("DEBUG: CalculateCombinedProfit Type=", type, " Real=", realProfit, " Ghost=", ghostProfit, " Total=", totalProfit);
+   // 合計利益計算完了
    
    return totalProfit;
 }
@@ -727,7 +823,7 @@ void InitializeLotTable()
    // 個別指定が有効な場合
    if(IndividualLotEnabled == ON_MODE)
    {
-      Print("個別指定ロットモードが有効です - 設定された個別ロット値を使用します");
+      // 個別指定ロットモードが有効
       g_LotTable[0] = Lot_1;
       g_LotTable[1] = Lot_2;
       g_LotTable[2] = Lot_3;
@@ -772,7 +868,7 @@ void InitializeLotTable()
    }
    else
    {
-      Print("マーチンゲール方式でロット計算します - 初期ロット: ", InitialLot, ", 倍率: ", LotMultiplier);
+      // マーチンゲール方式でロット計算
       // マーチンゲール方式でロット計算
       g_LotTable[0] = InitialLot;
       for(int i = 1; i < 40; i++) // 40に拡張
@@ -784,27 +880,9 @@ void InitializeLotTable()
       }
    }
    
-   // ロットテーブルの内容をログ出力（詳細版）
-   string lotTableStr = "LOTテーブル詳細: \n";
-   for(int i = 0; i < ArraySize(g_LotTable); i++)
-   {
-      lotTableStr += "レベル " + IntegerToString(i+1) + ": " + DoubleToString(g_LotTable[i], 3) + "\n";
-   }
-   Print(lotTableStr);
+   // ロットテーブル初期化完了
    
-   // 追加: ロット使用ポリシーの明確化
-   if(IndividualLotEnabled == ON_MODE)
-   {
-      Print("個別指定ロット使用ポリシー:");
-      Print("- 初回エントリー: レベル1のロット (", DoubleToString(g_LotTable[0], 2), ")");
-      Print("- ナンピン: 対応するレベルのロット (レベルに基づいて選択)");
-   }
-   else
-   {
-      Print("マーチンゲールロット使用ポリシー:");
-      Print("- 初回エントリー: 初期ロット (", DoubleToString(InitialLot, 2), ")");
-      Print("- ナンピン: 前回ロット x 倍率 (", DoubleToString(LotMultiplier, 2), ")");
-   }
+   // ロット使用ポリシー設定完了
 }
 
 //+------------------------------------------------------------------+
@@ -1025,7 +1103,7 @@ bool IsCloseIntervalElapsed(int side)
          // インターバル時間が経過していない場合
          if(elapsedMinutes < CloseInterval)
          {
-            Print("Buy側決済後インターバル中: 経過時間=", elapsedMinutes, "分, 設定=", CloseInterval, "分");
+            // Buy側決済後インターバル中
             return false;
          }
          
@@ -1044,7 +1122,7 @@ bool IsCloseIntervalElapsed(int side)
          // インターバル時間が経過していない場合
          if(elapsedMinutes < CloseInterval)
          {
-            Print("Sell側決済後インターバル中: 経過時間=", elapsedMinutes, "分, 設定=", CloseInterval, "分");
+            // Sell側決済後インターバル中
             return false;
          }
          

@@ -322,10 +322,7 @@ void CheckGhostTrailingStopConditions(int side)
                {
                   // ストップロスを更新
                   g_GhostBuyPositions[i].stopLoss = stopPrice;
-                  Print("ゴーストBuy トレールストップ更新: レベル=", g_GhostBuyPositions[i].level + 1, 
-                       ", 平均価格=", DoubleToString(avgPrice, GetDigitsValue()),
-                       ", 現在価格=", DoubleToString(currentPrice, GetDigitsValue()),
-                       ", 新ストップ=", DoubleToString(stopPrice, GetDigitsValue()));
+                  // ゴーストBuy トレールストップ更新
                }
             }
          }
@@ -359,10 +356,7 @@ void CheckGhostTrailingStopConditions(int side)
                {
                   // ストップロスを更新
                   g_GhostSellPositions[i].stopLoss = stopPrice;
-                  Print("ゴーストSell トレールストップ更新: レベル=", g_GhostSellPositions[i].level + 1, 
-                       ", 平均価格=", DoubleToString(avgPrice, GetDigitsValue()),
-                       ", 現在価格=", DoubleToString(currentPrice, GetDigitsValue()),
-                       ", 新ストップ=", DoubleToString(stopPrice, GetDigitsValue()));
+                  // ゴーストSell トレールストップ更新
                }
             }
          }
@@ -436,15 +430,13 @@ void ManageTakeProfit(int side)
       if(side == 0 && tpPrice - currentPrice < minAllowedTPDistance)
       {
          tpPrice = currentPrice + minAllowedTPDistance;
-         Print("警告: リミットTP価格が最小ストップレベルに近すぎるため調整しました: ",
-               DoubleToString(tpPrice, GetDigitsValue()));
+         // 警告: リミットTP価格が最小ストップレベルに近すぎるため調整
       }
       // Sell注文の場合、TPは現在Ask価格より十分低くなければならない
       else if(side == 1 && currentPrice - tpPrice < minAllowedTPDistance)
       {
          tpPrice = currentPrice - minAllowedTPDistance;
-         Print("警告: リミットTP価格が最小ストップレベルに近すぎるため調整しました: ",
-               DoubleToString(tpPrice, GetDigitsValue()));
+         // 警告: リミットTP価格が最小ストップレベルに近すぎるため調整
       }
       
       // ゴーストポジションのみの場合の処理
@@ -467,9 +459,7 @@ void ManageTakeProfit(int side)
          // 利確条件が満たされた場合
          if(tpCondition)
          {
-            Print(direction, "ゴーストのみで利確条件成立: 平均価格=", DoubleToString(avgPrice, GetDigitsValue()),
-                  ", TP価格=", DoubleToString(tpPrice, GetDigitsValue()),
-                  ", 現在価格=", DoubleToString(currentPrice, GetDigitsValue()));
+            // ゴーストのみで利確条件成立
             
             // 決済前に利益を計算
             double ghostProfit = CalculateGhostProfit(operationType);
@@ -501,7 +491,7 @@ void ManageTakeProfit(int side)
             // グローバル変数を更新
             SaveGhostPositionsToGlobal();
             
-            Print(direction, "ゴーストポジション利確: リセットしました");
+            // ゴーストポジション利確完了
             
             // 平均価格ラインとTPラインを削除
             CleanupLinesOnClose(side);
@@ -553,9 +543,7 @@ void ManageTakeProfit(int side)
                   
                   if(OrderSend(request, result))
                   {
-                     Print("リミット決済を設定しました: ", ticket, 
-                           ", 方向=", direction, 
-                           ", TP=", DoubleToString(tpPrice, GetDigitsValue()));
+                     // リミット決済設定完了
                   }
                   else
                   {
@@ -596,9 +584,7 @@ void ManageTakeProfit(int side)
                   
                   if(result)
                   {
-                     Print("リミット決済を設定しました: ", OrderTicket(), 
-                           ", 方向=", direction, 
-                           ", TP=", DoubleToString(tpPrice, GetDigitsValue()));
+                     // リミット決済設定完了
                   }
                   else
                   {
@@ -632,15 +618,13 @@ void ManageTakeProfit(int side)
       // 利確条件が満たされた場合
       if(tpCondition)
       {
-         Print(direction, "利確条件成立: 平均価格=", DoubleToString(avgPrice, GetDigitsValue()),
-               ", TP価格=", DoubleToString(tpPrice, GetDigitsValue()),
-               ", 現在価格=", DoubleToString(currentPrice, GetDigitsValue()));
+         // 利確条件成立
          
          // ゴーストポジションの処理
          double ghostProfit = 0;
          if(ghostCount > 0)
          {
-            Print("ゴースト", direction, "ポジション(", ghostCount, "個)が存在します");
+            // ゴーストポジション決済処理
             
             // 決済前に利益を計算
             ghostProfit = CalculateGhostProfit(operationType);
@@ -686,37 +670,40 @@ void ManageTakeProfit(int side)
          // リアルポジションの決済
          if(positionCount > 0) {
             bool closeResult = position_close(operationType);
-            Print("リアル", direction, "ポジションを決済しました: 結果=", closeResult ? "成功" : "失敗");
+            if(!closeResult) Print("エラー: リアル", direction, "ポジション決済に失敗");
          }
       }
    }
 
-   // TP価格ラインの表示 (どの利確モードでも表示)
-   string lineName = "TPLine" + ((side == 0) ? "Buy" : "Sell");
+   // TP価格ラインの表示 (利確が有効な場合のみ)
+   if(TakeProfitMode != TP_OFF)
+   {
+      string lineName = "TPLine" + ((side == 0) ? "Buy" : "Sell");
 #ifdef __MQL5__
-   if(ObjectFind(0, g_ObjectPrefix + lineName) >= 0)
-      ObjectDelete(0, g_ObjectPrefix + lineName);
+      if(ObjectFind(0, g_ObjectPrefix + lineName) >= 0)
+         ObjectDelete(0, g_ObjectPrefix + lineName);
 #else
-   if(ObjectFind(g_ObjectPrefix + lineName) >= 0)
-      ObjectDelete(g_ObjectPrefix + lineName);
+      if(ObjectFind(g_ObjectPrefix + lineName) >= 0)
+         ObjectDelete(g_ObjectPrefix + lineName);
 #endif
-      
-   CreateHorizontalLine(g_ObjectPrefix + lineName, tpPrice, TakeProfitLineColor, STYLE_DASH, 1);
-   
-   // ラベルも表示
-   string labelName = "TPLabel" + ((side == 0) ? "Buy" : "Sell");
+
+      CreateHorizontalLine(g_ObjectPrefix + lineName, tpPrice, TakeProfitLineColor, STYLE_DASH, 1);
+
+      // ラベルも表示
+      string labelName = "TPLabel" + ((side == 0) ? "Buy" : "Sell");
 #ifdef __MQL5__
-   if(ObjectFind(0, g_ObjectPrefix + labelName) >= 0)
-      ObjectDelete(0, g_ObjectPrefix + labelName);
+      if(ObjectFind(0, g_ObjectPrefix + labelName) >= 0)
+         ObjectDelete(0, g_ObjectPrefix + labelName);
 #else
-   if(ObjectFind(g_ObjectPrefix + labelName) >= 0)
-      ObjectDelete(g_ObjectPrefix + labelName);
+      if(ObjectFind(g_ObjectPrefix + labelName) >= 0)
+         ObjectDelete(g_ObjectPrefix + labelName);
 #endif
-      
-   string labelText = (TakeProfitMode == TP_LIMIT ? "Limit" : "Market") + " TP: " + 
-                     DoubleToString(tpPrice, GetDigitsValue()) + " (" + 
-                     (side == 0 ? "+" : "-") + IntegerToString(tpPoints) + "pt)";
-   CreatePriceLabel(g_ObjectPrefix + labelName, labelText, tpPrice, TakeProfitLineColor, side == 0);
+
+      string labelText = (TakeProfitMode == TP_LIMIT ? "Limit" : "Market") + " TP: " +
+                        DoubleToString(tpPrice, GetDigitsValue()) + " (" +
+                        (side == 0 ? "+" : "-") + IntegerToString(tpPoints) + "pt)";
+      CreatePriceLabel(g_ObjectPrefix + labelName, labelText, tpPrice, TakeProfitLineColor, side == 0);
+   }
 }
 
 
@@ -796,9 +783,7 @@ void CheckBreakEvenByPositions()
       // 設定した建値以上なら決済
       if(totalBuyProfit >= BreakEvenProfit)
       {
-         Print("Buy側建値決済条件成立: ポジション数=", buyPositions, 
-               ", 総利益=", DoubleToString(totalBuyProfit, 2),
-               ", 設定建値=", DoubleToString(BreakEvenProfit, 2));
+         // Buy側建値決済実行
                
          // Buy側のポジションをすべて決済
          position_close(OP_BUY);
@@ -871,9 +856,7 @@ void CheckBreakEvenByPositions()
       // 設定した建値以上なら決済
       if(totalSellProfit >= BreakEvenProfit)
       {
-         Print("Sell側建値決済条件成立: ポジション数=", sellPositions, 
-               ", 総利益=", DoubleToString(totalSellProfit, 2),
-               ", 設定建値=", DoubleToString(BreakEvenProfit, 2));
+         // Sell側建値決済実行
                
          // Sell側のポジションをすべて決済
          position_close(OP_SELL);
@@ -958,9 +941,7 @@ void CheckMaxLossClose()
       // 損失が最大損失額を超えたら決済
       if(totalBuyProfit <= -MaxLossAmount)
       {
-         Print("Buy側損失額決済条件成立: ポジション数=", buyPositions, 
-               ", 総損失=", DoubleToString(totalBuyProfit, 2),
-               ", 最大損失額=-", DoubleToString(MaxLossAmount, 2));
+         Print("警告: Buy側最大損失額に到達 - 緊急決済実行");
                
          // Buy側のポジションをすべて決済
          position_close(OP_BUY, 0.0, 10, MagicNumber);
@@ -1031,9 +1012,7 @@ void CheckMaxLossClose()
       // 損失が最大損失額を超えたら決済
       if(totalSellProfit <= -MaxLossAmount)
       {
-         Print("Sell側損失額決済条件成立: ポジション数=", sellPositions, 
-               ", 総損失=", DoubleToString(totalSellProfit, 2),
-               ", 最大損失額=-", DoubleToString(MaxLossAmount, 2));
+         Print("警告: Sell側最大損失額に到達 - 緊急決済実行");
                
          // Sell側のポジションをすべて決済
          position_close(OP_SELL, 0.0, 10, MagicNumber);

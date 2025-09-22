@@ -44,7 +44,7 @@ input int NanpinInterval = 0;                      // ナンピン最小間隔�
 //==================================================================
 sinput group "== 3. 利確・損切設定 =="
 input string TakeProfitSettingsTitle = "3. 利確設定：LIMIT=MT標準TP MARKET=EA監視決済"; // 利確設定
-input TP_MODE TakeProfitMode = TP_FIXED;           // 利確方式：FIXED=固定pips LIMIT=指値 MARKET=成行決済
+input TP_MODE TakeProfitMode = TP_OFF;             // 利確方式：FIXED=固定pips LIMIT=指値 MARKET=成行決済
 input int TakeProfitPoints = 2000;                 // 利確幅（Point）※FIXED/LIMIT/MARKET全てで使用
 input bool EnableBreakEvenByPositions = false;    // ポジション数による建値決済
 input int BreakEvenMinPositions = 3;               // 建値決済の最低ポジション数
@@ -80,7 +80,7 @@ input string GhostSettingsTitle = "6. ゴーストエントリー機能設定"; 
 input bool EnableGhostEntry = true;               // ゴーストエントリー機能有効化
 input color GhostBuyColor = clrDeepSkyBlue;       // ゴーストBuy色
 input color GhostSellColor = clrCrimson;          // ゴーストSell色
-input int GhostArrowSize = 3;                      // ゴースト矢印サイズ
+input int GhostArrowSize = 1;                      // ゴースト矢印サイズ
 
 //==================================================================
 //                    時間フィルター設定
@@ -316,7 +316,7 @@ input string AdvancedSettingsTitle = "22. 高度な機能設定"; // 高度な�
 input bool EnableNanpin = true;                   // ナンピン機能有効化
 input POSITION_PROTECTION_MODE PositionProtection = PROTECTION_OFF; // ポジション保護モード
 input AVG_PRICE_CALCULATION_MODE AvgPriceCalculationMode = REAL_AND_GHOST; // 平均価格計算方法
-input LAYOUT_PATTERN LayoutPattern = LAYOUT_DEFAULT; // レイアウトパターン
+input LAYOUT_PATTERN LayoutPattern = LAYOUT_SIDE_BY_SIDE; // レイアウトパターン
 input int CustomPanelX = 20;                       // カスタム: パネルX座標
 input int CustomPanelY = 50;                       // カスタム: パネルY座標
 input int CustomTableX = 20;                       // カスタム: テーブルX座標

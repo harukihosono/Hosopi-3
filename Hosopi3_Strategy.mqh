@@ -17,10 +17,9 @@ bool InitializeStrategySystem()
 {
     bool result = InitializeIndicatorHandles();
     
-    if(result)
-        Print("戦略システム初期化完了");
-    else
-        Print("戦略システム初期化失敗");
+    if(!result)
+        Print("ERROR: 戦略システム初期化失敗");
+    // 戦略システム初期化完了
         
     return result;
 }
@@ -31,7 +30,7 @@ bool InitializeStrategySystem()
 void DeinitializeStrategySystem()
 {
     ReleaseIndicatorHandles();
-    Print("戦略システム終了処理完了");
+    // 戦略システム終了処理完了
 }
 
 //+------------------------------------------------------------------+
@@ -66,8 +65,7 @@ bool EvaluateStrategyForEntry(int side)
     // side: 0 = Buy, 1 = Sell
     bool entrySignal = false;
 
-    Print("【戦略評価開始】 側=", side == 0 ? "Buy" : "Sell", 
-          " MA戦略=", MA_Entry_Strategy == MA_ENTRY_ENABLED ? "有効" : "無効");
+    // 戦略評価開始
 
     // インジケーター評価
     bool strategySignals = false;
@@ -181,7 +179,6 @@ bool EvaluateStrategyForEntry(int side)
     // 有効な戦略が1つもない場合はfalseを返す
     if(enabledStrategies == 0)
     {
-        Print("【最終判断】: 有効なインジケーターが0のため false を返します");
         return false;
     }
 
@@ -190,13 +187,11 @@ bool EvaluateStrategyForEntry(int side)
     {
         // AND条件: すべての有効なインジケーターがシグナルを出した場合のみtrue
         indicatorSignalsValid = (validSignals == enabledStrategies);
-        Print("【最終判断】 AND条件で評価: ", indicatorSignalsValid ? "すべてのシグナルが成立" : "一部のシグナルが不成立");
     }
     else
     {
         // OR条件: 少なくとも1つのインジケーターがシグナルを出した場合にtrue
         indicatorSignalsValid = (validSignals > 0);
-        Print("【最終判断】 OR条件で評価: ", indicatorSignalsValid ? "1つ以上のシグナルが成立" : "シグナル不成立");
     }
 
     entrySignal = indicatorSignalsValid;
@@ -207,8 +202,8 @@ bool EvaluateStrategyForEntry(int side)
         string typeStr = (side == 0) ? "Buy" : "Sell";
         string conditionType = (Indicator_Condition_Type == AND_CONDITION) ? "AND条件" : "OR条件";
         string reason = conditionType + "(" + activeStrategies + ")";
-        
-        Print("【エントリーシグナル成立】 ", typeStr, " - ", reason);
+
+        Print("エントリーシグナル: ", typeStr, " - ", reason);
     }
 
     return entrySignal;

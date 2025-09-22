@@ -16,16 +16,106 @@ void InitializeGhostPosition(int operationType, string comment)
     double price = (operationType == OP_BUY) ? GetAskPrice() : GetBidPrice();
     double lot = InitialLot;
     
-    Print("DEBUG: ゴーストポジション初期化 - Type=", operationType, 
-          " Price=", price, " Ask=", GetAskPrice(), " Bid=", GetBidPrice(), 
-          " Spread=", (GetAskPrice() - GetBidPrice()) / GetPointValue());
+    // ゴーストポジション初期化
     
     // ExecuteGhostEntryを使用して矢印描画も実行
     ExecuteGhostEntry(operationType, price, lot, comment, -1);
 }
-string GetConstantEntryStrategyState() { return "OFF"; }
+string GetConstantEntryStrategyState()
+{
+    switch(ConstantEntryStrategy)
+    {
+        case CONSTANT_ENTRY_DISABLED: return "OFF";
+        case CONSTANT_ENTRY_LONG: return "LONG";
+        case CONSTANT_ENTRY_SHORT: return "SHORT";
+        case CONSTANT_ENTRY_BOTH: return "BOTH";
+        default: return "OFF";
+    }
+}
 string GetEvenOddStrategyState() { return "OFF"; }
-void UpdateAveragePriceLines(int operationType) { /* スタブ */ }
+void UpdateAveragePriceLines(int operationType)
+{
+   string direction = (operationType == 0) ? "Buy" : "Sell";
+
+   // ポジション・ゴーストカウントの取得
+   int positionCount = position_count(operationType);
+   int ghostCount = ghost_position_count(operationType);
+
+   // ポジション・ゴーストどちらも無い場合はラインを削除
+   if(positionCount <= 0 && ghostCount <= 0) {
+      DeleteSpecificLine(operationType);
+      return;
+   }
+
+   // 平均価格を計算
+   double avgPrice = CalculateCombinedAveragePrice(operationType);
+   if(avgPrice <= 0) return;
+
+   // 平均価格ラインを表示
+   string avgLineName = "AvgPrice" + direction;
+   string avgLabelName = "AvgPriceLabel" + direction;
+
+   // 既存ラインを削除
+#ifdef __MQL5__
+   if(ObjectFind(0, g_ObjectPrefix + avgLineName) >= 0)
+      ObjectDelete(0, g_ObjectPrefix + avgLineName);
+   if(ObjectFind(0, g_ObjectPrefix + avgLabelName) >= 0)
+      ObjectDelete(0, g_ObjectPrefix + avgLabelName);
+#else
+   if(ObjectFind(g_ObjectPrefix + avgLineName) >= 0)
+      ObjectDelete(g_ObjectPrefix + avgLineName);
+   if(ObjectFind(g_ObjectPrefix + avgLabelName) >= 0)
+      ObjectDelete(g_ObjectPrefix + avgLabelName);
+#endif
+
+   // 平均価格ラインを作成
+   CreateHorizontalLine(g_ObjectPrefix + avgLineName, avgPrice, AveragePriceLineColor, STYLE_SOLID, 1);
+
+   // 平均価格ラベルを作成
+   if(EnablePriceLabels) {
+      string avgText = "Avg: " + DoubleToString(avgPrice, GetDigitsValue());
+      CreatePriceLabel(g_ObjectPrefix + avgLabelName, avgText, avgPrice, AveragePriceLineColor, operationType == 0);
+   }
+
+   // TPライン表示（利確が有効な場合のみ）
+   if(TakeProfitMode != TP_OFF) {
+      double tpPrice = 0;
+      int tpPoints = TakeProfitPoints;
+
+      if(operationType == 0) { // Buy
+         tpPrice = avgPrice + (tpPoints * GetPointValue());
+      } else { // Sell
+         tpPrice = avgPrice - (tpPoints * GetPointValue());
+      }
+
+      if(tpPrice > 0) {
+         string tpLineName = "TPLine" + direction;
+         string tpLabelName = "TPLabel" + direction;
+
+         // 既存TPラインを削除
+#ifdef __MQL5__
+         if(ObjectFind(0, g_ObjectPrefix + tpLineName) >= 0)
+            ObjectDelete(0, g_ObjectPrefix + tpLineName);
+         if(ObjectFind(0, g_ObjectPrefix + tpLabelName) >= 0)
+            ObjectDelete(0, g_ObjectPrefix + tpLabelName);
+#else
+         if(ObjectFind(g_ObjectPrefix + tpLineName) >= 0)
+            ObjectDelete(g_ObjectPrefix + tpLineName);
+         if(ObjectFind(g_ObjectPrefix + tpLabelName) >= 0)
+            ObjectDelete(g_ObjectPrefix + tpLabelName);
+#endif
+
+         // TPラインを作成
+         CreateHorizontalLine(g_ObjectPrefix + tpLineName, tpPrice, TakeProfitLineColor, STYLE_DASH, 1);
+
+         // TPラベルを作成
+         if(EnablePriceLabels) {
+            string tpText = "TP: " + DoubleToString(tpPrice, GetDigitsValue()) + " (+" + IntegerToString(tpPoints) + "pt)";
+            CreatePriceLabel(g_ObjectPrefix + tpLabelName, tpText, tpPrice, TakeProfitLineColor, operationType == 0);
+         }
+      }
+   }
+}
 
 
 
@@ -705,7 +795,6 @@ void ProcessButtonClick(string buttonName)
    // Buy Close
    if(buttonName == "btnCloseBuy")
    {
-      Print("Close Buy clicked");
       position_close(0, -1);
       UpdateGUI();
    }
@@ -713,7 +802,6 @@ void ProcessButtonClick(string buttonName)
    // Sell Close
    else if(buttonName == "btnCloseSell")
    {
-      Print("Close Sell clicked");
       position_close(1, -1);
       UpdateGUI();
    }
@@ -721,7 +809,6 @@ void ProcessButtonClick(string buttonName)
    // Close All
    else if(buttonName == "btnCloseAll")
    {
-      Print("Close All clicked");
       
       // リアルポジションを閉じる
       position_close(0, -1);
@@ -800,7 +887,7 @@ void ProcessButtonClick(string buttonName)
       // 最後にチャートを再描画
       ChartRedraw();
       
-      Print("すべてのゴーストポジションをリセットしました");
+      // ゴーストポジションリセット完了
    }
    
    // Toggle Average Price Display
@@ -814,7 +901,7 @@ void ProcessButtonClick(string buttonName)
       }
 
       UpdateGUI();
-      Print("平均価格ラインを", g_AvgPriceVisible ? "表示" : "非表示", "に切り替えました");
+      // 平均価格ライン表示状態を切り替え
    }
 
    // Toggle Auto Trading
@@ -823,9 +910,7 @@ void ProcessButtonClick(string buttonName)
       g_AutoTrading = !g_AutoTrading;
 
       UpdateGUI();
-      Print("自動売買を", g_AutoTrading ? "有効" : "無効", "に切り替えました");
-
-      // パラメータ変更の通知
+      // 自動売買設定を切り替え
       if(g_AutoTrading)
       {
          Print("【重要】自動売買が有効になりました。戦略シグナルでリアルエントリーが実行されます。");
@@ -845,7 +930,7 @@ void ProcessButtonClick(string buttonName)
       CreateGUI();
       UpdateGUI();
 
-      Print("パネルを", g_PanelMinimized ? "最小化" : "復元", "しました");
+      // パネル表示状態を切り替え
    }
 
    // ===== 直接エントリー機能 =====
@@ -853,7 +938,6 @@ void ProcessButtonClick(string buttonName)
    // 直接Buy
    else if(buttonName == "btnDirectBuy")
    {
-      Print("直接Buyボタンがクリックされました");
       ExecuteDiscretionaryEntry(OP_BUY);
       UpdatePositionTable();
       UpdateGUI(); // レベルボタンのラベルを更新
@@ -862,7 +946,6 @@ void ProcessButtonClick(string buttonName)
 // 直接Sell
 else if(buttonName == "btnDirectSell")
 {
-   Print("直接Sellボタンがクリックされました");
    ExecuteDiscretionaryEntry(OP_SELL);
    UpdatePositionTable();
    UpdateGUI(); // レベルボタンのラベルを更新
@@ -873,7 +956,6 @@ else if(buttonName == "btnDirectSell")
 // ゴーストBuy
 else if(buttonName == "btnGhostBuy")
 {
-   Print("ゴーストBuyボタンがクリックされました");
    if(!g_GhostMode)
    {
       // ゴーストモードが無効の場合はメッセージを表示
@@ -897,7 +979,6 @@ else if(buttonName == "btnGhostBuy")
 // ゴーストSell
 else if(buttonName == "btnGhostSell")
 {
-   Print("ゴーストSellボタンがクリックされました");
    if(!g_GhostMode)
    {
       // ゴーストモードが無効の場合はメッセージを表示
@@ -925,7 +1006,6 @@ else if(buttonName == "btnLevelBuy")
 {
    // 現在のゴーストカウント+1をレベルとして使用 - ナンピンレベル廃止対応
    int entryLevel = ghost_position_count(OP_BUY) + 1;
-   Print("レベル指定Buyボタンがクリックされました: レベル", entryLevel);
    ExecuteEntryFromLevel(OP_BUY, entryLevel);
    UpdatePositionTable();
    UpdateGUI(); // レベルボタンのラベルを更新
@@ -936,7 +1016,6 @@ else if(buttonName == "btnLevelSell")
 {
    // 現在のゴーストカウント+1をレベルとして使用 - ナンピンレベル廃止対応
    int entryLevel = ghost_position_count(OP_SELL) + 1;
-   Print("レベル指定Sellボタンがクリックされました: レベル", entryLevel);
    ExecuteEntryFromLevel(OP_SELL, entryLevel);
    UpdatePositionTable();
    UpdateGUI(); // レベルボタンのラベルを更新
@@ -945,21 +1024,19 @@ else if(buttonName == "btnLevelSell")
 // ロットテーブル表示ボタン
 else if(buttonName == "btnShowLotTable")
 {
-   Print("ロットテーブル表示ボタンがクリックされました");
    CreateLotTableDialog();
 }
 
 // 設定情報表示ボタン
 else if(buttonName == "btnShowSettings")
 {
-   Print("設定情報表示ボタンがクリックされました");
    ShowSettingsDialog();
 }
 
 // 未知のボタンの場合
 else
 {
-   Print("未知のボタンがクリックされました: ", buttonName);
+   Print("未知のボタン: ", buttonName);
 }
 }
 

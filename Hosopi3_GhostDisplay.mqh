@@ -44,7 +44,7 @@ void ShowGhostEntryArrow(int operationType, double price, int entryPoint, double
     {
         ObjectSetInteger(0, arrowName, OBJPROP_ARROWCODE, arrowCode);
         ObjectSetInteger(0, arrowName, OBJPROP_COLOR, arrowColor);
-        ObjectSetInteger(0, arrowName, OBJPROP_WIDTH, 4);
+        ObjectSetInteger(0, arrowName, OBJPROP_WIDTH, GhostArrowSize);
         ObjectSetInteger(0, arrowName, OBJPROP_SELECTABLE, false);
         ObjectSetInteger(0, arrowName, OBJPROP_BACK, false);
         // BUY矢印は下、SELL矢印は上
@@ -56,7 +56,7 @@ void ShowGhostEntryArrow(int operationType, double price, int entryPoint, double
     {
         ObjectSet(arrowName, OBJPROP_ARROWCODE, arrowCode);
         ObjectSet(arrowName, OBJPROP_COLOR, arrowColor);
-        ObjectSet(arrowName, OBJPROP_WIDTH, 4);
+        ObjectSet(arrowName, OBJPROP_WIDTH, GhostArrowSize);
         ObjectSet(arrowName, OBJPROP_SELECTABLE, false);
         ObjectSet(arrowName, OBJPROP_BACK, false);
         WindowRedraw(); // チャート再描画

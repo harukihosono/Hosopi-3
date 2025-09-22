@@ -237,6 +237,8 @@ bool g_EnableTrailingStop = false;  // トレーリングストップ有効フ�
 datetime g_LastBuyEntryTime = 0;     // 最後のBuyエントリー時間
 datetime g_LastSellEntryTime = 0;    // 最後のSellエントリー時間
 
+// 常時エントリー用ローソク足時間管理を削除（ノーポジならどんどんエントリーに変更）
+
 // 片側決済後の再エントリー制御用フラグと時間記録
 bool g_BuyClosedRecently = false;    // Buy側が最近決済されたフラグ
 bool g_SellClosedRecently = false;   // Sell側が最近決済されたフラグ

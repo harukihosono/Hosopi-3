@@ -283,7 +283,7 @@ double NormalizeVolume(double volume, string symbol = "")
    // ボリュームが0以下の場合は最小ボリュームを返す
    if(volume <= 0) 
    {
-      Print("Volume <= 0, returning min volume: ", minVolume);
+      // Volume <= 0, returning min volume
       return minVolume;
    }
    
@@ -308,8 +308,6 @@ double NormalizeVolume(double volume, string symbol = "")
       Print("ERROR: Volume out of range after normalization: ", volume);
       return minVolume;
    }
-   
-   // 正規化完了
    
    return volume;
 }
@@ -346,11 +344,11 @@ bool position_entry(int side, double lot = 0.1, int slippage = 10, int magic = 0
    
    if(!success || result.retcode != TRADE_RETCODE_DONE)
    {
-      Print("MQL5注文エラー: retcode=", result.retcode, " LastError=", GetLastError());
+      Print("注文エラー: retcode=", result.retcode, " LastError=", GetLastError());
       return false;
    }
    
-   Print("MQL5注文成功: ticket=", result.order, " volume=", result.volume);
+   // 注文成功
    return true;
    
    #else
@@ -366,7 +364,7 @@ bool position_entry(int side, double lot = 0.1, int slippage = 10, int magic = 0
          // リトライ時は価格を再取得
          RefreshRates();
          Sleep(100); // 100ms待機
-         Print("リトライ ", retry, "/", maxRetries, " - Ask: ", DoubleToString(Ask, 5), " Bid: ", DoubleToString(Bid, 5));
+         // リトライ処理
       }
       
       double currentPrice = (side == OP_BUY) ? Ask : Bid;
@@ -374,7 +372,7 @@ bool position_entry(int side, double lot = 0.1, int slippage = 10, int magic = 0
       
       if(ticket > 0)
       {
-         Print("注文成功 (試行回数: ", retry + 1, ") チケット: ", ticket);
+         // 注文成功
          break;
       }
       
@@ -382,14 +380,14 @@ bool position_entry(int side, double lot = 0.1, int slippage = 10, int magic = 0
       // リクォートエラー以外なら即座に失敗として扱う
       if(error != 138 && error != 4202 && error != 3) // 138=Requote, 4202=Invalid price, 3=Common error
       {
-         Print("致命的な注文エラー: ", error);
+         Print("注文エラー: ", error);
          break;
       }
    }
    
    if(ticket <= 0)
    {
-      Print("注文エラー (最終): ", GetLastError());
+      Print("注文失敗: ", GetLastError());
       return false;
    }
    

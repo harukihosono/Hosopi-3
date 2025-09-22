@@ -102,22 +102,21 @@ bool AddGhostPosition(int operationType, double openPrice, double lot, string co
     
     if(operationType == OP_BUY && g_GhostBuyCount < MAX_GHOST_POSITIONS)
     {
-        Print("DEBUG: Buyゴーストポジション追加 - Index=", g_GhostBuyCount, " Max=", MAX_GHOST_POSITIONS);
+        // Buyゴーストポジション追加
         g_GhostBuyPositions[g_GhostBuyCount] = ghostPos;
         g_GhostBuyCount++;
         return true;
     }
     else if(operationType == OP_SELL && g_GhostSellCount < MAX_GHOST_POSITIONS)
     {
-        Print("DEBUG: Sellゴーストポジション追加 - Index=", g_GhostSellCount, " Max=", MAX_GHOST_POSITIONS);
+        // Sellゴーストポジション追加
         g_GhostSellPositions[g_GhostSellCount] = ghostPos;
         g_GhostSellCount++;
         return true;
     }
     else
     {
-        Print("ERROR: ゴーストポジション追加失敗 - Type=", operationType, 
-              " BuyCount=", g_GhostBuyCount, " SellCount=", g_GhostSellCount, " Max=", MAX_GHOST_POSITIONS);
+        Print("ERROR: ゴーストポジション追加失敗 - Type=", operationType);
         return false;
     }
     
@@ -239,9 +238,7 @@ double CalculateGhostProfit(int operationType)
                 double profit = (priceDiff / point) * tickValue * g_GhostBuyPositions[i].lot;
                 totalProfit += NormalizeDouble(profit, 2);
                 
-                // Print("DEBUG: GhostBuy[", i, "] - Entry=", g_GhostBuyPositions[i].openPrice,
-                //       " Current=", currentPrice, " Diff=", priceDiff,
-                //       " Profit=", NormalizeDouble(profit, 2), " Lot=", g_GhostBuyPositions[i].lot);
+                // ゴーストBUY利益計算
             }
         }
     }
@@ -258,9 +255,7 @@ double CalculateGhostProfit(int operationType)
                 double profit = (priceDiff / point) * tickValue * g_GhostSellPositions[i].lot;
                 totalProfit += NormalizeDouble(profit, 2);
                 
-                // Print("DEBUG: GhostSell[", i, "] - EntryBid=", g_GhostSellPositions[i].openPrice,
-                //       " CurrentAsk=", currentPrice, " Diff=", priceDiff,
-                //       " Profit=", NormalizeDouble(profit, 2), " Lot=", g_GhostSellPositions[i].lot);
+                // ゴーストSELL利益計算
             }
         }
     }
@@ -303,7 +298,7 @@ void DeleteGhostObjects(int operationType)
         }
     }
     
-    Print("ゴーストオブジェクト削除完了: Type=", operationType);
+    // ゴーストオブジェクト削除完了
 }
 
 //+------------------------------------------------------------------+
