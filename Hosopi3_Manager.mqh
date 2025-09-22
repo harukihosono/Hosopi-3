@@ -883,6 +883,9 @@ int InitializeEA()
    // キャッシュをリセット（高速化のため）
    ResetTradingCaches();
 
+   // フィリングモードを初期化
+   InitFillingMode();
+
    // アカウント番号を取得して保存
    g_AccountNumber = GetAccountNumber();
    

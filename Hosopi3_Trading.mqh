@@ -1,10 +1,11 @@
 //+------------------------------------------------------------------+
-//|                  Hosopi 3 - トレード関連関数 (最適化版)            |
+//|                  Hosopi 3 - トレード関数 (最適化版)            |
 //|                         Copyright 2025                           |
 //|                    MQL4/MQL5 完全共通化バージョン                 |
 //+------------------------------------------------------------------+
 #include "Hosopi3_Defines.mqh"
 #include "Hosopi3_Compat.mqh"
+#include "BrokerFillingMode.mqh"
 
 //+------------------------------------------------------------------+
 //| MQL4/MQL5互換性のための定義                                      |
@@ -338,7 +339,7 @@ bool position_entry(int side, double lot = 0.1, int slippage = 10, int magic = 0
    request.deviation = slippage;
    request.magic = magic;
    request.comment = comment;
-   request.type_filling = OrderFillingMode; // パラメーターで設定されたフィリングモード
+   request.type_filling = GetFillingMode(); // 自動検出されたフィリングモード
    
    bool success = OrderSend(request, result);
    
@@ -431,7 +432,7 @@ bool position_close(int side, double lot = 0.0, int slippage = 10, int magic = 0
             request.price = (side == OP_BUY) ? GetBidPrice() : GetAskPrice();
             request.deviation = slippage;
             request.magic = magic;
-            request.type_filling = OrderFillingMode; // フィリングモードを使用
+            request.type_filling = GetFillingMode(); // 自動検出されたフィリングモード
             
             bool success = OrderSend(request, result);
             
