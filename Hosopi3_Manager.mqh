@@ -970,7 +970,18 @@ int InitializeEA()
    // ゴーストモードは常に有効
    g_GhostMode = true;
    Print("ゴーストモードを有効化しました");
-   
+
+   // 自動売買設定の初期化と表示
+   Print("自動売買設定: ", EnableAutomaticTrading ? "有効" : "無効");
+   if(EnableAutomaticTrading)
+   {
+      Print("【重要】自動売買が有効です。戦略シグナルでリアルエントリーが実行されます。");
+   }
+   else
+   {
+      Print("【重要】自動売買が無効です。戦略シグナルではゴーストエントリーのみ実行されます。");
+   }
+
    // エントリーモードの確認と表示
    string entryModeStr = "";
    switch(EntryMode) {

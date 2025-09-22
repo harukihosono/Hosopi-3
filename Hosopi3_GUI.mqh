@@ -253,12 +253,20 @@ void CreateGUI()
    // ========== 行7: 平均取得単価表示切替ボタン ==========
    
    // 平均取得単価表示切替ボタン（横いっぱい）
-   CreateButton("btnToggleAvgPrice", "AVG PRICE " + (g_AvgPriceVisible ? "ON" : "OFF"), 
-               adjustedPanelX + PANEL_MARGIN, currentY, fullWidth, BUTTON_HEIGHT, 
+   CreateButton("btnToggleAvgPrice", "AVG PRICE " + (g_AvgPriceVisible ? "ON" : "OFF"),
+               adjustedPanelX + PANEL_MARGIN, currentY, fullWidth, BUTTON_HEIGHT,
                g_AvgPriceVisible ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE, COLOR_TEXT_LIGHT);
    currentY += BUTTON_HEIGHT + PANEL_MARGIN;
-   
-   // ========== 行8: 情報表示ボタン ==========
+
+   // ========== 行8: 自動売買切替ボタン ==========
+
+   // 自動売買切替ボタン（横いっぱい）
+   CreateButton("btnToggleAutoTrading", "AUTO TRADING " + (EnableAutomaticTrading ? "ON" : "OFF"),
+               adjustedPanelX + PANEL_MARGIN, currentY, fullWidth, BUTTON_HEIGHT,
+               EnableAutomaticTrading ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE, COLOR_TEXT_WHITE);
+   currentY += BUTTON_HEIGHT + PANEL_MARGIN;
+
+   // ========== 行9: 情報表示ボタン ==========
    
    // ロット情報表示ボタン (左)
    CreateButton("btnShowLotTable", "Lot Table", adjustedPanelX + PANEL_MARGIN, currentY, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_NEUTRAL, COLOR_TEXT_LIGHT);
@@ -776,16 +784,35 @@ void ProcessButtonClick(string buttonName)
    else if(buttonName == "btnToggleAvgPrice" || buttonName == "btnAvgPriceLine")
    {
       g_AvgPriceVisible = !g_AvgPriceVisible;
-      
+
       if(!g_AvgPriceVisible)
       {
          DeleteAllLines();
       }
-      
+
       UpdateGUI();
       Print("平均価格ラインを", g_AvgPriceVisible ? "表示" : "非表示", "に切り替えました");
    }
-   
+
+   // Toggle Auto Trading
+   else if(buttonName == "btnToggleAutoTrading")
+   {
+      EnableAutomaticTrading = !EnableAutomaticTrading;
+
+      UpdateGUI();
+      Print("自動売買を", EnableAutomaticTrading ? "有効" : "無効", "に切り替えました");
+
+      // パラメータ変更の通知
+      if(EnableAutomaticTrading)
+      {
+         Print("【重要】自動売買が有効になりました。戦略シグナルでリアルエントリーが実行されます。");
+      }
+      else
+      {
+         Print("【重要】自動売買が無効になりました。戦略シグナルではゴーストエントリーのみ実行されます。");
+      }
+   }
+
    // ===== 直接エントリー機能 =====
    
    // 直接Buy

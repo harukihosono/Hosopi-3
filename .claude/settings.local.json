@@ -27,7 +27,8 @@
       "Bash(\"/c/Program Files/FXGT MT5 Terminal/metaeditor64.exe\" /compile \"Hosopi3_EA.mq5\")",
       "Bash(\"C:/Program Files/MetaTrader 5/metaeditor64.exe\" /compile \"Hosopi3_EA.mq5\")",
       "Bash(\"/c/Program Files/MetaTrader 5/metaeditor64.exe\" /compile \"Hosopi3_EA.mq5\")",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Read(//c/Program Files/**)"
     ],
     "deny": [],
     "ask": [],
