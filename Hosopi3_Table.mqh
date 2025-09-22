@@ -53,7 +53,7 @@ void CreatePositionTable()
    ObjectSetMQL4(bgName, OBJPROP_WIDTH_MQL4, 1);
    ObjectSetMQL4(bgName, OBJPROP_BACK_MQL4, false);
    ObjectSetMQL4(bgName, OBJPROP_SELECTABLE_MQL4, false);
-   ObjectSetMQL4(bgName, OBJPROP_ZORDER_MQL4, 0);
+   ObjectSetMQL4(bgName, OBJPROP_ZORDER_MQL4, 1000);
    
    // タイトル背景
    string titleBgName = tablePrefix + "TitleBG";
@@ -69,7 +69,7 @@ void CreatePositionTable()
    ObjectSetMQL4(titleBgName, OBJPROP_WIDTH_MQL4, 1);
    ObjectSetMQL4(titleBgName, OBJPROP_BACK_MQL4, false);
    ObjectSetMQL4(titleBgName, OBJPROP_SELECTABLE_MQL4, false);
-   ObjectSetMQL4(titleBgName, OBJPROP_ZORDER_MQL4, 1);
+   ObjectSetMQL4(titleBgName, OBJPROP_ZORDER_MQL4, 1001);
    
    // タイトルテキスト
    string titleName = tablePrefix + "Title";
@@ -79,7 +79,7 @@ void CreatePositionTable()
    ObjectSetMQL4(titleName, OBJPROP_YDISTANCE_MQL4, adjustedTableY + 3);
    ObjectSetTextMQL4(titleName, GhostTableTitle, 7, "MS Gothic", TABLE_TEXT_COLOR);
    ObjectSetMQL4(titleName, OBJPROP_SELECTABLE_MQL4, false);
-   ObjectSetMQL4(titleName, OBJPROP_ZORDER_MQL4, 2);
+   ObjectSetMQL4(titleName, OBJPROP_ZORDER_MQL4, 1002);
    
    // ヘッダー背景
    string headerBgName = tablePrefix + "HeaderBG";
@@ -95,7 +95,7 @@ void CreatePositionTable()
    ObjectSetMQL4(headerBgName, OBJPROP_WIDTH_MQL4, 1);
    ObjectSetMQL4(headerBgName, OBJPROP_BACK_MQL4, false);
    ObjectSetMQL4(headerBgName, OBJPROP_SELECTABLE_MQL4, false);
-   ObjectSetMQL4(headerBgName, OBJPROP_ZORDER_MQL4, 1);
+   ObjectSetMQL4(headerBgName, OBJPROP_ZORDER_MQL4, 1001);
    
    // ヘッダー列のラベルを作成
    for(int i = 0; i < 8; i++)
@@ -107,7 +107,7 @@ void CreatePositionTable()
       ObjectSetMQL4(name, OBJPROP_YDISTANCE_MQL4, adjustedTableY + TITLE_HEIGHT + 4);
       ObjectSetTextMQL4(name, headers[i], 8, "MS Gothic", TABLE_TEXT_COLOR);
       ObjectSetMQL4(name, OBJPROP_SELECTABLE_MQL4, false);
-      ObjectSetMQL4(name, OBJPROP_ZORDER_MQL4, 2);
+      ObjectSetMQL4(name, OBJPROP_ZORDER_MQL4, 1002);
       
       // オブジェクト名を保存
       SaveObjectName(name, g_TableNames, g_TableObjectCount);
@@ -489,7 +489,7 @@ void UpdatePositionTable()
       ObjectSetMQL4(noDataName, OBJPROP_YDISTANCE_MQL4, adjustedTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT + 10);
       ObjectSetTextMQL4(noDataName, "No positions", 8, "MS Gothic", TABLE_TEXT_COLOR);
       ObjectSetMQL4(noDataName, OBJPROP_SELECTABLE_MQL4, false);
-      ObjectSetMQL4(noDataName, OBJPROP_ZORDER_MQL4, 2);
+      ObjectSetMQL4(noDataName, OBJPROP_ZORDER_MQL4, 1002);
       
       SaveObjectName(noDataName, g_TableNames, g_TableObjectCount);
       
@@ -528,7 +528,7 @@ void UpdatePositionTable()
       ObjectSetMQL4(rowBgName, OBJPROP_WIDTH_MQL4, 1);
       ObjectSetMQL4(rowBgName, OBJPROP_BACK_MQL4, false);
       ObjectSetMQL4(rowBgName, OBJPROP_SELECTABLE_MQL4, false);
-      ObjectSetMQL4(rowBgName, OBJPROP_ZORDER_MQL4, 1);
+      ObjectSetMQL4(rowBgName, OBJPROP_ZORDER_MQL4, 1001);
       
       // ゴーストかリアルかで文字色を決定
       color textColorToUse = allPositions[i].isGhost ? TABLE_GHOST_COLOR : TABLE_TEXT_COLOR;
@@ -541,7 +541,7 @@ void UpdatePositionTable()
       ObjectSetMQL4(noName, OBJPROP_YDISTANCE_MQL4, rowY + 4);
       ObjectSetTextMQL4(noName, IntegerToString(i+1), 8, "MS Gothic", textColorToUse);
       ObjectSetMQL4(noName, OBJPROP_SELECTABLE_MQL4, false);
-      ObjectSetMQL4(noName, OBJPROP_ZORDER_MQL4, 3);
+      ObjectSetMQL4(noName, OBJPROP_ZORDER_MQL4, 1003);
       
       // Type
       string typeText = "";
@@ -572,7 +572,7 @@ void UpdatePositionTable()
       ObjectSetMQL4(typeName, OBJPROP_YDISTANCE_MQL4, rowY + 4);
       ObjectSetTextMQL4(typeName, typeText, 8, "MS Gothic", typeColor);
       ObjectSetMQL4(typeName, OBJPROP_SELECTABLE_MQL4, false);
-      ObjectSetMQL4(typeName, OBJPROP_ZORDER_MQL4, 3);
+      ObjectSetMQL4(typeName, OBJPROP_ZORDER_MQL4, 1003);
       
       // Lots
       string lotsName = tablePrefix + "Row_" + IntegerToString(i) + "_Lots";
@@ -582,7 +582,7 @@ void UpdatePositionTable()
       ObjectSetMQL4(lotsName, OBJPROP_YDISTANCE_MQL4, rowY + 4);
       ObjectSetTextMQL4(lotsName, DoubleToString(allPositions[i].lots, 2), 8, "MS Gothic", textColorToUse);
       ObjectSetMQL4(lotsName, OBJPROP_SELECTABLE_MQL4, false);
-      ObjectSetMQL4(lotsName, OBJPROP_ZORDER_MQL4, 3);
+      ObjectSetMQL4(lotsName, OBJPROP_ZORDER_MQL4, 1003);
       
       // Symbol
       string symbolName = tablePrefix + "Row_" + IntegerToString(i) + "_Symbol";
@@ -592,7 +592,7 @@ void UpdatePositionTable()
       ObjectSetMQL4(symbolName, OBJPROP_YDISTANCE_MQL4, rowY + 4);
       ObjectSetTextMQL4(symbolName, allPositions[i].symbol, 8, "MS Gothic", textColorToUse);
       ObjectSetMQL4(symbolName, OBJPROP_SELECTABLE_MQL4, false);
-      ObjectSetMQL4(symbolName, OBJPROP_ZORDER_MQL4, 3);
+      ObjectSetMQL4(symbolName, OBJPROP_ZORDER_MQL4, 1003);
       
       // Price
       string priceStr = "";
@@ -606,7 +606,7 @@ void UpdatePositionTable()
       ObjectSetMQL4(priceName, OBJPROP_YDISTANCE_MQL4, rowY + 4);
       ObjectSetTextMQL4(priceName, priceStr, 8, "MS Gothic", textColorToUse);
       ObjectSetMQL4(priceName, OBJPROP_SELECTABLE_MQL4, false);
-      ObjectSetMQL4(priceName, OBJPROP_ZORDER_MQL4, 3);
+      ObjectSetMQL4(priceName, OBJPROP_ZORDER_MQL4, 1003);
       
       // OpenTime
       string timeStr = TimeToString(allPositions[i].openTime, TIME_DATE|TIME_MINUTES);
@@ -617,7 +617,7 @@ void UpdatePositionTable()
       ObjectSetMQL4(timeName, OBJPROP_YDISTANCE_MQL4, rowY + 4);
       ObjectSetTextMQL4(timeName, timeStr, 8, "MS Gothic", textColorToUse);
       ObjectSetMQL4(timeName, OBJPROP_SELECTABLE_MQL4, false);
-      ObjectSetMQL4(timeName, OBJPROP_ZORDER_MQL4, 3);
+      ObjectSetMQL4(timeName, OBJPROP_ZORDER_MQL4, 1003);
       
       // Level
       string levelName = tablePrefix + "Row_" + IntegerToString(i) + "_Level";
@@ -627,7 +627,7 @@ void UpdatePositionTable()
       ObjectSetMQL4(levelName, OBJPROP_YDISTANCE_MQL4, rowY + 4);
       ObjectSetTextMQL4(levelName, IntegerToString(allPositions[i].level + 1), 8, "MS Gothic", textColorToUse);
       ObjectSetMQL4(levelName, OBJPROP_SELECTABLE_MQL4, false);
-      ObjectSetMQL4(levelName, OBJPROP_ZORDER_MQL4, 3);
+      ObjectSetMQL4(levelName, OBJPROP_ZORDER_MQL4, 1003);
       
       // Profit
       string profitName = tablePrefix + "Row_" + IntegerToString(i) + "_Profit";
@@ -702,7 +702,7 @@ void UpdatePositionTable()
       
       ObjectSetTextMQL4(profitName, DoubleToString(profit, 2) + "", 8, "MS Gothic", profitColor);
       ObjectSetMQL4(profitName, OBJPROP_SELECTABLE_MQL4, false);
-      ObjectSetMQL4(profitName, OBJPROP_ZORDER_MQL4, 3);
+      ObjectSetMQL4(profitName, OBJPROP_ZORDER_MQL4, 1003);
       
       // オブジェクト名を保存
       SaveObjectName(rowBgName, g_TableNames, g_TableObjectCount);
@@ -735,7 +735,7 @@ void UpdatePositionTable()
    ObjectSetMQL4(totalRowBgName, OBJPROP_WIDTH_MQL4, 1);
    ObjectSetMQL4(totalRowBgName, OBJPROP_BACK_MQL4, false);
    ObjectSetMQL4(totalRowBgName, OBJPROP_SELECTABLE_MQL4, false);
-   ObjectSetMQL4(totalRowBgName, OBJPROP_ZORDER_MQL4, 1);
+   ObjectSetMQL4(totalRowBgName, OBJPROP_ZORDER_MQL4, 1001);
    
    // 合計テキスト
    string totalTextName = tablePrefix + "Row_Total_Text";
@@ -745,7 +745,7 @@ void UpdatePositionTable()
    ObjectSetMQL4(totalTextName, OBJPROP_YDISTANCE_MQL4, adjustedTableY + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (visibleRows + 1) + 4);
    ObjectSetTextMQL4(totalTextName, "TOTAL:", 8, "MS Gothic Bold", TABLE_TEXT_COLOR);
    ObjectSetMQL4(totalTextName, OBJPROP_SELECTABLE_MQL4, false);
-   ObjectSetMQL4(totalTextName, OBJPROP_ZORDER_MQL4, 3);
+   ObjectSetMQL4(totalTextName, OBJPROP_ZORDER_MQL4, 1003);
    
    // Buy合計
    string buyTotalName = tablePrefix + "Row_BuyTotal";
@@ -756,7 +756,7 @@ void UpdatePositionTable()
    color buyColor = totalBuyProfit >= 0 ? clrLime : clrRed;
    ObjectSetTextMQL4(buyTotalName, "BUY: " + DoubleToString(totalBuyProfit, 2) + "", 8, "MS Gothic", buyColor);
    ObjectSetMQL4(buyTotalName, OBJPROP_SELECTABLE_MQL4, false);
-   ObjectSetMQL4(buyTotalName, OBJPROP_ZORDER_MQL4, 3);
+   ObjectSetMQL4(buyTotalName, OBJPROP_ZORDER_MQL4, 1003);
    
    // Sell合計
    string sellTotalName = tablePrefix + "Row_SellTotal";
@@ -767,7 +767,7 @@ void UpdatePositionTable()
    color sellColor = totalSellProfit >= 0 ? clrLime : clrRed;
    ObjectSetTextMQL4(sellTotalName, "SELL: " + DoubleToString(totalSellProfit, 2) + "", 8, "MS Gothic", sellColor);
    ObjectSetMQL4(sellTotalName, OBJPROP_SELECTABLE_MQL4, false);
-   ObjectSetMQL4(sellTotalName, OBJPROP_ZORDER_MQL4, 3);
+   ObjectSetMQL4(sellTotalName, OBJPROP_ZORDER_MQL4, 1003);
    
    // 総合計
    string netTotalName = tablePrefix + "Row_NetTotal";
@@ -778,7 +778,7 @@ void UpdatePositionTable()
    color totalColor = totalProfit >= 0 ? clrLime : clrRed;
    ObjectSetTextMQL4(netTotalName, "NET: " + DoubleToString(totalProfit, 2) + "", 8, "MS Gothic Bold", totalColor);
    ObjectSetMQL4(netTotalName, OBJPROP_SELECTABLE_MQL4, false);
-   ObjectSetMQL4(netTotalName, OBJPROP_ZORDER_MQL4, 3);
+   ObjectSetMQL4(netTotalName, OBJPROP_ZORDER_MQL4, 1003);
    
    // オブジェクト名を保存
    SaveObjectName(totalRowBgName, g_TableNames, g_TableObjectCount);

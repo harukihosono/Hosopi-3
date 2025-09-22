@@ -55,26 +55,48 @@ void UpdateAveragePriceLines(int operationType)
    string avgLineName = "AvgPrice" + direction;
    string avgLabelName = "AvgPriceLabel" + direction;
 
-   // 既存ラインを削除
+   // 既存ラインがあるかチェック
 #ifdef __MQL5__
-   if(ObjectFind(0, g_ObjectPrefix + avgLineName) >= 0)
-      ObjectDelete(0, g_ObjectPrefix + avgLineName);
-   if(ObjectFind(0, g_ObjectPrefix + avgLabelName) >= 0)
-      ObjectDelete(0, g_ObjectPrefix + avgLabelName);
+   bool avgLineExists = (ObjectFind(0, g_ObjectPrefix + avgLineName) >= 0);
 #else
-   if(ObjectFind(g_ObjectPrefix + avgLineName) >= 0)
-      ObjectDelete(g_ObjectPrefix + avgLineName);
-   if(ObjectFind(g_ObjectPrefix + avgLabelName) >= 0)
-      ObjectDelete(g_ObjectPrefix + avgLabelName);
+   bool avgLineExists = (ObjectFind(g_ObjectPrefix + avgLineName) >= 0);
 #endif
 
-   // 平均価格ラインを作成
-   CreateHorizontalLine(g_ObjectPrefix + avgLineName, avgPrice, AveragePriceLineColor, STYLE_SOLID, 1);
+   if(avgLineExists) {
+      // 既存ラインの価格を更新
+#ifdef __MQL5__
+      ObjectSetDouble(0, g_ObjectPrefix + avgLineName, OBJPROP_PRICE, avgPrice);
+#else
+      ObjectSet(g_ObjectPrefix + avgLineName, OBJPROP_PRICE1, avgPrice);
+#endif
+   } else {
+      // 新規ラインを作成
+      CreateHorizontalLine(g_ObjectPrefix + avgLineName, avgPrice, AveragePriceLineColor, STYLE_SOLID, 1);
+   }
 
-   // 平均価格ラベルを作成
+   // 平均価格ラベルを更新/作成
    if(EnablePriceLabels) {
+#ifdef __MQL5__
+      bool avgLabelExists = (ObjectFind(0, g_ObjectPrefix + avgLabelName) >= 0);
+#else
+      bool avgLabelExists = (ObjectFind(g_ObjectPrefix + avgLabelName) >= 0);
+#endif
+
       string avgText = "Avg: " + DoubleToString(avgPrice, GetDigitsValue());
-      CreatePriceLabel(g_ObjectPrefix + avgLabelName, avgText, avgPrice, AveragePriceLineColor, operationType == 0);
+
+      if(avgLabelExists) {
+         // 既存ラベルの価格とテキストを更新
+#ifdef __MQL5__
+         ObjectSetDouble(0, g_ObjectPrefix + avgLabelName, OBJPROP_PRICE, avgPrice);
+         ObjectSetString(0, g_ObjectPrefix + avgLabelName, OBJPROP_TEXT, avgText);
+#else
+         ObjectSet(g_ObjectPrefix + avgLabelName, OBJPROP_PRICE1, avgPrice);
+         ObjectSetText(g_ObjectPrefix + avgLabelName, avgText);
+#endif
+      } else {
+         // 新規ラベルを作成
+         CreatePriceLabel(g_ObjectPrefix + avgLabelName, avgText, avgPrice, AveragePriceLineColor, operationType == 0);
+      }
    }
 
    // TPライン表示（利確が有効な場合のみ）
@@ -92,26 +114,48 @@ void UpdateAveragePriceLines(int operationType)
          string tpLineName = "TPLine" + direction;
          string tpLabelName = "TPLabel" + direction;
 
-         // 既存TPラインを削除
+         // 既存TPラインがあるかチェック
 #ifdef __MQL5__
-         if(ObjectFind(0, g_ObjectPrefix + tpLineName) >= 0)
-            ObjectDelete(0, g_ObjectPrefix + tpLineName);
-         if(ObjectFind(0, g_ObjectPrefix + tpLabelName) >= 0)
-            ObjectDelete(0, g_ObjectPrefix + tpLabelName);
+         bool tpLineExists = (ObjectFind(0, g_ObjectPrefix + tpLineName) >= 0);
 #else
-         if(ObjectFind(g_ObjectPrefix + tpLineName) >= 0)
-            ObjectDelete(g_ObjectPrefix + tpLineName);
-         if(ObjectFind(g_ObjectPrefix + tpLabelName) >= 0)
-            ObjectDelete(g_ObjectPrefix + tpLabelName);
+         bool tpLineExists = (ObjectFind(g_ObjectPrefix + tpLineName) >= 0);
 #endif
 
-         // TPラインを作成
-         CreateHorizontalLine(g_ObjectPrefix + tpLineName, tpPrice, TakeProfitLineColor, STYLE_DASH, 1);
+         if(tpLineExists) {
+            // 既存TPラインの価格を更新
+#ifdef __MQL5__
+            ObjectSetDouble(0, g_ObjectPrefix + tpLineName, OBJPROP_PRICE, tpPrice);
+#else
+            ObjectSet(g_ObjectPrefix + tpLineName, OBJPROP_PRICE1, tpPrice);
+#endif
+         } else {
+            // 新規TPラインを作成
+            CreateHorizontalLine(g_ObjectPrefix + tpLineName, tpPrice, TakeProfitLineColor, STYLE_DASH, 1);
+         }
 
-         // TPラベルを作成
+         // TPラベルを更新/作成
          if(EnablePriceLabels) {
+#ifdef __MQL5__
+            bool tpLabelExists = (ObjectFind(0, g_ObjectPrefix + tpLabelName) >= 0);
+#else
+            bool tpLabelExists = (ObjectFind(g_ObjectPrefix + tpLabelName) >= 0);
+#endif
+
             string tpText = "TP: " + DoubleToString(tpPrice, GetDigitsValue()) + " (+" + IntegerToString(tpPoints) + "pt)";
-            CreatePriceLabel(g_ObjectPrefix + tpLabelName, tpText, tpPrice, TakeProfitLineColor, operationType == 0);
+
+            if(tpLabelExists) {
+               // 既存TPラベルの価格とテキストを更新
+#ifdef __MQL5__
+               ObjectSetDouble(0, g_ObjectPrefix + tpLabelName, OBJPROP_PRICE, tpPrice);
+               ObjectSetString(0, g_ObjectPrefix + tpLabelName, OBJPROP_TEXT, tpText);
+#else
+               ObjectSet(g_ObjectPrefix + tpLabelName, OBJPROP_PRICE1, tpPrice);
+               ObjectSetText(g_ObjectPrefix + tpLabelName, tpText);
+#endif
+            } else {
+               // 新規TPラベルを作成
+               CreatePriceLabel(g_ObjectPrefix + tpLabelName, tpText, tpPrice, TakeProfitLineColor, operationType == 0);
+            }
          }
       }
    }
@@ -417,6 +461,7 @@ void CreateLabel(string name, string text, int x, int y, color textColor)
       ObjectSetInteger(0, objectName, OBJPROP_FONTSIZE, 9);
       ObjectSetInteger(0, objectName, OBJPROP_COLOR, textColor);
       ObjectSetInteger(0, objectName, OBJPROP_SELECTABLE, false);
+      ObjectSetInteger(0, objectName, OBJPROP_ZORDER, 1070);
    #else
       ObjectCreate(objectName, OBJ_LABEL, 0, 0, 0);
       ObjectSet(objectName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
@@ -424,6 +469,7 @@ void CreateLabel(string name, string text, int x, int y, color textColor)
       ObjectSet(objectName, OBJPROP_YDISTANCE, y);
       ObjectSetText(objectName, text, 9, "Yu Gothic UI", textColor);
       ObjectSet(objectName, OBJPROP_SELECTABLE, false);
+      ObjectSet(objectName, OBJPROP_ZORDER, 1070);
    #endif
    
    // オブジェクト名を保存
@@ -454,6 +500,7 @@ void CreatePanel(string name, int x, int y, int width, int height, color bgColor
       ObjectSetInteger(0, bgName, OBJPROP_WIDTH, PANEL_BORDER_WIDTH);
       ObjectSetInteger(0, bgName, OBJPROP_BACK, false);
       ObjectSetInteger(0, bgName, OBJPROP_SELECTABLE, false);
+      ObjectSetInteger(0, bgName, OBJPROP_ZORDER, 1050);
    #else
       ObjectCreate(bgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
       ObjectSet(bgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
@@ -467,8 +514,9 @@ void CreatePanel(string name, int x, int y, int width, int height, color bgColor
       ObjectSet(bgName, OBJPROP_WIDTH, PANEL_BORDER_WIDTH);
       ObjectSet(bgName, OBJPROP_BACK, false);
       ObjectSet(bgName, OBJPROP_SELECTABLE, false);
+      ObjectSet(bgName, OBJPROP_ZORDER, 1050);
    #endif
-   
+
    // オブジェクト名を保存
    SaveObjectName(bgName, g_PanelNames, g_PanelObjectCount);
 }
@@ -496,6 +544,7 @@ void CreateTitleBar(string name, int x, int y, int width, int height, color bgCo
       ObjectSetInteger(0, bgName, OBJPROP_COLOR, bgColor);
       ObjectSetInteger(0, bgName, OBJPROP_BACK, false);
       ObjectSetInteger(0, bgName, OBJPROP_SELECTABLE, false);
+      ObjectSetInteger(0, bgName, OBJPROP_ZORDER, 1060);
    #else
       ObjectCreate(bgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
       ObjectSet(bgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
@@ -508,6 +557,7 @@ void CreateTitleBar(string name, int x, int y, int width, int height, color bgCo
       ObjectSet(bgName, OBJPROP_COLOR, bgColor);
       ObjectSet(bgName, OBJPROP_BACK, false);
       ObjectSet(bgName, OBJPROP_SELECTABLE, false);
+      ObjectSet(bgName, OBJPROP_ZORDER, 1060);
    #endif
    
    // タイトルテキスト
@@ -587,6 +637,7 @@ void CreateButton(string name, string text, int x, int y, int width, int height,
       ObjectSetInteger(0, bgName, OBJPROP_WIDTH, 1);
       ObjectSetInteger(0, bgName, OBJPROP_BACK, false);
       ObjectSetInteger(0, bgName, OBJPROP_SELECTABLE, false);
+      ObjectSetInteger(0, bgName, OBJPROP_ZORDER, 1100);
    #else
       ObjectCreate(bgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
       ObjectSet(bgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
@@ -600,6 +651,7 @@ void CreateButton(string name, string text, int x, int y, int width, int height,
       ObjectSet(bgName, OBJPROP_WIDTH, 1);
       ObjectSet(bgName, OBJPROP_BACK, false);
       ObjectSet(bgName, OBJPROP_SELECTABLE, false);
+      ObjectSet(bgName, OBJPROP_ZORDER, 1100);
    #endif
    
    // ボタン本体
@@ -617,6 +669,7 @@ void CreateButton(string name, string text, int x, int y, int width, int height,
       ObjectSetInteger(0, objectName, OBJPROP_BGCOLOR, bgColor);
       ObjectSetInteger(0, objectName, OBJPROP_BORDER_COLOR, ColorDarken(bgColor, 20));
       ObjectSetInteger(0, objectName, OBJPROP_SELECTABLE, false);
+      ObjectSetInteger(0, objectName, OBJPROP_ZORDER, 1101);
    #else
       ObjectCreate(objectName, OBJ_BUTTON, 0, 0, 0);
       ObjectSet(objectName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
@@ -629,6 +682,7 @@ void CreateButton(string name, string text, int x, int y, int width, int height,
       ObjectSet(objectName, OBJPROP_BORDER_COLOR, ColorDarken(bgColor, 20));
       ObjectSet(objectName, OBJPROP_COLOR, textColor);
       ObjectSet(objectName, OBJPROP_SELECTABLE, false);
+      ObjectSet(objectName, OBJPROP_ZORDER, 1101);
    #endif
    
    // オブジェクト名を保存
@@ -1169,6 +1223,7 @@ string objectName = g_ObjectPrefix + lineName;
    ObjectSetInteger(0, objectName, OBJPROP_SELECTABLE, true);
    ObjectSetInteger(0, objectName, OBJPROP_SELECTED, false);
    ObjectSetInteger(0, objectName, OBJPROP_HIDDEN, true);
+   ObjectSetInteger(0, objectName, OBJPROP_ZORDER, 0); // 背景に配置
 #else
    ObjectCreate(objectName, OBJ_HLINE, 0, 0, price);
    ObjectSet(objectName, OBJPROP_COLOR, lineColor);
@@ -1178,6 +1233,7 @@ string objectName = g_ObjectPrefix + lineName;
    ObjectSet(objectName, OBJPROP_SELECTABLE, true);
    ObjectSet(objectName, OBJPROP_SELECTED, false);
    ObjectSet(objectName, OBJPROP_HIDDEN, true);
+   ObjectSet(objectName, OBJPROP_ZORDER, 0); // 背景に配置
 #endif
 
 // オブジェクト名を保存
