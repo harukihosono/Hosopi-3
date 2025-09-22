@@ -284,9 +284,9 @@ void CreateGUI()
    // ========== 行8: 自動売買切替ボタン ==========
 
    // 自動売買切替ボタン（横いっぱい）
-   CreateButton("btnToggleAutoTrading", "AUTO TRADING " + (EnableAutomaticTrading ? "ON" : "OFF"),
+   CreateButton("btnToggleAutoTrading", "AUTO TRADING " + (g_AutoTrading ? "ON" : "OFF"),
                adjustedPanelX + PANEL_MARGIN, currentY, fullWidth, BUTTON_HEIGHT,
-               EnableAutomaticTrading ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE, COLOR_TEXT_WHITE);
+               g_AutoTrading ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE, COLOR_TEXT_WHITE);
    currentY += BUTTON_HEIGHT + PANEL_MARGIN;
 
    // ========== 行9: 情報表示ボタン ==========
@@ -820,13 +820,13 @@ void ProcessButtonClick(string buttonName)
    // Toggle Auto Trading
    else if(buttonName == "btnToggleAutoTrading")
    {
-      EnableAutomaticTrading = !EnableAutomaticTrading;
+      g_AutoTrading = !g_AutoTrading;
 
       UpdateGUI();
-      Print("自動売買を", EnableAutomaticTrading ? "有効" : "無効", "に切り替えました");
+      Print("自動売買を", g_AutoTrading ? "有効" : "無効", "に切り替えました");
 
       // パラメータ変更の通知
-      if(EnableAutomaticTrading)
+      if(g_AutoTrading)
       {
          Print("【重要】自動売買が有効になりました。戦略シグナルでリアルエントリーが実行されます。");
       }

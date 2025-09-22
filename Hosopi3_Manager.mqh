@@ -65,7 +65,7 @@ void SaveEntryLogToFile(string logMessage)
 //+------------------------------------------------------------------+
 void ExecuteRealEntry(int type, string entryReason)
 {
-   if(!EnableAutomaticTrading)
+   if(!g_AutoTrading)
    {
       Print("自動売買が無効のため、リアルエントリーはスキップされました");
       return;
@@ -200,7 +200,7 @@ void ExecuteRealEntry(int type, string entryReason)
 void ExecuteRealNanpin(int typeOrder)
 {
    // 自動売買が無効の場合は何もしない
-   if(!EnableAutomaticTrading)
+   if(!g_AutoTrading)
    {
       Print("自動売買が無効のため、リアルナンピンはスキップされました");
       return;
@@ -298,7 +298,7 @@ void ExecuteRealNanpin(int typeOrder)
 //+------------------------------------------------------------------+
 void ExecuteDiscretionaryEntry(int typeOrder, double lotSize = 0)
 {
-   if(!EnableAutomaticTrading)
+   if(!g_AutoTrading)
    {
       Print("自動売買が無効のため、裁量エントリーはスキップされました");
       return;
@@ -384,7 +384,7 @@ void ExecuteDiscretionaryEntry(int typeOrder, double lotSize = 0)
 //+------------------------------------------------------------------+
 void ExecuteEntryFromLevel(int type, int level)
 {
-   if(!EnableAutomaticTrading)
+   if(!g_AutoTrading)
    {
       Print("自動売買が無効のため、レベル指定エントリーはスキップされました");
       return;
@@ -972,8 +972,8 @@ int InitializeEA()
    Print("ゴーストモードを有効化しました");
 
    // 自動売買設定の初期化と表示
-   Print("自動売買設定: ", EnableAutomaticTrading ? "有効" : "無効");
-   if(EnableAutomaticTrading)
+   Print("自動売買設定: ", g_AutoTrading ? "有効" : "無効");
+   if(g_AutoTrading)
    {
       Print("【重要】自動売買が有効です。戦略シグナルでリアルエントリーが実行されます。");
    }
@@ -1317,9 +1317,9 @@ void ProcessRealEntries(int side)
       Print("ProcessRealEntries: ", side == 0 ? "Buy" : "Sell", " 戦略シグナル検出");
       
       // バックテスト時または自動売買が無効な場合はゴーストエントリーを実行
-      if(IsTesting() || !EnableAutomaticTrading)
+      if(IsTesting() || !g_AutoTrading)
       {
-         Print("【戦略ゴーストエントリー実行】 バックテスト=", IsTesting(), " 自動売買=", EnableAutomaticTrading);
+         Print("【戦略ゴーストエントリー実行】 バックテスト=", IsTesting(), " 自動売買=", g_AutoTrading);
          
          // ナンピンスキップレベルのチェック
          int currentLevel = combined_position_count(operationType) + 1; // 現在のレベル（リアル+ゴースト）
