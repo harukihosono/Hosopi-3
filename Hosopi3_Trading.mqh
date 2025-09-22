@@ -678,9 +678,183 @@ void position_all_close(int magic = 0)
 {
    // BUYポジションをすべて決済
    position_close(OP_BUY, 0.0, 10, magic);
-   
+
    // SELLポジションをすべて決済
    position_close(OP_SELL, 0.0, 10, magic);
+}
+
+//+------------------------------------------------------------------+
+//| 相殺決済関数（OrderCloseBy）- MQL4/MQL5共通化                     |
+//+------------------------------------------------------------------+
+bool position_close_by_opposite(int magic = 0)
+{
+   if(magic == 0) magic = MagicNumber;
+
+   #ifdef __MQL5__
+   // MQL5では相殺決済（netting）は自動的に行われるため、
+   // 同じ通貨ペアの買い/売りポジションを同時に決済する
+   bool buyFound = false, sellFound = false;
+   ulong buyTicket = 0, sellTicket = 0;
+   double buyVolume = 0, sellVolume = 0;
+
+   // 買いポジションを探す
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      ulong ticket = PositionGetTicket(i);
+      if(ticket > 0)
+      {
+         if(PositionGetString(POSITION_SYMBOL) == Symbol() &&
+            PositionGetInteger(POSITION_MAGIC) == magic &&
+            PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY)
+         {
+            buyFound = true;
+            buyTicket = ticket;
+            buyVolume = PositionGetDouble(POSITION_VOLUME);
+            break;
+         }
+      }
+   }
+
+   // 売りポジションを探す
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      ulong ticket = PositionGetTicket(i);
+      if(ticket > 0)
+      {
+         if(PositionGetString(POSITION_SYMBOL) == Symbol() &&
+            PositionGetInteger(POSITION_MAGIC) == magic &&
+            PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_SELL)
+         {
+            sellFound = true;
+            sellTicket = ticket;
+            sellVolume = PositionGetDouble(POSITION_VOLUME);
+            break;
+         }
+      }
+   }
+
+   // 両方のポジションが存在する場合、同時に決済
+   if(buyFound && sellFound)
+   {
+      double closeVolume = MathMin(buyVolume, sellVolume);
+      closeVolume = NormalizeVolume(closeVolume);
+
+      Print("相殺決済実行: Buy=", DoubleToString(buyVolume, 2), " Sell=", DoubleToString(sellVolume, 2),
+            " 決済量=", DoubleToString(closeVolume, 2));
+
+      bool buyResult = position_close(OP_BUY, closeVolume, 10, magic);
+      bool sellResult = position_close(OP_SELL, closeVolume, 10, magic);
+
+      return buyResult && sellResult;
+   }
+
+   Print("相殺決済: 対象ポジションなし (Buy=", buyFound ? "有" : "無", " Sell=", sellFound ? "有" : "無", ")");
+   return false;
+
+   #else
+   // MQL4での相殺決済（OrderCloseBy使用）
+   bool found = false;
+   int buyTicket = -1, sellTicket = -1;
+   double buyLots = 0, sellLots = 0;
+
+   // 買いポジションを探す
+   for(int i = OrdersTotal() - 1; i >= 0; i--)
+   {
+      if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+      {
+         if(OrderType() == OP_BUY && OrderSymbol() == Symbol() &&
+            (magic == 0 || OrderMagicNumber() == magic))
+         {
+            buyTicket = OrderTicket();
+            buyLots = OrderLots();
+            break;
+         }
+      }
+   }
+
+   // 売りポジションを探す
+   for(int i = OrdersTotal() - 1; i >= 0; i--)
+   {
+      if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+      {
+         if(OrderType() == OP_SELL && OrderSymbol() == Symbol() &&
+            (magic == 0 || OrderMagicNumber() == magic))
+         {
+            sellTicket = OrderTicket();
+            sellLots = OrderLots();
+            break;
+         }
+      }
+   }
+
+   // 両方のポジションが存在する場合、OrderCloseByで相殺決済
+   if(buyTicket > 0 && sellTicket > 0)
+   {
+      Print("相殺決済実行: BuyTicket=", buyTicket, " SellTicket=", sellTicket,
+            " BuyLots=", DoubleToString(buyLots, 2), " SellLots=", DoubleToString(sellLots, 2));
+
+      // MQL4のOrderCloseByを使用して相殺決済
+      found = OrderCloseBy(buyTicket, sellTicket);
+
+      if(!found)
+      {
+         Print("相殺決済エラー: ", GetLastError());
+      }
+      else
+      {
+         Print("相殺決済成功");
+      }
+   }
+   else
+   {
+      Print("相殺決済: 対象ポジションなし (Buy=", (buyTicket > 0) ? "有" : "無", " Sell=", (sellTicket > 0) ? "有" : "無", ")");
+   }
+
+   return found;
+   #endif
+}
+
+//+------------------------------------------------------------------+
+//| 指定ロット数での相殺決済関数                                      |
+//+------------------------------------------------------------------+
+bool position_close_by_lots(double lots, int magic = 0)
+{
+   if(magic == 0) magic = MagicNumber;
+   lots = NormalizeVolume(lots);
+
+   #ifdef __MQL5__
+   // MQL5での指定ロット相殺決済
+   bool buyResult = position_close(OP_BUY, lots, 10, magic);
+   bool sellResult = position_close(OP_SELL, lots, 10, magic);
+
+   if(buyResult && sellResult)
+   {
+      Print("指定ロット相殺決済成功: ", DoubleToString(lots, 2), " lots");
+      return true;
+   }
+   else
+   {
+      Print("指定ロット相殺決済失敗: Buy=", buyResult ? "成功" : "失敗", " Sell=", sellResult ? "成功" : "失敗");
+      return false;
+   }
+
+   #else
+   // MQL4での指定ロット相殺決済
+   // 指定ロット数で部分決済を行い、その後相殺決済を実行
+   bool buyPartial = position_close(OP_BUY, lots, 10, magic);
+   bool sellPartial = position_close(OP_SELL, lots, 10, magic);
+
+   if(buyPartial && sellPartial)
+   {
+      Print("指定ロット相殺決済成功: ", DoubleToString(lots, 2), " lots");
+      return true;
+   }
+   else
+   {
+      Print("指定ロット相殺決済失敗: Buy=", buyPartial ? "成功" : "失敗", " Sell=", sellPartial ? "成功" : "失敗");
+      return false;
+   }
+   #endif
 }
 
 // ResetTradingCaches関数を追加（各種キャッシュをリセット）

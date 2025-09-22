@@ -339,7 +339,7 @@ void CreateGUI()
    // 全決済ボタン（横いっぱい）
    CreateButton("btnCloseAll", "Close All", adjustedPanelX + PANEL_MARGIN, currentY, fullWidth, BUTTON_HEIGHT, COLOR_BUTTON_CLOSE_ALL, COLOR_TEXT_WHITE);
    currentY += BUTTON_HEIGHT + sectionSpacing;
-   CreateTooltip("btnCloseAll", "すべてのポジションを即座に決済します");
+   CreateTooltip("btnCloseAll", "相殺決済を優先してすべてのポジションを決済します");
    
    // ========== 行3: 直接エントリーボタン ==========
    
@@ -860,28 +860,39 @@ void ProcessButtonClick(string buttonName)
       UpdateGUI();
    }
    
-   // Close All
+   // Close All（相殺決済優先）
    else if(buttonName == "btnCloseAll")
    {
-      
-      // リアルポジションを閉じる
-      position_close(0, -1);
-      position_close(1, -1);
-      
+      Print("=== Close All実行開始（相殺決済優先） ===");
+
+      // まず相殺決済を試行
+      bool closeByResult = position_close_by_opposite(MagicNumber);
+
+      if(closeByResult)
+      {
+         Print("相殺決済完了");
+         Sleep(100); // 決済処理の完了を待機
+      }
+
+      // 残りのポジションを通常決済
+      Print("残ポジションの通常決済開始");
+      position_close(OP_BUY, 0.0, 10, MagicNumber);
+      position_close(OP_SELL, 0.0, 10, MagicNumber);
+
       // ゴーストもリセット
       ResetGhostPositions(OP_BUY);
       ResetGhostPositions(OP_SELL);
-      
+
       // グローバル変数からもクリア
       ClearGhostGlobalVariables();
-      
+
       // 決済済みフラグもリセット
       g_BuyGhostClosed = false;
       g_SellGhostClosed = false;
       SaveGhostPositionsToGlobal();
-      
-   
-      
+
+      Print("=== Close All完了 ===");
+
       UpdateGUI();
       UpdatePositionTable();
    }

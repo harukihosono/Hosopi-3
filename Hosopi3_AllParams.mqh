@@ -350,6 +350,9 @@ input int UpdateInterval = 1;                      // 更新間隔（秒）
 // 可変利確設定
 input bool VariableTP_Enabled = false;            // ポジション数に応じた利確を有効にする
 
+// 相殺決済設定（常時有効）
+// 相殺決済機能は常時ONとし、CloseAllボタンで相殺決済を優先実行
+
 // MQL5専用設定
 #ifdef __MQL5__
 input ENUM_ORDER_TYPE_FILLING OrderFillingType = ORDER_FILLING_FOK; // オーダーフィリングモード
