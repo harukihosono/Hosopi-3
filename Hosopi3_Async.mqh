@@ -4,6 +4,38 @@
 //+------------------------------------------------------------------+
 #ifndef HOSOPI3_ASYNC_H
 #define HOSOPI3_ASYNC_H
+#ifdef __MQL4__
+#ifndef HOSOPI3_MQL4_TRADE_STRUCTS
+#define HOSOPI3_MQL4_TRADE_STRUCTS
+struct MqlTradeRequest
+{
+   int      action;
+   string   symbol;
+   double   volume;
+   int      type;
+   double   price;
+   int      deviation;
+   double   sl;
+   double   tp;
+   string   comment;
+   int      magic;
+   datetime expiration;
+};
+struct MqlTradeResult
+{
+   uint     retcode;
+   ulong    order;
+   ulong    deal;
+   ulong    request_id;
+   double   volume;
+   double   price;
+   double   bid;
+   double   ask;
+   string   comment;
+};
+#endif // HOSOPI3_MQL4_TRADE_STRUCTS
+#endif // __MQL4__
+
 
 //+------------------------------------------------------------------+
 //| 非同期オーダー送信ラッパー（エラー処理・リトライ機能付き）       |

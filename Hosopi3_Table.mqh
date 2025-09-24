@@ -17,13 +17,21 @@ void CreatePositionTable()
 {
    DeletePositionTable(); // 既存のテーブルを削除
    g_TableObjectCount = 0;
-   
-   // レイアウトパターンを適用
-   ApplyLayoutPattern();
-   
+
+   // InfoPanelが表示されていない場合のみレイアウトパターンを適用
+   if(!IsInfoPanelVisible()) {
+      ApplyLayoutPattern();
+      Print("CreatePositionTable: レイアウトパターン適用 (InfoPanel非表示)");
+   } else {
+      Print("CreatePositionTable: InfoPanel表示中のためレイアウトパターンをスキップ");
+   }
+
    // テーブル位置を調整された値に設定
    int adjustedTableX = g_EffectiveTableX;
    int adjustedTableY = g_EffectiveTableY;
+
+   Print("CreatePositionTable: 実際のテーブル座標 X=", adjustedTableX, " Y=", adjustedTableY,
+         " InfoPanel=", IsInfoPanelVisible() ? "表示" : "非表示");
    
    // ヘッダー列のラベルと位置の修正
    string headers[8] = {"No", "Type", "Lots", "Symbol", "Price", "OpenTime", "Level", "Profit"};
@@ -131,10 +139,13 @@ void UpdatePositionTable()
    // バックテスト時は更新頻度を下げる
    if(IsTesting() && MathMod(Bars, 20) != 0)
       return;
-      
-   // レイアウトパターンを適用
-   ApplyLayoutPattern();
-   
+
+   // InfoPanelが表示されていない場合のみレイアウトパターンを適用
+   if(!IsInfoPanelVisible()) {
+      ApplyLayoutPattern();
+   }
+   // InfoPanel表示時は UpdatePositionTableLocation() で設定された座標を使用
+
    // テーブル位置を調整された値に設定
    int adjustedTableX = g_EffectiveTableX;
    int adjustedTableY = g_EffectiveTableY;
@@ -808,9 +819,102 @@ void DeletePositionTable()
       if(ObjectFindMQL4(g_TableNames[i]) >= 0)
          ObjectDeleteMQL4(g_TableNames[i]);
    }
-   
+
    g_TableObjectCount = 0;
    ChartRedraw();
+}
+
+//+------------------------------------------------------------------+
+//| ObjectSetIntegerで既存テーブルの位置を直接変更                    |
+//+------------------------------------------------------------------+
+void MovePositionTableDirectly(int newX, int newY)
+{
+   string tablePrefix = g_ObjectPrefix + "GhostTable_";
+
+   Print("MovePositionTableDirectly: X=", newX, " Y=", newY);
+
+   // 背景とヘッダー要素を移動
+   string objectsToMove[];
+   ArrayResize(objectsToMove, 4);
+   objectsToMove[0] = tablePrefix + "BG";
+   objectsToMove[1] = tablePrefix + "TitleBG";
+   objectsToMove[2] = tablePrefix + "Title";
+   objectsToMove[3] = tablePrefix + "HeaderBG";
+
+   for(int i = 0; i < ArraySize(objectsToMove); i++)
+   {
+      if(ObjectFindMQL4(objectsToMove[i]) >= 0)
+      {
+         ObjectSetMQL4(objectsToMove[i], OBJPROP_XDISTANCE_MQL4, newX);
+         ObjectSetMQL4(objectsToMove[i], OBJPROP_YDISTANCE_MQL4, newY + (i == 0 ? 0 : (i == 1 || i == 3 ? TITLE_HEIGHT : 3)));
+      }
+   }
+
+   // ヘッダー列を移動
+   string headers[8] = {"No", "Type", "Lots", "Symbol", "Price", "OpenTime", "Level", "Profit"};
+   int columnWidths[8] = {25, 45, 45, 90, 95, 140, 45, 90};
+   int positions[8];
+
+   positions[0] = 5;
+   for(int i = 1; i < 8; i++) {
+      positions[i] = positions[i-1] + columnWidths[i-1];
+   }
+
+   for(int i = 0; i < 8; i++)
+   {
+      string headerName = tablePrefix + "Header_" + headers[i];
+      if(ObjectFindMQL4(headerName) >= 0)
+      {
+         ObjectSetMQL4(headerName, OBJPROP_XDISTANCE_MQL4, newX + positions[i]);
+         ObjectSetMQL4(headerName, OBJPROP_YDISTANCE_MQL4, newY + TITLE_HEIGHT + 4);
+      }
+   }
+
+   // 行オブジェクトを移動（最大30行分）
+   for(int row = 0; row < 30; row++)
+   {
+      string rowBgName = tablePrefix + "Row_" + IntegerToString(row) + "_BG";
+      if(ObjectFindMQL4(rowBgName) >= 0)
+      {
+         int rowY = newY + TITLE_HEIGHT + TABLE_ROW_HEIGHT * (row + 1);
+         ObjectSetMQL4(rowBgName, OBJPROP_XDISTANCE_MQL4, newX);
+         ObjectSetMQL4(rowBgName, OBJPROP_YDISTANCE_MQL4, rowY);
+
+         // 各列のデータラベルも移動
+         string columnTypes[8] = {"No", "Type", "Lots", "Symbol", "Price", "OpenTime", "Level", "Profit"};
+         for(int col = 0; col < 8; col++)
+         {
+            string colName = tablePrefix + "Row_" + IntegerToString(row) + "_" + columnTypes[col];
+            if(ObjectFindMQL4(colName) >= 0)
+            {
+               ObjectSetMQL4(colName, OBJPROP_XDISTANCE_MQL4, newX + positions[col]);
+               ObjectSetMQL4(colName, OBJPROP_YDISTANCE_MQL4, rowY + 4);
+            }
+         }
+      }
+   }
+
+   string totalObjects[];
+   ArrayResize(totalObjects, 5);
+   totalObjects[0] = tablePrefix + "Row_Total_BG";
+   totalObjects[1] = tablePrefix + "Row_Total_Text";
+   totalObjects[2] = tablePrefix + "Row_BuyTotal";
+   totalObjects[3] = tablePrefix + "Row_SellTotal";
+   totalObjects[4] = tablePrefix + "Row_NetTotal";
+
+   for(int i = 0; i < ArraySize(totalObjects); i++)
+   {
+      if(ObjectFindMQL4(totalObjects[i]) >= 0)
+      {
+         int totalY = newY + TITLE_HEIGHT + TABLE_ROW_HEIGHT * 21; // 適当な行位置
+         ObjectSetMQL4(totalObjects[i], OBJPROP_XDISTANCE_MQL4,
+                      newX + (i == 0 ? 0 : (i == 1 ? positions[0] : positions[i+1])));
+         ObjectSetMQL4(totalObjects[i], OBJPROP_YDISTANCE_MQL4, totalY + (i == 0 ? 0 : 4));
+      }
+   }
+
+   ChartRedraw();
+   Print("MovePositionTableDirectly: 移動完了");
 }
 
 //+------------------------------------------------------------------+

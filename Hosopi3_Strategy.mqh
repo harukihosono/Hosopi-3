@@ -9,6 +9,7 @@
 #include "Hosopi3_StrategyTime.mqh"       // 時間ベース戦略
 #include "Hosopi3_StrategyTechnical.mqh"  // テクニカル指標戦略
 #include "Hosopi3_StrategyIndicators.mqh" // インジケーター計算
+#include "Hosopi3_CyberUI.mqh"            // CyberUIシステム
 
 //+------------------------------------------------------------------+
 //| 戦略システム統合初期化                                            |
@@ -216,6 +217,48 @@ void UpdateStrategySystem()
 {
     // インジケーター値を更新（必要に応じて）
     UpdateIndicatorValues();
+
+    // CyberUIシステムとの連携 - エントリー状態を評価してUIを更新（現在無効化）
+    // UpdateCyberUIWithStrategyState();
+}
+
+//+------------------------------------------------------------------+
+//| CyberUIとの戦略状態連携                                          |
+//+------------------------------------------------------------------+
+void UpdateCyberUIWithStrategyState()
+{
+    // Buy/Sellの各エントリー信号を評価
+    bool buySignal = false;
+    bool sellSignal = false;
+
+    // インジケーター戦略が有効な場合のみ評価
+    if(g_EnableIndicatorsEntry)
+    {
+        buySignal = EvaluateStrategyForEntry(0);  // Buy側 (side=0)
+        sellSignal = EvaluateStrategyForEntry(1); // Sell側 (side=1)
+    }
+
+    // エントリー状態を決定
+    ENUM_ENTRY_STATE entryState = ENTRY_STATE_NEUTRAL;
+
+    if(buySignal && sellSignal)
+    {
+        entryState = ENTRY_STATE_BUYSELL;
+    }
+    else if(buySignal)
+    {
+        entryState = ENTRY_STATE_BUY;
+    }
+    else if(sellSignal)
+    {
+        entryState = ENTRY_STATE_SELL;
+    }
+
+    // CyberUIエントリー状態を設定（チャート背景色を更新）
+    SetCyberEntryState(entryState);
+
+    // テクニカル指標パネルの状態を更新
+    UpdateCyberTechnicalPanels();
 }
 
 //+------------------------------------------------------------------+

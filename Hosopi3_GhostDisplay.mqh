@@ -79,6 +79,7 @@ void ShowGhostEntryArrow(int operationType, double price, int entryPoint, double
             ObjectSetInteger(0, lineName, OBJPROP_WIDTH, 1);
             ObjectSetInteger(0, lineName, OBJPROP_SELECTABLE, false);
             ObjectSetInteger(0, lineName, OBJPROP_BACK, true);
+            ObjectSetInteger(0, lineName, OBJPROP_ZORDER, -100); // 完全に背景に配置
         }
         #else
         if(ObjectCreate(lineName, OBJ_HLINE, 0, 0, price))
@@ -87,6 +88,7 @@ void ShowGhostEntryArrow(int operationType, double price, int entryPoint, double
             ObjectSet(lineName, OBJPROP_STYLE, STYLE_DOT);
             ObjectSet(lineName, OBJPROP_WIDTH, 1);
             ObjectSet(lineName, OBJPROP_SELECTABLE, false);
+            ObjectSet(lineName, OBJPROP_ZORDER, -100); // 完全に背景に配置
             ObjectSet(lineName, OBJPROP_BACK, true);
         }
         #endif

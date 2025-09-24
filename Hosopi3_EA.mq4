@@ -24,6 +24,7 @@
 #include "Hosopi3_Manager.mqh"
 #include "Hosopi3_Notification.mqh"
 #include "Hosopi3_Strategy.mqh"
+#include "Hosopi3_Async.mqh"
 
 
 

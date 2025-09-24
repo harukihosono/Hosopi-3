@@ -636,6 +636,8 @@ void OnTickManager()
    if(!isTesting || (isTesting && guiUpdateCounter % 1000 == 0)) // バックテスト時は1000回毎に実行
    {
       UpdateGUI();
+      UpdateInfoPanel(); // InfoPanel更新
+      // UpdateCyberUI(); // 現在無効化
    }
 
    // 平均取得価格ラインの表示更新（バックテスト時は頻度を下げる）
@@ -1094,6 +1096,12 @@ int InitializeEA()
    // ポジションテーブルを作成
    CreatePositionTable();
 
+   // InfoPanelを初期化
+   InitializeInfoPanel();
+
+   // CyberUIシステムを初期化（現在無効化）
+   // InitializeCyberUI();
+
    // ゴーストモード初期状態のログ出力
    Print("ゴーストモード: ", g_GhostMode ? "ON" : "OFF");
 
@@ -1131,7 +1139,13 @@ void DeinitializeEA(const int reason)
    
    // テーブルを削除
    DeletePositionTable();
-   
+
+   // InfoPanelを終了
+   DeinitializeInfoPanel();
+
+   // CyberUIシステムを終了（現在無効化）
+   // DeinitializeCyberUI();
+
    // ラインを削除
    DeleteAllLines();
    

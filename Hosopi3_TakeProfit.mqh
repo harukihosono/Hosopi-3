@@ -679,15 +679,55 @@ void ManageTakeProfit(int side)
    if(TakeProfitMode != TP_OFF)
    {
       string lineName = "TPLine" + ((side == 0) ? "Buy" : "Sell");
+      bool tpLineUpdated = false;
+      string tpObjectName = "";
+
 #ifdef __MQL5__
       if(ObjectFind(0, g_ObjectPrefix + lineName) >= 0)
-         ObjectDelete(0, g_ObjectPrefix + lineName);
+      {
+         tpObjectName = g_ObjectPrefix + lineName;
+         ObjectSetDouble(0, tpObjectName, OBJPROP_PRICE, tpPrice);
+         tpLineUpdated = true;
+      }
+      else if(ObjectFind(0, g_ObjectPrefix + g_ObjectPrefix + lineName) >= 0)
+      {
+         tpObjectName = g_ObjectPrefix + g_ObjectPrefix + lineName;
+         ObjectSetDouble(0, tpObjectName, OBJPROP_PRICE, tpPrice);
+         tpLineUpdated = true;
+      }
 #else
       if(ObjectFind(g_ObjectPrefix + lineName) >= 0)
-         ObjectDelete(g_ObjectPrefix + lineName);
+      {
+         tpObjectName = g_ObjectPrefix + lineName;
+         ObjectSet(tpObjectName, OBJPROP_PRICE1, tpPrice);
+         tpLineUpdated = true;
+      }
+      else if(ObjectFind(g_ObjectPrefix + g_ObjectPrefix + lineName) >= 0)
+      {
+         tpObjectName = g_ObjectPrefix + g_ObjectPrefix + lineName;
+         ObjectSet(tpObjectName, OBJPROP_PRICE1, tpPrice);
+         tpLineUpdated = true;
+      }
 #endif
 
-      CreateHorizontalLine(g_ObjectPrefix + lineName, tpPrice, TakeProfitLineColor, STYLE_DASH, 1);
+#ifdef __MQL5__
+      if(tpLineUpdated)
+      {
+         ObjectSetInteger(0, tpObjectName, OBJPROP_ZORDER, -100);
+         ObjectSetInteger(0, tpObjectName, OBJPROP_BACK, true);
+      }
+#else
+      if(tpLineUpdated)
+      {
+         ObjectSet(tpObjectName, OBJPROP_ZORDER, -100);
+         ObjectSet(tpObjectName, OBJPROP_BACK, true);
+      }
+#endif
+
+      if(!tpLineUpdated)
+      {
+         CreateHorizontalLine(g_ObjectPrefix + lineName, tpPrice, TakeProfitLineColor, STYLE_DASH, 1);
+      }
 
       // ラベルも表示
       string labelName = "TPLabel" + ((side == 0) ? "Buy" : "Sell");

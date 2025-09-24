@@ -6,6 +6,8 @@
 #include "Hosopi3_Compat.mqh"
 #include "Hosopi3_Utils.mqh"
 #include "Hosopi3_Trading.mqh"
+#include "Hosopi3_InfoPanel.mqh"
+#include "Hosopi3_Async.mqh"
 
 // 前方宣言（#import不要）
 
@@ -423,6 +425,12 @@ void CreateGUI()
                g_AutoTrading ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE, COLOR_TEXT_WHITE);
    currentY += BUTTON_HEIGHT + PANEL_MARGIN;
 
+   // Info Panel トグルボタン
+   CreateButton("btnToggleInfoPanel", "INFO PANEL " + (IsInfoPanelVisible() ? "ON" : "OFF"),
+               adjustedPanelX + PANEL_MARGIN, currentY, fullWidth, BUTTON_HEIGHT,
+               IsInfoPanelVisible() ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE, COLOR_TEXT_LIGHT);
+   currentY += BUTTON_HEIGHT + PANEL_MARGIN;
+
    // ========== 行9: 情報表示ボタン ==========
    
    // ロット情報表示ボタン (左)
@@ -461,7 +469,7 @@ void CreateLabel(string name, string text, int x, int y, color textColor)
       ObjectSetInteger(0, objectName, OBJPROP_FONTSIZE, 9);
       ObjectSetInteger(0, objectName, OBJPROP_COLOR, textColor);
       ObjectSetInteger(0, objectName, OBJPROP_SELECTABLE, false);
-      ObjectSetInteger(0, objectName, OBJPROP_ZORDER, 1070);
+      ObjectSetInteger(0, objectName, OBJPROP_ZORDER, 3020);
    #else
       ObjectCreate(objectName, OBJ_LABEL, 0, 0, 0);
       ObjectSet(objectName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
@@ -469,7 +477,7 @@ void CreateLabel(string name, string text, int x, int y, color textColor)
       ObjectSet(objectName, OBJPROP_YDISTANCE, y);
       ObjectSetText(objectName, text, 9, "Yu Gothic UI", textColor);
       ObjectSet(objectName, OBJPROP_SELECTABLE, false);
-      ObjectSet(objectName, OBJPROP_ZORDER, 1070);
+      ObjectSet(objectName, OBJPROP_ZORDER, 3020);
    #endif
    
    // オブジェクト名を保存
@@ -500,7 +508,7 @@ void CreatePanel(string name, int x, int y, int width, int height, color bgColor
       ObjectSetInteger(0, bgName, OBJPROP_WIDTH, PANEL_BORDER_WIDTH);
       ObjectSetInteger(0, bgName, OBJPROP_BACK, false);
       ObjectSetInteger(0, bgName, OBJPROP_SELECTABLE, false);
-      ObjectSetInteger(0, bgName, OBJPROP_ZORDER, 1050);
+      ObjectSetInteger(0, bgName, OBJPROP_ZORDER, 3000);
    #else
       ObjectCreate(bgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
       ObjectSet(bgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
@@ -514,7 +522,7 @@ void CreatePanel(string name, int x, int y, int width, int height, color bgColor
       ObjectSet(bgName, OBJPROP_WIDTH, PANEL_BORDER_WIDTH);
       ObjectSet(bgName, OBJPROP_BACK, false);
       ObjectSet(bgName, OBJPROP_SELECTABLE, false);
-      ObjectSet(bgName, OBJPROP_ZORDER, 1050);
+      ObjectSet(bgName, OBJPROP_ZORDER, 3000);
    #endif
 
    // オブジェクト名を保存
@@ -544,7 +552,7 @@ void CreateTitleBar(string name, int x, int y, int width, int height, color bgCo
       ObjectSetInteger(0, bgName, OBJPROP_COLOR, bgColor);
       ObjectSetInteger(0, bgName, OBJPROP_BACK, false);
       ObjectSetInteger(0, bgName, OBJPROP_SELECTABLE, false);
-      ObjectSetInteger(0, bgName, OBJPROP_ZORDER, 1060);
+      ObjectSetInteger(0, bgName, OBJPROP_ZORDER, 3010);
    #else
       ObjectCreate(bgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
       ObjectSet(bgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
@@ -557,7 +565,7 @@ void CreateTitleBar(string name, int x, int y, int width, int height, color bgCo
       ObjectSet(bgName, OBJPROP_COLOR, bgColor);
       ObjectSet(bgName, OBJPROP_BACK, false);
       ObjectSet(bgName, OBJPROP_SELECTABLE, false);
-      ObjectSet(bgName, OBJPROP_ZORDER, 1060);
+      ObjectSet(bgName, OBJPROP_ZORDER, 3010);
    #endif
    
    // タイトルテキスト
@@ -637,7 +645,7 @@ void CreateButton(string name, string text, int x, int y, int width, int height,
       ObjectSetInteger(0, bgName, OBJPROP_WIDTH, 1);
       ObjectSetInteger(0, bgName, OBJPROP_BACK, false);
       ObjectSetInteger(0, bgName, OBJPROP_SELECTABLE, false);
-      ObjectSetInteger(0, bgName, OBJPROP_ZORDER, 1100);
+      ObjectSetInteger(0, bgName, OBJPROP_ZORDER, 3030);
    #else
       ObjectCreate(bgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
       ObjectSet(bgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
@@ -651,7 +659,7 @@ void CreateButton(string name, string text, int x, int y, int width, int height,
       ObjectSet(bgName, OBJPROP_WIDTH, 1);
       ObjectSet(bgName, OBJPROP_BACK, false);
       ObjectSet(bgName, OBJPROP_SELECTABLE, false);
-      ObjectSet(bgName, OBJPROP_ZORDER, 1100);
+      ObjectSet(bgName, OBJPROP_ZORDER, 3030);
    #endif
    
    // ボタン本体
@@ -669,7 +677,7 @@ void CreateButton(string name, string text, int x, int y, int width, int height,
       ObjectSetInteger(0, objectName, OBJPROP_BGCOLOR, bgColor);
       ObjectSetInteger(0, objectName, OBJPROP_BORDER_COLOR, ColorDarken(bgColor, 20));
       ObjectSetInteger(0, objectName, OBJPROP_SELECTABLE, false);
-      ObjectSetInteger(0, objectName, OBJPROP_ZORDER, 1101);
+      ObjectSetInteger(0, objectName, OBJPROP_ZORDER, 3040);
    #else
       ObjectCreate(objectName, OBJ_BUTTON, 0, 0, 0);
       ObjectSet(objectName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
@@ -682,7 +690,7 @@ void CreateButton(string name, string text, int x, int y, int width, int height,
       ObjectSet(objectName, OBJPROP_BORDER_COLOR, ColorDarken(bgColor, 20));
       ObjectSet(objectName, OBJPROP_COLOR, textColor);
       ObjectSet(objectName, OBJPROP_SELECTABLE, false);
-      ObjectSet(objectName, OBJPROP_ZORDER, 1101);
+      ObjectSet(objectName, OBJPROP_ZORDER, 3040);
    #endif
    
    // オブジェクト名を保存
@@ -817,8 +825,9 @@ void UpdateGUI()
       ObjectSet(avgPriceBtnPrefix, OBJPROP_BORDER_COLOR, ColorDarken(avgPriceButtonColor, 20));
       ObjectSetText(avgPriceBtnPrefix, g_AvgPriceVisible ? "AVG PRICE ON" : "AVG PRICE OFF", 9, "Yu Gothic UI", COLOR_TEXT_LIGHT);
    #endif
-   
-   ChartRedraw(); // チャートを再描画
+
+   // ChartRedraw()は必要な場合のみ呼び出す（HLINEちかちか防止）
+   // ChartRedraw(); // HLINEちかちか防止のため無効化
 }
 
 
@@ -1004,6 +1013,20 @@ void ProcessButtonClick(string buttonName)
       {
          Print("【重要】自動売買が無効になりました。戦略シグナルではゴーストエントリーのみ実行されます。");
       }
+   }
+
+   // Toggle Info Panel
+   else if(buttonName == "btnToggleInfoPanel")
+   {
+      ToggleInfoPanel();
+      // UpdateGUI()を呼ばず、ボタンのテキストのみ更新
+      ObjectSetString(0, "btnToggleInfoPanel", OBJPROP_TEXT, "INFO PANEL " + (IsInfoPanelVisible() ? "ON" : "OFF"));
+      ObjectSetInteger(0, "btnToggleInfoPanel", OBJPROP_BGCOLOR,
+                      IsInfoPanelVisible() ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE);
+      Print("テクニカル指標InfoPanel: ", IsInfoPanelVisible() ? "表示" : "非表示");
+
+      // 強制的にテーブル位置を更新
+      ForceUpdatePositionTableLocation();
    }
 
    // Panel Minimize/Maximize
@@ -1238,33 +1261,45 @@ void CreateHorizontalLine(string lineName, double price, color lineColor, int li
 string objectName = g_ObjectPrefix + lineName;
 
 #ifdef __MQL5__
+   // 既存のオブジェクトがある場合は価格のみ更新（ちらつき防止）
    if(ObjectFind(0, objectName) >= 0)
-      ObjectDelete(0, objectName);
-#else
-   if(ObjectFind(objectName) >= 0)
-      ObjectDelete(objectName);
-#endif
-   
-#ifdef __MQL5__
+   {
+      ObjectSetDouble(0, objectName, OBJPROP_PRICE, price);
+      ObjectSetInteger(0, objectName, OBJPROP_ZORDER, -100);
+      ObjectSetInteger(0, objectName, OBJPROP_BACK, true);
+      return;
+   }
+
+   // 新規作成
    ObjectCreate(0, objectName, OBJ_HLINE, 0, 0, price);
    ObjectSetInteger(0, objectName, OBJPROP_COLOR, lineColor);
    ObjectSetInteger(0, objectName, OBJPROP_STYLE, lineStyle);
    ObjectSetInteger(0, objectName, OBJPROP_WIDTH, lineWidth);
-   ObjectSetInteger(0, objectName, OBJPROP_BACK, false);
+   ObjectSetInteger(0, objectName, OBJPROP_BACK, true);
    ObjectSetInteger(0, objectName, OBJPROP_SELECTABLE, true);
    ObjectSetInteger(0, objectName, OBJPROP_SELECTED, false);
    ObjectSetInteger(0, objectName, OBJPROP_HIDDEN, true);
-   ObjectSetInteger(0, objectName, OBJPROP_ZORDER, 0); // 背景に配置
+   ObjectSetInteger(0, objectName, OBJPROP_ZORDER, -100); // 完全に背景に配置
 #else
+   // 既存のオブジェクトがある場合は価格のみ更新（ちらつき防止）
+   if(ObjectFind(objectName) >= 0)
+   {
+      ObjectSet(objectName, OBJPROP_PRICE1, price);
+      ObjectSet(objectName, OBJPROP_ZORDER, -100);
+      ObjectSet(objectName, OBJPROP_BACK, true);
+      return;
+   }
+
+   // 新規作成
    ObjectCreate(objectName, OBJ_HLINE, 0, 0, price);
    ObjectSet(objectName, OBJPROP_COLOR, lineColor);
    ObjectSet(objectName, OBJPROP_STYLE, lineStyle);
    ObjectSet(objectName, OBJPROP_WIDTH, lineWidth);
-   ObjectSet(objectName, OBJPROP_BACK, false);
+   ObjectSet(objectName, OBJPROP_BACK, true);
    ObjectSet(objectName, OBJPROP_SELECTABLE, true);
    ObjectSet(objectName, OBJPROP_SELECTED, false);
    ObjectSet(objectName, OBJPROP_HIDDEN, true);
-   ObjectSet(objectName, OBJPROP_ZORDER, 0); // 背景に配置
+   ObjectSet(objectName, OBJPROP_ZORDER, -100); // 完全に背景に配置
 #endif
 
 // オブジェクト名を保存
