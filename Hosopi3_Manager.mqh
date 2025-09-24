@@ -165,8 +165,27 @@ void ExecuteRealEntry(int type, string entryReason)
    // エントリー理由をログに記録
    LogEntryReason(type, "自動エントリー", entryReason);
    
-   // MQL4/MQL5互換のposition_entry関数を使用
+   // 非同期注文を使用してエントリー
+   #ifdef __MQL5__
+   MqlTradeRequest request;
+   MqlTradeResult resultAsync;
+   ZeroMemory(request);
+
+   request.action = TRADE_ACTION_DEAL;
+   request.symbol = _Symbol;
+   request.volume = lots;
+   request.type = (ENUM_ORDER_TYPE)type;
+   request.price = (type == OP_BUY) ? SymbolInfoDouble(_Symbol, SYMBOL_ASK) : SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   request.deviation = Slippage;
+   request.magic = MagicNumber;
+   request.comment = "Hosopi 3 EA";
+
+   bool result = SendOrderWithRetryAsync(request, resultAsync, 3, UseAsyncOrders);
+   #else
+   // MQL4では従来の関数を使用
    bool result = position_entry(type, lots, Slippage, MagicNumber, "Hosopi 3 EA");
+   #endif
+
    if(result)
    {
       
@@ -260,8 +279,26 @@ void ExecuteRealNanpin(int typeOrder)
    }
    
    
-   // MQL4/MQL5互換のposition_entry関数を使用
+   // 非同期注文を使用してナンピンエントリー
+   #ifdef __MQL5__
+   MqlTradeRequest request;
+   MqlTradeResult resultAsync;
+   ZeroMemory(request);
+
+   request.action = TRADE_ACTION_DEAL;
+   request.symbol = _Symbol;
+   request.volume = lotsToUse;
+   request.type = (ENUM_ORDER_TYPE)typeOrder;
+   request.price = (typeOrder == OP_BUY) ? SymbolInfoDouble(_Symbol, SYMBOL_ASK) : SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   request.deviation = Slippage;
+   request.magic = MagicNumber;
+   request.comment = "Hosopi 3 EA Nanpin";
+
+   bool entryResult = SendOrderWithRetryAsync(request, resultAsync, 3, UseAsyncOrders);
+   #else
+   // MQL4では従来の関数を使用
    bool entryResult = position_entry(typeOrder, lotsToUse, Slippage, MagicNumber, "Hosopi 3 EA Nanpin");
+   #endif
    
    if(entryResult) {
             
@@ -336,8 +373,26 @@ void ExecuteDiscretionaryEntry(int typeOrder, double lotSize = 0)
    // エントリー理由をログに記録
    LogEntryReason(typeOrder, "裁量エントリー", "手動ボタン操作によるエントリー");
    
-   // MQL4/MQL5互換のposition_entry関数を使用
+   // 非同期注文を使用して手動エントリー
+   #ifdef __MQL5__
+   MqlTradeRequest request;
+   MqlTradeResult resultAsync;
+   ZeroMemory(request);
+
+   request.action = TRADE_ACTION_DEAL;
+   request.symbol = _Symbol;
+   request.volume = lotsToUse;
+   request.type = (ENUM_ORDER_TYPE)typeOrder;
+   request.price = (typeOrder == OP_BUY) ? SymbolInfoDouble(_Symbol, SYMBOL_ASK) : SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   request.deviation = Slippage;
+   request.magic = MagicNumber;
+   request.comment = "Hosopi 3 EA Manual";
+
+   bool entryResult = SendOrderWithRetryAsync(request, resultAsync, 3, UseAsyncOrders);
+   #else
+   // MQL4では従来の関数を使用
    bool entryResult = position_entry(typeOrder, lotsToUse, Slippage, MagicNumber, "Hosopi 3 EA Manual");
+   #endif
    
    if(entryResult)
    {
@@ -407,8 +462,26 @@ void ExecuteEntryFromLevel(int type, int level)
    // エントリー理由をログに記録
    LogEntryReason(type, "レベル指定エントリー", "手動選択: レベル" + IntegerToString(level));
    
-   // MQL4/MQL5互換のposition_entry関数を使用
+   // 非同期注文を使用してレベル指定エントリー
+   #ifdef __MQL5__
+   MqlTradeRequest request;
+   MqlTradeResult resultAsync;
+   ZeroMemory(request);
+
+   request.action = TRADE_ACTION_DEAL;
+   request.symbol = _Symbol;
+   request.volume = lots;
+   request.type = (ENUM_ORDER_TYPE)type;
+   request.price = (type == OP_BUY) ? SymbolInfoDouble(_Symbol, SYMBOL_ASK) : SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   request.deviation = Slippage;
+   request.magic = MagicNumber;
+   request.comment = "Hosopi 3 EA Level " + IntegerToString(level);
+
+   bool result = SendOrderWithRetryAsync(request, resultAsync, 3, UseAsyncOrders);
+   #else
+   // MQL4では従来の関数を使用
    bool result = position_entry(type, lots, Slippage, MagicNumber, "Hosopi 3 EA Level " + IntegerToString(level));
+   #endif
    
    if(result)
    {

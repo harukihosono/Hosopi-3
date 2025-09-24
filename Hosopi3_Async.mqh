@@ -204,6 +204,30 @@ void CloseAllPositionsAsync(bool useAsync = true, bool useCloseBy = false)
 }
 
 //+------------------------------------------------------------------+
+//| 相殺決済（CloseBy）がサポートされているか確認                   |
+//+------------------------------------------------------------------+
+bool IsCloseBySupported()
+{
+   #ifdef __MQL5__
+   // アカウントタイプを取得
+   ENUM_ACCOUNT_MARGIN_MODE marginMode = (ENUM_ACCOUNT_MARGIN_MODE)AccountInfoInteger(ACCOUNT_MARGIN_MODE);
+
+   // ヘッジアカウントの場合のみCloseByが使用可能
+   if(marginMode == ACCOUNT_MARGIN_MODE_RETAIL_HEDGING) {
+      return true;
+   }
+
+   return false;
+
+   #else // MQL4の場合
+
+   // MQL4ではOrderCloseByが使用可能
+   return true;
+
+   #endif
+}
+
+//+------------------------------------------------------------------+
 //| 相殺決済を使った非同期全決済（MT5のみ）                         |
 //+------------------------------------------------------------------+
 #ifdef __MQL5__

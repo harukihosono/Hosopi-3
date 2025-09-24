@@ -846,17 +846,45 @@ void ProcessButtonClick(string buttonName)
       ObjectSet(originalName, OBJPROP_STATE, false);
    #endif
    
-   // Buy Close
+   // Buy Close - 非同期対応
    if(buttonName == "btnCloseBuy")
    {
+      #ifdef __MQL5__
+      // 非同期でBuyポジションを全決済
+      for(int i = 0; i < PositionsTotal(); i++) {
+         ulong ticket = PositionGetTicket(i);
+         if(PositionSelectByTicket(ticket)) {
+            if(PositionGetInteger(POSITION_MAGIC) == MagicNumber &&
+               PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY) {
+               ClosePositionAsync(ticket, UseAsyncOrders);
+               if(UseAsyncOrders) Sleep(10);
+            }
+         }
+      }
+      #else
       position_close(0, -1);
+      #endif
       UpdateGUI();
    }
-   
-   // Sell Close
+
+   // Sell Close - 非同期対応
    else if(buttonName == "btnCloseSell")
    {
+      #ifdef __MQL5__
+      // 非同期でSellポジションを全決済
+      for(int i = 0; i < PositionsTotal(); i++) {
+         ulong ticket = PositionGetTicket(i);
+         if(PositionSelectByTicket(ticket)) {
+            if(PositionGetInteger(POSITION_MAGIC) == MagicNumber &&
+               PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_SELL) {
+               ClosePositionAsync(ticket, UseAsyncOrders);
+               if(UseAsyncOrders) Sleep(10);
+            }
+         }
+      }
+      #else
       position_close(1, -1);
+      #endif
       UpdateGUI();
    }
    
@@ -865,19 +893,11 @@ void ProcessButtonClick(string buttonName)
    {
       Print("=== Close All実行開始（相殺決済優先） ===");
 
-      // まず相殺決済を試行
-      bool closeByResult = position_close_by_opposite(MagicNumber);
+      // 非同期で相殺決済を優先して全決済
+      CloseAllPositionsAsync(UseAsyncOrders, true);  // 相殺決済を優先
 
-      if(closeByResult)
-      {
-         Print("相殺決済完了");
-         Sleep(100); // 決済処理の完了を待機
-      }
-
-      // 残りのポジションを通常決済
-      Print("残ポジションの通常決済開始");
-      position_close(OP_BUY, 0.0, 10, MagicNumber);
-      position_close(OP_SELL, 0.0, 10, MagicNumber);
+      // 少し待機してからゴーストポジションもクリア
+      Sleep(100);
 
       // ゴーストもリセット
       ResetGhostPositions(OP_BUY);

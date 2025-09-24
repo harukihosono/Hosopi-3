@@ -137,7 +137,7 @@ void CheckTrailingStopConditions(int side)
                      request.tp = PositionGetDouble(POSITION_TP);
                      request.type_filling = (ENUM_ORDER_TYPE_FILLING)OrderFillingType;
                      
-                     if(OrderSend(request, result))
+                     if(SendOrderWithRetryAsync(request, result, 3, UseAsyncOrders))
                      {
                         // 成功
                      }
@@ -220,7 +220,7 @@ void CheckTrailingStopConditions(int side)
                      request.tp = PositionGetDouble(POSITION_TP);
                      request.type_filling = (ENUM_ORDER_TYPE_FILLING)OrderFillingType;
                      
-                     if(OrderSend(request, result))
+                     if(SendOrderWithRetryAsync(request, result, 3, UseAsyncOrders))
                      {
                         // 成功
                      }
@@ -541,7 +541,7 @@ void ManageTakeProfit(int side)
                   request.tp = tpPrice;
                   request.type_filling = (ENUM_ORDER_TYPE_FILLING)OrderFillingType;
                   
-                  if(OrderSend(request, result))
+                  if(SendOrderWithRetryAsync(request, result, 3, UseAsyncOrders))
                   {
                      // リミット決済設定完了
                   }
@@ -786,7 +786,11 @@ void CheckBreakEvenByPositions()
          // Buy側建値決済実行
                
          // Buy側のポジションをすべて決済
+         #ifdef __MQL5__
+         CloseAllPositionsAsync(UseAsyncOrders, false);
+         #else
          position_close(OP_BUY);
+         #endif
          
          // 関連するゴーストもリセット
          ResetSpecificGhost(OP_BUY);
@@ -859,7 +863,11 @@ void CheckBreakEvenByPositions()
          // Sell側建値決済実行
                
          // Sell側のポジションをすべて決済
+         #ifdef __MQL5__
+         CloseAllPositionsAsync(UseAsyncOrders, false);
+         #else
          position_close(OP_SELL);
+         #endif
          
          // 関連するゴーストもリセット
          ResetSpecificGhost(OP_SELL);

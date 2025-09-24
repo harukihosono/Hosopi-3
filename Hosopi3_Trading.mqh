@@ -341,7 +341,7 @@ bool position_entry(int side, double lot = 0.1, int slippage = 10, int magic = 0
    request.comment = comment;
    request.type_filling = GetFillingMode(); // 自動検出されたフィリングモード
    
-   bool success = OrderSend(request, result);
+   bool success = SendOrderWithRetryAsync(request, result, 3, UseAsyncOrders);
    
    if(!success || result.retcode != TRADE_RETCODE_DONE)
    {
@@ -434,7 +434,7 @@ bool position_close(int side, double lot = 0.0, int slippage = 10, int magic = 0
             request.magic = magic;
             request.type_filling = GetFillingMode(); // 自動検出されたフィリングモード
             
-            bool success = OrderSend(request, result);
+            bool success = SendOrderWithRetryAsync(request, result, 3, UseAsyncOrders);
             
             if(!success || result.retcode != TRADE_RETCODE_DONE)
             {
@@ -468,7 +468,12 @@ bool position_close(int side, double lot = 0.0, int slippage = 10, int magic = 0
             close_volume = NormalizeVolume(close_volume);
             double close_price = (side == OP_BUY) ? GetBidPrice() : GetAskPrice();
             
+            #ifdef __MQL4__
             result = OrderClose(OrderTicket(), close_volume, close_price, slippage, (side == OP_BUY) ? clrRed : clrBlue);
+            #else
+            // MQL5では非同期決済を使用
+            result = ClosePositionAsync(OrderTicket(), UseAsyncOrders);
+            #endif
             
             if(!result)
             {
