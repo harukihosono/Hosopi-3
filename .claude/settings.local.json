@@ -30,7 +30,8 @@
       "Bash(git log:*)",
       "Read(//c/Program Files/**)",
       "Bash(sort:*)",
-      "Read(//c/**)"
+      "Read(//c/**)",
+      "Bash(/c/Program\\ Files/MetaTrader\\ 5/metaeditor64.exe:*)"
     ],
     "deny": [],
     "ask": [],

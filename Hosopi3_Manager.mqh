@@ -217,9 +217,13 @@ void ExecuteRealNanpin(int typeOrder)
    
    // ===== ロットサイズの選択ロジックを修正 =====
    double lotsToUse;
-   
+
+   // UseInitialLotForRealEntryがONの場合は常に初期ロットを使用
+   if(UseInitialLotForRealEntry) {
+      lotsToUse = g_LotTable[0]; // 常に最初のロットを使用
+   }
    // 個別指定モードが有効な場合
-   if(IndividualLotEnabled == ON_MODE) {
+   else if(IndividualLotEnabled == ON_MODE) {
       // 合計ポジション数に対応する次のレベルのロットを使用
       int nextLevel = totalPosCount; // 次のポジションレベル
       

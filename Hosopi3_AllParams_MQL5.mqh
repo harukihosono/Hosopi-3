@@ -36,6 +36,7 @@ input int NanpinSpread = 2000;                     // ナンピン間隔（Point
 input NANPIN_SKIP NanpinSkipLevel = SKIP_5;        // ナンピンスキップレベル
 input bool UseInitialLotForRealEntry = false;     // リアルエントリー時は初期ロット使用
 input bool Enable001LotFix = true;                 // 0.01ロット特別処理（0.01→0.02固定）
+input bool UseAsyncOrders = true;                  // 非同期注文を使用（高速化）
 input int NanpinInterval = 0;                      // ナンピン最小間隔（分）
 
 

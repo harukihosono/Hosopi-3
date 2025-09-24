@@ -24,6 +24,7 @@
 #include "Hosopi3_Manager.mqh"
 #include "Hosopi3_Notification.mqh"
 #include "Hosopi3_Strategy.mqh"
+#include "Hosopi3_Async.mqh"
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
@@ -60,4 +61,17 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
    // 共通チャートイベント処理の呼び出し
    HandleChartEvent(id, lparam, dparam, sparam);
 }
+
+//+------------------------------------------------------------------+
+//| OnTradeTransaction function (MT5のみ)                          |
+//+------------------------------------------------------------------+
+#ifdef __MQL5__
+void OnTradeTransaction(const MqlTradeTransaction& trans,
+                        const MqlTradeRequest& request,
+                        const MqlTradeResult& result)
+{
+   // 非同期注文の結果を処理
+   ProcessAsyncTradeTransaction(trans, request, result);
+}
+#endif
 //+------------------------------------------------------------------+
