@@ -21,7 +21,7 @@ bool SendOrderWithRetryAsync(MqlTradeRequest &request, MqlTradeResult &result,
    // フィリングモード自動検出（初回のみ）
    if(request.action == TRADE_ACTION_DEAL) {
       if(!fillingModeInitialized) {
-         cachedFillingMode = GetOptimalFillingMode();
+         cachedFillingMode = GetFillingMode();
          fillingModeInitialized = true;
       }
       request.type_filling = cachedFillingMode;
