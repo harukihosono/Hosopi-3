@@ -21,7 +21,7 @@ bool SendOrderWithRetryAsync(MqlTradeRequest &request, MqlTradeResult &result,
    // フィリングモード自動検出（初回のみ）
    if(request.action == TRADE_ACTION_DEAL) {
       if(!fillingModeInitialized) {
-         cachedFillingMode = GetOptimalFillingModeForBroker(request.symbol);
+         cachedFillingMode = GetOptimalFillingMode();
          fillingModeInitialized = true;
       }
       request.type_filling = cachedFillingMode;
@@ -452,13 +452,13 @@ void TrailingStopAsync(double trailPoints, bool useAsync = true)
       double openPrice = PositionGetDouble(POSITION_PRICE_OPEN);
 
       if(type == POSITION_TYPE_BUY) {
-         double newSL = Bid - trail;
+         double newSL = SymbolInfoDouble(_Symbol, SYMBOL_BID) - trail;
          if(newSL > openPrice && (currentSL == 0 || newSL > currentSL)) {
             ModifyPositionAsync(ticket, newSL, currentTP, useAsync);
             if(useAsync) Sleep(10);
          }
       } else if(type == POSITION_TYPE_SELL) {
-         double newSL = Ask + trail;
+         double newSL = SymbolInfoDouble(_Symbol, SYMBOL_ASK) + trail;
          if(newSL < openPrice && (currentSL == 0 || newSL < currentSL)) {
             ModifyPositionAsync(ticket, newSL, currentTP, useAsync);
             if(useAsync) Sleep(10);
@@ -468,7 +468,7 @@ void TrailingStopAsync(double trailPoints, bool useAsync = true)
 
    #else // MQL4の場合
 
-   double trail = trailPoints * Point;
+   double trail = trailPoints * _Point;
 
    for(int i = OrdersTotal() - 1; i >= 0; i--) {
       if(!OrderSelect(i, SELECT_BY_POS, MODE_TRADES)) continue;
