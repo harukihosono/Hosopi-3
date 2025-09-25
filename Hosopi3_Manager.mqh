@@ -115,9 +115,10 @@ void ExecuteRealEntry(int type, string entryReason)
    // ===== ロットサイズの選択ロジックを修正 =====
    double lots;
    
-   // UseInitialLotForRealEntryがONの場合は常に初期ロットを使用
-   if(UseInitialLotForRealEntry) {
-      lots = g_LotTable[0]; // 常に最初のロットを使用
+   // UseInitialLotForRealEntryがONの場合は真の初回エントリーのみ初期ロットを使用（ゴーストも無い場合）
+   if(UseInitialLotForRealEntry && totalPositionCount == 0) {
+      lots = g_LotTable[0]; // 真の初回エントリーのみ初期ロットを使用
+      Print("真の初回エントリー: 初期ロット", DoubleToString(lots, 2), "を使用");
    } 
    // 合計ポジション数が0の場合も初期ロットを使用
    else if(totalPositionCount == 0) {
@@ -235,13 +236,20 @@ void ExecuteRealNanpin(int typeOrder)
    
    
    // ===== ロットサイズの選択ロジックを修正 =====
-   double lotsToUse;
+   double lotsToUse = InitialLot; // 初期値で初期化
 
-   // UseInitialLotForRealEntryがONの場合は常に初期ロットを使用
-   if(UseInitialLotForRealEntry) {
-      lotsToUse = g_LotTable[0]; // 常に最初のロットを使用
+   // UseInitialLotForRealEntryがONの場合は真の初回エントリーのみ初期ロットを使用（ゴーストからの移行はマーチン継続）
+   if(UseInitialLotForRealEntry && realPosCount == 0 && totalPosCount == 0) {
+      // 真の初回エントリーのみ初期ロットを使用（ゴーストも無い場合）
+      lotsToUse = g_LotTable[0];
+      Print("真の初回エントリー: 初期ロット", DoubleToString(lotsToUse, 2), "を使用");
    }
-   // 個別指定モードが有効な場合
+   // ゴーストからリアルへの移行時はマーチンゲール継続
+   else if(UseInitialLotForRealEntry && realPosCount == 0 && totalPosCount > 0) {
+      Print("ゴーストからリアルへの移行: マーチンゲール継続");
+      // マーチンゲール処理に進む
+   }
+   // 個別指定モードが有効な場合（初回リアルエントリーでない場合）
    else if(IndividualLotEnabled == ON_MODE) {
       // 合計ポジション数に対応する次のレベルのロットを使用
       int nextLevel = totalPosCount; // 次のポジションレベル
@@ -257,7 +265,7 @@ void ExecuteRealNanpin(int typeOrder)
    }
    else {
       // マーチンゲールモードの場合は直前のポジションのロットに倍率を掛ける
-      // 最後のポジションのロットサイズを取得 - 新規関数使用！
+      // 最後のポジションのロットサイズを取得（リアル、ゴースト同方含む）
       double lastLotSize = GetLastCombinedPositionLot(typeOrder);
       
       // ロットサイズが取得できなかった場合
@@ -279,6 +287,11 @@ void ExecuteRealNanpin(int typeOrder)
    }
    
    
+   // ナンピンロット計算のデバッグ情報を表示
+   Print("ナンピン実行: ", (typeOrder == OP_BUY) ? "Buy" : "Sell",
+         " | 現在ポジション数: リアル=", realPosCount, " 合計=", totalPosCount,
+         " | ロット=", DoubleToString(lotsToUse, 2));
+
    // 非同期注文を使用してナンピンエントリー
    #ifdef __MQL5__
    MqlTradeRequest request;
@@ -297,11 +310,13 @@ void ExecuteRealNanpin(int typeOrder)
    bool entryResult = SendOrderWithRetryAsync(request, resultAsync, 3, UseAsyncOrders);
    #else
    // MQL4では従来の関数を使用
+   Print("ナンピンエントリー実行: position_entry(", typeOrder, ", ", lotsToUse, ")");
    bool entryResult = position_entry(typeOrder, lotsToUse, Slippage, MagicNumber, "Hosopi 3 EA Nanpin");
    #endif
-   
+
    if(entryResult) {
-            
+      Print("ナンピンエントリー成功: ", (typeOrder == OP_BUY) ? "Buy" : "Sell",
+            " ロット=", DoubleToString(lotsToUse, 2));
       // 修正: ゴーストポジションはリセットしない
    }
    else {
@@ -686,30 +701,23 @@ void OnTickManager()
       ManageTakeProfit(1); // Sell側
    }
    
-   // ナンピン機能が有効な場合、常にナンピン条件をチェック（手動エントリー対応）
+   // ナンピン機能が有効な場合、常にナンピン条件をチェック（初回エントリーも含めて）
    if(EnableNanpin)
    {
-      // Buy側のポジション（リアルまたはゴースト）がある場合
+      // 最大ポジション数をチェック
       int buyTotal = combined_position_count(OP_BUY);
-      if(buyTotal > 0)
+      int sellTotal = combined_position_count(OP_SELL);
+      int totalAllPositions = buyTotal + sellTotal;
+
+      // Buy側のナンピン条件チェック（ポジションがなくても実行）
+      if(buyTotal < (int)MaxPositions && totalAllPositions < (int)MaxPositions * 2)
       {
-         int buyReal = position_count(OP_BUY);
-         int buyGhost = ghost_position_count(OP_BUY);
-         if(buyGhost > 0 && buyReal == 0)
-         {
-         }
          CheckNanpinConditions(0); // Buy側のナンピン条件チェック
       }
-      
-      // Sell側のポジション（リアルまたはゴースト）がある場合
-      int sellTotal = combined_position_count(OP_SELL);
-      if(sellTotal > 0)
+
+      // Sell側のナンピン条件チェック（ポジションがなくても実行）
+      if(sellTotal < (int)MaxPositions && totalAllPositions < (int)MaxPositions * 2)
       {
-         int sellReal = position_count(OP_SELL);
-         int sellGhost = ghost_position_count(OP_SELL);
-         if(sellGhost > 0 && sellReal == 0)
-         {
-         }
          CheckNanpinConditions(1); // Sell側のナンピン条件チェック
       }
    }
@@ -801,11 +809,23 @@ void CheckNanpinConditions(int side)
    int ghostPositionCount = ghost_position_count(operationType);
    
    
-   // ポジションがないか最大数に達している場合はスキップ
-   if(totalPositionCount <= 0 || totalPositionCount >= (int)MaxPositions)
+   // 最大ポジション数に達している場合のみスキップ（ポジションが0でも初回エントリーは実行）
+   if(totalPositionCount >= (int)MaxPositions)
    {
-      if(totalPositionCount >= (int)MaxPositions)
-         Print("CheckNanpinConditions: 最大ポジション数(", (int)MaxPositions, ")に達しているため、ナンピンをスキップします");
+      Print("CheckNanpinConditions: 最大ポジション数(", (int)MaxPositions, ")に達しているため、ナンピンをスキップします");
+      return;
+   }
+
+   // ポジションがない場合は初回エントリーとして処理
+   if(totalPositionCount == 0)
+   {
+      Print("CheckNanpinConditions [", (side == 0) ? "Buy" : "Sell", "]: ポジションがないため、初回エントリーとして処理します");
+
+      // 初回エントリーのロットサイズ
+      double initialLot = InitialLot;
+
+      // 初回エントリーを実行
+      ExecuteRealNanpin(operationType);
       return;
    }
    
@@ -864,13 +884,18 @@ void CheckNanpinConditions(int side)
    
    // ナンピン条件の判定
    bool nanpinCondition = false;
-   
+
    if(side == 0) // Buy
       nanpinCondition = (currentPrice < lastPrice - nanpinSpread * GetPointValue());
    else // Sell
       nanpinCondition = (currentPrice > lastPrice + nanpinSpread * GetPointValue());
-   
-   
+
+   // ナンピン条件デバッグ情報
+   Print("ナンピン条件チェック[", direction, "]: 現在価格=", currentPrice,
+         " | 最後の価格=", lastPrice,
+         " | ナンピン幅=", nanpinSpread,
+         " | 条件=", nanpinCondition ? "成立" : "未成立");
+
    // ナンピン条件が満たされた場合
    if(nanpinCondition)
    {

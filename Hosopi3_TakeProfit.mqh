@@ -449,11 +449,13 @@ void ManageTakeProfit(int side)
          {
             // Buy側の利確条件: 現在価格が平均価格+TPポイント以上
             tpCondition = (currentPrice >= tpPrice);
+            if(tpCondition) Print("ゴーストBuy利確条件成立: 現在価格=", currentPrice, " >= TP価格=", tpPrice);
          }
          else // Sell
          {
             // Sell側の利確条件: 現在価格が平均価格-TPポイント以下
             tpCondition = (currentPrice <= tpPrice);
+            if(tpCondition) Print("ゴーストSell利確条件成立: 現在価格=", currentPrice, " <= TP価格=", tpPrice);
          }
 
          // 利確条件が満たされた場合
@@ -555,7 +557,7 @@ void ManageTakeProfit(int side)
             }
          }
 #else // MQL4
-         // 各ポジションにリミット注文を設定
+         // MQL4: 各ポジションにリミット注文を設定し、価格到達をチェック
          for(int i = OrdersTotal() - 1; i >= 0; i--)
          {
             if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
@@ -564,14 +566,38 @@ void ManageTakeProfit(int side)
                {
                   // 現在のストップロス価格を取得
                   double currentSL = OrderStopLoss();
-                  
+
                   // 現在のテイクプロフィット価格を取得
                   double currentTP = OrderTakeProfit();
-                  
+
+                  // MQL4: 価格到達チェックを先に実行
+                  bool tpReached = false;
+                  if(side == 0) // Buy
+                     tpReached = (currentPrice >= tpPrice);
+                  else // Sell
+                     tpReached = (currentPrice <= tpPrice);
+
+                  if(tpReached)
+                  {
+                     Print("MQL4 リミット利確発動: ", (side == 0) ? "Buy" : "Sell",
+                           " 現在価格=", currentPrice, " TP価格=", tpPrice);
+
+                     double closePrice = (side == 0) ? GetBidPrice() : GetAskPrice();
+                     if(OrderClose(OrderTicket(), OrderLots(), closePrice, Slippage, (side == 0) ? clrBlue : clrRed))
+                     {
+                        Print("リミット利確成功: チケット#", OrderTicket());
+                        continue; // 決済されたので次のポジションへ
+                     }
+                     else
+                     {
+                        Print("リミット利確失敗: ", GetLastError());
+                     }
+                  }
+
                   // 新しいTPとの差が小さい場合はスキップ
                   if(MathAbs(currentTP - tpPrice) < pointValue * 2)
                      continue;
-                  
+
                   // リミット価格を更新（ストップロスはそのまま）
                   bool result = OrderModify(
                      OrderTicket(),        // チケット番号
@@ -581,15 +607,15 @@ void ManageTakeProfit(int side)
                      0,                    // 有効期限
                      (side == 0) ? clrBlue : clrRed
                   );
-                  
+
                   if(result)
                   {
-                     // リミット決済設定完了
+                     Print("リミットTP設定完了: TP=", tpPrice);
                   }
                   else
                   {
-                     Print("リミット決済の設定に失敗: ", OrderTicket(), 
-                           ", エラー=", GetLastError(), 
+                     Print("リミット決済の設定に失敗: ", OrderTicket(),
+                           ", エラー=", GetLastError(),
                            ", 最小ストップレベル=", minStopLevel);
                   }
                }
@@ -608,11 +634,13 @@ void ManageTakeProfit(int side)
       {
          // Buy側の利確条件: 現在価格が平均価格+TPポイント以上
          tpCondition = (currentPrice >= tpPrice);
+         if(tpCondition) Print("Buy利確条件成立: 現在価格=", currentPrice, " >= TP価格=", tpPrice);
       }
       else // Sell
       {
          // Sell側の利確条件: 現在価格が平均価格-TPポイント以下
          tpCondition = (currentPrice <= tpPrice);
+         if(tpCondition) Print("Sell利確条件成立: 現在価格=", currentPrice, " <= TP価格=", tpPrice);
       }
 
       // 利確条件が満たされた場合
