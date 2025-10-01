@@ -76,6 +76,7 @@ void CheckTrailingStopConditions(int side)
 
    // 処理対象のオペレーションタイプを決定
    int operationType = (side == 0) ? OP_BUY : OP_SELL;
+   string direction = (side == 0) ? "Buy" : "Sell";
 
    // リアルポジションがない場合はスキップ
    int positionCount = position_count(operationType);
@@ -85,28 +86,42 @@ void CheckTrailingStopConditions(int side)
    // 平均価格を計算 - ナンピンレベル廃止対応
    double avgPrice = CalculateCombinedAveragePrice(operationType);
    if(avgPrice <= 0)
+   {
+      Print("トレール[", direction, "]: 平均価格計算失敗");
       return;
+   }
 
    // 現在価格を取得（BuyならBid、SellならAsk）
    double currentPrice = (side == 0) ? GetBidPrice() : GetAskPrice();
 
    // トレールトリガー価格とオフセット価格を計算
    double triggerPrice, stopPrice;
-   
+
    // Point値を取得
    double pointValue = GetPointValue();
-   
+
    if(side == 0) // Buy
    {
       // トレールトリガー: 平均価格 + トリガーポイント
       triggerPrice = avgPrice + TrailingTrigger * pointValue;
-      
+
+      // デバッグ情報（10秒毎に出力）
+      static datetime lastDebugTimeBuy = 0;
+      if(TimeCurrent() - lastDebugTimeBuy > 10)
+      {
+         Print("トレール[Buy]: 平均=", avgPrice, " 現在=", currentPrice,
+               " トリガー=", triggerPrice, " (差=", (triggerPrice - currentPrice) / pointValue, "pt)");
+         lastDebugTimeBuy = TimeCurrent();
+      }
+
       // 現在価格がトリガー以上の場合のみトレーリング
       if(currentPrice >= triggerPrice)
       {
          // ストップ価格: 現在価格 - オフセット
          stopPrice = currentPrice - TrailingOffset * pointValue;
-         
+
+         Print("トレール[Buy]発動: ストップ価格=", stopPrice);
+
          // 各ポジションの決済条件をチェック
 #ifdef __MQL5__
          for(int i = PositionsTotal() - 1; i >= 0; i--)
@@ -139,11 +154,11 @@ void CheckTrailingStopConditions(int side)
                      
                      if(SendOrderWithRetryAsync(request, result, 3, UseAsyncOrders))
                      {
-                        // 成功
+                        Print("トレール[Buy]SL更新成功: チケット=", ticket, " SL=", stopPrice);
                      }
                      else
                      {
-                        Print("Buy トレールストップ更新エラー: ", result.retcode);
+                        Print("トレール[Buy]SL更新失敗: チケット=", ticket, " エラー=", result.retcode);
                      }
                   }
                }
@@ -166,11 +181,11 @@ void CheckTrailingStopConditions(int side)
                      bool result = OrderModify(OrderTicket(), OrderOpenPrice(), stopPrice, OrderTakeProfit(), 0, clrGreen);
                      if(result)
                      {
-                       
+                        Print("トレール[Buy]SL更新成功: チケット=", OrderTicket(), " SL=", stopPrice);
                      }
                      else
                      {
-                        Print("Buy トレールストップ更新エラー: ", GetLastError());
+                        Print("トレール[Buy]SL更新失敗: チケット=", OrderTicket(), " エラー=", GetLastError());
                      }
                   }
                }
@@ -183,13 +198,24 @@ void CheckTrailingStopConditions(int side)
    {
       // トレールトリガー: 平均価格 - トリガーポイント
       triggerPrice = avgPrice - TrailingTrigger * pointValue;
-      
+
+      // デバッグ情報（10秒毎に出力）
+      static datetime lastDebugTimeSell = 0;
+      if(TimeCurrent() - lastDebugTimeSell > 10)
+      {
+         Print("トレール[Sell]: 平均=", avgPrice, " 現在=", currentPrice,
+               " トリガー=", triggerPrice, " (差=", (currentPrice - triggerPrice) / pointValue, "pt)");
+         lastDebugTimeSell = TimeCurrent();
+      }
+
       // 現在価格がトリガー以下の場合のみトレーリング
       if(currentPrice <= triggerPrice)
       {
          // ストップ価格: 現在価格 + オフセット
          stopPrice = currentPrice + TrailingOffset * pointValue;
-         
+
+         Print("トレール[Sell]発動: ストップ価格=", stopPrice);
+
          // 各ポジションの決済条件をチェック
 #ifdef __MQL5__
          for(int i = PositionsTotal() - 1; i >= 0; i--)
@@ -222,11 +248,11 @@ void CheckTrailingStopConditions(int side)
                      
                      if(SendOrderWithRetryAsync(request, result, 3, UseAsyncOrders))
                      {
-                        // 成功
+                        Print("トレール[Sell]SL更新成功: チケット=", ticket, " SL=", stopPrice);
                      }
                      else
                      {
-                        Print("Sell トレールストップ更新エラー: ", result.retcode);
+                        Print("トレール[Sell]SL更新失敗: チケット=", ticket, " エラー=", result.retcode);
                      }
                   }
                }
@@ -249,11 +275,11 @@ void CheckTrailingStopConditions(int side)
                      bool result = OrderModify(OrderTicket(), OrderOpenPrice(), stopPrice, OrderTakeProfit(), 0, clrRed);
                      if(result)
                      {
-                        
+                        Print("トレール[Sell]SL更新成功: チケット=", OrderTicket(), " SL=", stopPrice);
                      }
                      else
                      {
-                        Print("Sell トレールストップ更新エラー: ", GetLastError());
+                        Print("トレール[Sell]SL更新失敗: チケット=", OrderTicket(), " エラー=", GetLastError());
                      }
                   }
                }
@@ -277,6 +303,7 @@ void CheckGhostTrailingStopConditions(int side)
 
    // 処理対象のオペレーションタイプを決定
    int operationType = (side == 0) ? OP_BUY : OP_SELL;
+   string direction = (side == 0) ? "Buy" : "Sell";
 
    // ゴーストポジションがない場合はスキップ
    int ghostCount = ghost_position_count(operationType);
@@ -286,7 +313,10 @@ void CheckGhostTrailingStopConditions(int side)
    // 平均価格を計算 - ナンピンレベル廃止対応
    double avgPrice = CalculateGhostAveragePrice(operationType);
    if(avgPrice <= 0)
+   {
+      Print("ゴーストトレール[", direction, "]: 平均価格計算失敗");
       return;
+   }
 
    // 現在価格を取得（BuyならBid、SellならAsk）
    double currentPrice = (side == 0) ? GetBidPrice() : GetAskPrice();
@@ -301,32 +331,47 @@ void CheckGhostTrailingStopConditions(int side)
    {
       // トレールトリガー: 平均価格 + トリガーポイント
       triggerPrice = avgPrice + TrailingTrigger * pointValue;
-      
+
+      // デバッグ情報（20秒毎に出力）
+      static datetime lastGhostDebugTimeBuy = 0;
+      if(TimeCurrent() - lastGhostDebugTimeBuy > 20)
+      {
+         Print("ゴーストトレール[Buy]: 平均=", avgPrice, " 現在=", currentPrice,
+               " トリガー=", triggerPrice, " (差=", (triggerPrice - currentPrice) / pointValue, "pt)");
+         lastGhostDebugTimeBuy = TimeCurrent();
+      }
+
       // 現在価格がトリガー以上の場合のみトレーリング
       if(currentPrice >= triggerPrice)
       {
          // ストップ価格: 現在価格 - オフセット
          stopPrice = currentPrice - TrailingOffset * pointValue;
-         
+
+         Print("ゴーストトレール[Buy]発動: ストップ価格=", stopPrice);
+
          // 各ゴーストポジションのストップロスを更新
          int buyMaxIndex = MathMin(g_GhostBuyCount, 40);
+         int updateCount = 0;
          for(int i = 0; i < buyMaxIndex; i++)
          {
             if(g_GhostBuyPositions[i].isGhost) // 有効なゴーストのみ
             {
                // 現在のストップロスを確認
                double currentSL = g_GhostBuyPositions[i].stopLoss;
-               
+
                // ストップロスが設定されていないか、または新しいストップが現在より高い場合
                if(currentSL == 0 || stopPrice > currentSL)
                {
                   // ストップロスを更新
                   g_GhostBuyPositions[i].stopLoss = stopPrice;
-                  // ゴーストBuy トレールストップ更新
+                  updateCount++;
                }
             }
          }
-         
+
+         if(updateCount > 0)
+            Print("ゴーストトレール[Buy]: ", updateCount, "個のゴーストSLを更新");
+
          // ストップラインを表示
          UpdateGhostStopLine(side, stopPrice);
       }
@@ -335,32 +380,47 @@ void CheckGhostTrailingStopConditions(int side)
    {
       // トレールトリガー: 平均価格 - トリガーポイント
       triggerPrice = avgPrice - TrailingTrigger * pointValue;
-      
+
+      // デバッグ情報（20秒毎に出力）
+      static datetime lastGhostDebugTimeSell = 0;
+      if(TimeCurrent() - lastGhostDebugTimeSell > 20)
+      {
+         Print("ゴーストトレール[Sell]: 平均=", avgPrice, " 現在=", currentPrice,
+               " トリガー=", triggerPrice, " (差=", (currentPrice - triggerPrice) / pointValue, "pt)");
+         lastGhostDebugTimeSell = TimeCurrent();
+      }
+
       // 現在価格がトリガー以下の場合のみトレーリング
       if(currentPrice <= triggerPrice)
       {
          // ストップ価格: 現在価格 + オフセット
          stopPrice = currentPrice + TrailingOffset * pointValue;
-         
+
+         Print("ゴーストトレール[Sell]発動: ストップ価格=", stopPrice);
+
          // 各ゴーストポジションのストップロスを更新
          int sellMaxIndex = MathMin(g_GhostSellCount, 40);
+         int updateCount = 0;
          for(int i = 0; i < sellMaxIndex; i++)
          {
             if(g_GhostSellPositions[i].isGhost) // 有効なゴーストのみ
             {
                // 現在のストップロスを確認
                double currentSL = g_GhostSellPositions[i].stopLoss;
-               
+
                // ストップロスが設定されていないか、または新しいストップが現在より低い場合
                if(currentSL == 0 || stopPrice < currentSL)
                {
                   // ストップロスを更新
                   g_GhostSellPositions[i].stopLoss = stopPrice;
-                  // ゴーストSell トレールストップ更新
+                  updateCount++;
                }
             }
          }
-         
+
+         if(updateCount > 0)
+            Print("ゴーストトレール[Sell]: ", updateCount, "個のゴーストSLを更新");
+
          // ストップラインを表示
          UpdateGhostStopLine(side, stopPrice);
       }
