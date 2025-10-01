@@ -441,7 +441,7 @@ void CheckGhostTrailingStopConditions(int side)
 void ManageTakeProfit(int side)
 {
    // 利確が無効な場合はスキップ
-   if(TakeProfitMode == TP_OFF)
+   if(!EnableTakeProfit)
       return;
 
    // 処理対象のオペレーションタイプを決定
@@ -477,94 +477,91 @@ void ManageTakeProfit(int side)
                   avgPrice + tpPoints * pointValue : 
                   avgPrice - tpPoints * pointValue;
 
-   // ======== 成行決済処理（MARKET） ========
-   if(TakeProfitMode == TP_MARKET)
+   // ======== 成行決済処理 ========
+   // 利確条件の判定
+   bool tpCondition = false;
+
+   if(side == 0) // Buy
    {
-      // 利確条件の判定
-      bool tpCondition = false;
+      // Buy側の利確条件: 現在価格が平均価格+TPポイント以上
+      tpCondition = (currentPrice >= tpPrice);
+      if(tpCondition) Print("Buy利確条件成立: 現在価格=", currentPrice, " >= TP価格=", tpPrice);
+   }
+   else // Sell
+   {
+      // Sell側の利確条件: 現在価格が平均価格-TPポイント以下
+      tpCondition = (currentPrice <= tpPrice);
+      if(tpCondition) Print("Sell利確条件成立: 現在価格=", currentPrice, " <= TP価格=", tpPrice);
+   }
 
-      if(side == 0) // Buy
+   // 利確条件が満たされた場合
+   if(tpCondition)
+   {
+      // 利確条件成立
+
+      // ゴーストポジションの処理
+      double ghostProfit = 0;
+      bool ghostClosed = false;
+      if(ghostCount > 0)
       {
-         // Buy側の利確条件: 現在価格が平均価格+TPポイント以上
-         tpCondition = (currentPrice >= tpPrice);
-         if(tpCondition) Print("Buy利確条件成立: 現在価格=", currentPrice, " >= TP価格=", tpPrice);
-      }
-      else // Sell
-      {
-         // Sell側の利確条件: 現在価格が平均価格-TPポイント以下
-         tpCondition = (currentPrice <= tpPrice);
-         if(tpCondition) Print("Sell利確条件成立: 現在価格=", currentPrice, " <= TP価格=", tpPrice);
-      }
+         // ゴーストポジション決済処理
 
-      // 利確条件が満たされた場合
-      if(tpCondition)
-      {
-         // 利確条件成立
+         // 決済前に利益を計算
+         ghostProfit = CalculateGhostProfit(operationType);
 
-         // ゴーストポジションの処理
-         double ghostProfit = 0;
-         bool ghostClosed = false;
-         if(ghostCount > 0)
-         {
-            // ゴーストポジション決済処理
-
-            // 決済前に利益を計算
-            ghostProfit = CalculateGhostProfit(operationType);
-
-            // ゴーストポジションをリセット（リアルポジションの有無に関わらず）
-            if(operationType == OP_BUY) {
-               // ゴーストポジションの状態をリセット
-               int buyMaxIndex = MathMin(g_GhostBuyCount, 40);
-               for(int i = 0; i < buyMaxIndex; i++) {
-                  g_GhostBuyPositions[i].isGhost = false;  // ゴーストフラグをオフに
-               }
-               // 決済済みフラグを設定
-               g_BuyGhostClosed = true;
-               g_GhostBuyCount = 0;
-            } else {
-               // ゴーストポジションの状態をリセット
-               int sellMaxIndex = MathMin(g_GhostSellCount, 40);
-               for(int i = 0; i < sellMaxIndex; i++) {
-                  g_GhostSellPositions[i].isGhost = false;  // ゴーストフラグをオフに
-               }
-               // 決済済みフラグを設定
-               g_SellGhostClosed = true;
-               g_GhostSellCount = 0;
+         // ゴーストポジションをリセット（リアルポジションの有無に関わらず）
+         if(operationType == OP_BUY) {
+            // ゴーストポジションの状態をリセット
+            int buyMaxIndex = MathMin(g_GhostBuyCount, 40);
+            for(int i = 0; i < buyMaxIndex; i++) {
+               g_GhostBuyPositions[i].isGhost = false;  // ゴーストフラグをオフに
             }
-
-            // 点線オブジェクトを削除
-            DeleteGhostLinesAndPreventRecreation(operationType);
-
-            // グローバル変数を更新
-            SaveGhostPositionsToGlobal();
-
-            // テーブルを更新
-            UpdatePositionTable();
-
-            // ゴースト決済通知を送信
-            NotifyGhostClosure(operationType, ghostProfit);
-
-            ghostClosed = true;
+            // 決済済みフラグを設定
+            g_BuyGhostClosed = true;
+            g_GhostBuyCount = 0;
+         } else {
+            // ゴーストポジションの状態をリセット
+            int sellMaxIndex = MathMin(g_GhostSellCount, 40);
+            for(int i = 0; i < sellMaxIndex; i++) {
+               g_GhostSellPositions[i].isGhost = false;  // ゴーストフラグをオフに
+            }
+            // 決済済みフラグを設定
+            g_SellGhostClosed = true;
+            g_GhostSellCount = 0;
          }
 
-         // リアルポジションの決済
-         bool realClosed = false;
-         if(positionCount > 0) {
-            bool closeResult = position_close(operationType);
-            if(!closeResult) Print("エラー: リアル", direction, "ポジション決済に失敗");
-            else realClosed = true;
-         }
+         // 点線オブジェクトを削除
+         DeleteGhostLinesAndPreventRecreation(operationType);
 
-         // 両方決済した場合、または片方のみ存在して決済した場合にライン削除
-         if((ghostClosed && positionCount == 0) || (realClosed && ghostCount == 0) || (ghostClosed && realClosed))
-         {
-            CleanupLinesOnClose(side);
-         }
+         // グローバル変数を更新
+         SaveGhostPositionsToGlobal();
+
+         // テーブルを更新
+         UpdatePositionTable();
+
+         // ゴースト決済通知を送信
+         NotifyGhostClosure(operationType, ghostProfit);
+
+         ghostClosed = true;
+      }
+
+      // リアルポジションの決済
+      bool realClosed = false;
+      if(positionCount > 0) {
+         bool closeResult = position_close(operationType);
+         if(!closeResult) Print("エラー: リアル", direction, "ポジション決済に失敗");
+         else realClosed = true;
+      }
+
+      // 両方決済した場合、または片方のみ存在して決済した場合にライン削除
+      if((ghostClosed && positionCount == 0) || (realClosed && ghostCount == 0) || (ghostClosed && realClosed))
+      {
+         CleanupLinesOnClose(side);
       }
    }
 
    // TP価格ラインの表示 (利確が有効な場合のみ)
-   if(TakeProfitMode != TP_OFF)
+   if(EnableTakeProfit)
    {
       string lineName = "TPLine" + ((side == 0) ? "Buy" : "Sell");
       bool tpLineUpdated = false;

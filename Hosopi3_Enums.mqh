@@ -184,14 +184,7 @@ enum AVG_PRICE_CALCULATION_MODE
    REAL_AND_GHOST = 1          // リアルとゴースト両方
 };
 
-// リミット決済方式の列挙型
-enum TP_MODE
-{
-   TP_OFF = 0,           // 利確なし（手動決済のみ）
-   TP_FIXED = 1,         // 固定pips利確（TakeProfitPointsで指定）
-   TP_LIMIT = 2,         // 指値注文で利確（MT4標準のTP設定）
-   TP_MARKET = 3         // 成行決済（利確価格到達時に即座に決済）
-};
+// 利確機能は bool型の EnableTakeProfit で制御
 
 // レイアウトパターンの列挙型
 enum LAYOUT_PATTERN

@@ -720,7 +720,7 @@ void OnTickManager()
    }
    
    // 利確条件の処理（統合関数を使用）
-   if(TakeProfitMode != TP_OFF) // TPが有効なときだけ処理
+   if(EnableTakeProfit) // TPが有効なときだけ処理
    {
       ManageTakeProfit(0); // Buy側
       ManageTakeProfit(1); // Sell側

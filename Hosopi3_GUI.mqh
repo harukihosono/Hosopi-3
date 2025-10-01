@@ -102,7 +102,7 @@ void UpdateAveragePriceLines(int operationType)
    }
 
    // TPライン表示（利確が有効な場合のみ）
-   if(TakeProfitMode != TP_OFF) {
+   if(EnableTakeProfit) {
       double tpPrice = 0;
       int tpPoints = TakeProfitPoints;
 
@@ -1207,12 +1207,7 @@ void ShowSettingsDialog()
    
    message += "【利確設定】\n";
    message += "利確モード: ";
-   switch(TakeProfitMode) {
-      case TP_OFF: message += "無効"; break;
-      case TP_LIMIT: message += "指値"; break;
-      case TP_MARKET: message += "成行"; break;
-      default: message += "不明";
-   }
+   message += EnableTakeProfit ? "有効（成行決済）" : "無効";
    message += "\n";
    message += "利確ポイント: " + IntegerToString(TakeProfitPoints) + "\n\n";
    

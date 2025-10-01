@@ -44,9 +44,9 @@ input int NanpinInterval = 0;                      // ナンピン最小間隔�
 //                      利確設定
 //==================================================================
 sinput group "== 3. 利確・損切設定 =="
-input string TakeProfitSettingsTitle = "3. 利確設定：LIMIT=MT標準TP MARKET=EA監視決済"; // 利確設定
-input TP_MODE TakeProfitMode = TP_OFF;             // 利確方式：FIXED=固定pips LIMIT=指値 MARKET=成行決済
-input int TakeProfitPoints = 2000;                 // 利確幅（Point）※FIXED/LIMIT/MARKET全てで使用
+input string TakeProfitSettingsTitle = "3. 利確設定：成行決済のみ"; // 利確設定
+input bool EnableTakeProfit = false;               // 利確機能（成行決済）
+input int TakeProfitPoints = 2000;                 // 利確幅（Point）
 input bool EnableBreakEvenByPositions = false;    // ポジション数による建値決済
 input int BreakEvenMinPositions = 3;               // 建値決済の最低ポジション数
 input double BreakEvenProfit = 0.0;                // 建値決済の最低利益

@@ -58,7 +58,7 @@ input int NanpinInterval = 0;                      // ナンピン最小間隔�
 SECTION_GROUP("== 利確・損切設定 ==")
 SECTION_TITLE(TakeProfitSettings, "利確・損切りルール設定")
 SECTION_SPACER(TakeProfitSettings_Spacer)
-input TP_MODE TakeProfitMode = TP_OFF;             // 利確方式
+input bool EnableTakeProfit = false;               // 利確機能（成行決済）
 input int TakeProfitPoints = 2000;                 // 固定利確幅（Point）
 input bool EnableBreakEvenByPositions = false;    // ポジション数による建値決済
 input int BreakEvenMinPositions = 3;               // 建値決済の最低ポジション数

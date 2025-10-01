@@ -43,7 +43,7 @@ input AVG_PRICE_CALCULATION_MODE AvgPriceCalculationMode = REAL_AND_GHOST; // �
 
 // ======== 決済利確条件設定 ========
 sinput string Comment_RIGUITP_Conditions = ""; //+--- 利確条件設定 ---+
-input TP_MODE TakeProfitMode = TP_OFF;       // 利確方式
+input bool EnableTakeProfit = false;          // 利確機能（成行決済）
 input int TakeProfitPoints = 2000;            // 利確幅（Point）
 input bool EnableTrailingStop = false;        // トレールストップを有効化
 input int TrailingTrigger = 1000;             // トレールトリガー（Point）
