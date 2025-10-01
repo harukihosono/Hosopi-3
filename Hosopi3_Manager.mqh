@@ -1264,7 +1264,7 @@ void CheckPositionChanges()
    // Buy側でポジション数減少を検出
    if(currentBuyCount < prevBuyCount)
    {
-      
+
       // 完全に決済された場合
       if(currentBuyCount == 0)
       {
@@ -1272,20 +1272,25 @@ void CheckPositionChanges()
          g_BuyClosedTime = TimeCurrent();
          // 最近決済されたフラグをON
          g_BuyClosedRecently = true;
-         
-         
+
+         // リセット前のゴーストカウントを保存
+         int ghostCountBeforeReset = ghost_position_count(OP_BUY);
+
          // 同方向のゴーストをリセット
          ResetSpecificGhost(OP_BUY);
-         
-         // 関連するラインを削除
-         CleanupLinesOnClose(0);
+
+         // ゴーストもチェック：リアルもゴーストも両方0の場合のみライン削除
+         if(ghostCountBeforeReset == 0)
+         {
+            CleanupLinesOnClose(0);
+         }
       }
    }
    
    // Sell側でポジション数減少を検出
    if(currentSellCount < prevSellCount)
    {
-      
+
       // 完全に決済された場合
       if(currentSellCount == 0)
       {
@@ -1293,13 +1298,18 @@ void CheckPositionChanges()
          g_SellClosedTime = TimeCurrent();
          // 最近決済されたフラグをON
          g_SellClosedRecently = true;
-         
-         
+
+         // リセット前のゴーストカウントを保存
+         int ghostCountBeforeReset = ghost_position_count(OP_SELL);
+
          // 同方向のゴーストをリセット
          ResetSpecificGhost(OP_SELL);
-         
-         // 関連するラインを削除
-         CleanupLinesOnClose(1);
+
+         // ゴーストもチェック：リアルもゴーストも両方0の場合のみライン削除
+         if(ghostCountBeforeReset == 0)
+         {
+            CleanupLinesOnClose(1);
+         }
       }
    }
    

@@ -707,16 +707,17 @@ void ManageTakeProfit(int side)
       if(tpCondition)
       {
          // 利確条件成立
-         
+
          // ゴーストポジションの処理
          double ghostProfit = 0;
+         bool ghostClosed = false;
          if(ghostCount > 0)
          {
             // ゴーストポジション決済処理
-            
+
             // 決済前に利益を計算
             ghostProfit = CalculateGhostProfit(operationType);
-            
+
             // ゴーストポジションをリセット（リアルポジションの有無に関わらず）
             if(operationType == OP_BUY) {
                // ゴーストポジションの状態をリセット
@@ -737,28 +738,34 @@ void ManageTakeProfit(int side)
                g_SellGhostClosed = true;
                g_GhostSellCount = 0;
             }
-            
+
             // 点線オブジェクトを削除
             DeleteGhostLinesAndPreventRecreation(operationType);
-            
+
             // グローバル変数を更新
             SaveGhostPositionsToGlobal();
-            
-            
-            // 平均価格ラインとTPラインを削除
-            CleanupLinesOnClose(side);
-            
+
             // テーブルを更新
             UpdatePositionTable();
-            
+
             // ゴースト決済通知を送信
             NotifyGhostClosure(operationType, ghostProfit);
+
+            ghostClosed = true;
          }
-         
+
          // リアルポジションの決済
+         bool realClosed = false;
          if(positionCount > 0) {
             bool closeResult = position_close(operationType);
             if(!closeResult) Print("エラー: リアル", direction, "ポジション決済に失敗");
+            else realClosed = true;
+         }
+
+         // 両方決済した場合、または片方のみ存在して決済した場合にライン削除
+         if((ghostClosed && positionCount == 0) || (realClosed && ghostCount == 0) || (ghostClosed && realClosed))
+         {
+            CleanupLinesOnClose(side);
          }
       }
    }
