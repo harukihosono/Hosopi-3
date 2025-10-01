@@ -105,9 +105,9 @@ void CheckTrailingStopConditions(int side)
       // トレールトリガー: 平均価格 + トリガーポイント
       triggerPrice = avgPrice + TrailingTrigger * pointValue;
 
-      // デバッグ情報（10秒毎に出力）
+      // デバッグ情報（60秒毎に出力）
       static datetime lastDebugTimeBuy = 0;
-      if(TimeCurrent() - lastDebugTimeBuy > 10)
+      if(TimeCurrent() - lastDebugTimeBuy > 60)
       {
          Print("トレール[Buy]: 平均=", avgPrice, " 現在=", currentPrice,
                " トリガー=", triggerPrice, " (差=", (triggerPrice - currentPrice) / pointValue, "pt)");
@@ -199,9 +199,9 @@ void CheckTrailingStopConditions(int side)
       // トレールトリガー: 平均価格 - トリガーポイント
       triggerPrice = avgPrice - TrailingTrigger * pointValue;
 
-      // デバッグ情報（10秒毎に出力）
+      // デバッグ情報（60秒毎に出力）
       static datetime lastDebugTimeSell = 0;
-      if(TimeCurrent() - lastDebugTimeSell > 10)
+      if(TimeCurrent() - lastDebugTimeSell > 60)
       {
          Print("トレール[Sell]: 平均=", avgPrice, " 現在=", currentPrice,
                " トリガー=", triggerPrice, " (差=", (currentPrice - triggerPrice) / pointValue, "pt)");

@@ -834,9 +834,9 @@ void CheckNanpinConditions(int side)
    int ghostPositionCount = ghost_position_count(operationType);
    
    
-   // デバッグログ用の静的変数（10秒に1回のみ出力）
+   // デバッグログ用の静的変数（60秒に1回のみ出力）
    static datetime lastDebugTime = 0;
-   bool shouldDebug = (TimeCurrent() - lastDebugTime > 10);
+   bool shouldDebug = (TimeCurrent() - lastDebugTime > 60);
    string direction = (side == 0) ? "Buy" : "Sell";
 
    // 最大ポジション数に達している場合のみスキップ（ポジションが0でも初回エントリーは実行）
@@ -911,7 +911,7 @@ void CheckNanpinConditions(int side)
    else // Sell
       nanpinCondition = (currentPrice > lastPrice + nanpinSpread * GetPointValue());
 
-   // デバッグ情報（10秒毎）
+   // デバッグ情報（60秒毎）
    if(shouldDebug)
    {
       double priceDiff = (side == 0) ? (lastPrice - currentPrice) : (currentPrice - lastPrice);
