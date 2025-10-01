@@ -176,11 +176,12 @@ bool ClosePositionAsync(ulong ticket, bool useAsync = true)
 
    #else // MQL4の場合
 
-   if(OrderSelect(ticket, SELECT_BY_TICKET)) {
+   int ticket4 = (int)ticket;
+   if(OrderSelect(ticket4, SELECT_BY_TICKET)) {
       if(OrderType() == OP_BUY) {
-         return OrderClose(ticket, OrderLots(), Bid, Slippage, clrNONE);
+         return OrderClose(ticket4, OrderLots(), Bid, Slippage, clrNONE);
       } else if(OrderType() == OP_SELL) {
-         return OrderClose(ticket, OrderLots(), Ask, Slippage, clrNONE);
+         return OrderClose(ticket4, OrderLots(), Ask, Slippage, clrNONE);
       }
    }
 
@@ -362,8 +363,9 @@ bool ModifyPositionAsync(ulong ticket, double sl, double tp, bool useAsync = tru
 
    #else // MQL4の場合
 
-   if(OrderSelect(ticket, SELECT_BY_TICKET)) {
-      return OrderModify(ticket, OrderOpenPrice(), sl, tp, 0, clrNONE);
+   int ticket4 = (int)ticket;
+   if(OrderSelect(ticket4, SELECT_BY_TICKET)) {
+      return OrderModify(ticket4, OrderOpenPrice(), sl, tp, 0, clrNONE);
    }
 
    return false;
@@ -405,8 +407,9 @@ bool ModifyOrderAsync(ulong ticket, double price, double sl, double tp,
 
    #else // MQL4の場合
 
-   if(OrderSelect(ticket, SELECT_BY_TICKET)) {
-      return OrderModify(ticket, price, sl, tp, expiration, clrNONE);
+   int ticket4 = (int)ticket;
+   if(OrderSelect(ticket4, SELECT_BY_TICKET)) {
+      return OrderModify(ticket4, price, sl, tp, expiration, clrNONE);
    }
 
    return false;
@@ -542,9 +545,10 @@ bool CancelOrderAsync(ulong ticket, bool useAsync = true)
 
    #else // MQL4の場合
 
-   if(OrderSelect(ticket, SELECT_BY_TICKET)) {
+   int ticket4 = (int)ticket;
+   if(OrderSelect(ticket4, SELECT_BY_TICKET)) {
       if(OrderType() > OP_SELL) {  // 待機注文のみ
-         return OrderDelete(ticket, clrNONE);
+         return OrderDelete(ticket4, clrNONE);
       }
    }
 
