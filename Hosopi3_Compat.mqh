@@ -185,6 +185,11 @@ string ObjectNameMQL(int index)
       return (bool)MQLInfoInteger(MQL_TESTER);
    }
    
+   // MQL4互換のMODE定数を追加
+   #define MODE_LOTSTEP 5
+   #define MODE_MINLOT 3
+   #define MODE_MAXLOT 4
+
    // MQL5でMarketInfo()を実装
    double MarketInfo(string symbol, int mode)
    {
@@ -200,6 +205,12 @@ string ObjectNameMQL(int index)
             return (double)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
          case MODE_SPREAD:
             return (double)SymbolInfoInteger(symbol, SYMBOL_SPREAD);
+         case MODE_LOTSTEP:
+            return SymbolInfoDouble(symbol, SYMBOL_VOLUME_STEP);
+         case MODE_MINLOT:
+            return SymbolInfoDouble(symbol, SYMBOL_VOLUME_MIN);
+         case MODE_MAXLOT:
+            return SymbolInfoDouble(symbol, SYMBOL_VOLUME_MAX);
          default:
             return 0;
       }

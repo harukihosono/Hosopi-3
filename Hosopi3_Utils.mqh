@@ -869,13 +869,20 @@ void InitializeLotTable()
    else
    {
       // マーチンゲール方式でロット計算
-      // マーチンゲール方式でロット計算
+      double lotStep = MarketInfo(_Symbol, MODE_LOTSTEP);
+      double lotMin = MarketInfo(_Symbol, MODE_MINLOT);
+      double lotMax = MarketInfo(_Symbol, MODE_MAXLOT);
+
       g_LotTable[0] = InitialLot;
       for(int i = 1; i < 40; i++) // 40に拡張
       {
          double nextLot = g_LotTable[i-1] * LotMultiplier;
-         // 小数点以下3桁で切り上げ
-         nextLot = MathCeil(nextLot * 1000) / 1000;
+
+         // ブローカーのロットステップに合わせて正規化
+         nextLot = MathRound(nextLot / lotStep) * lotStep;
+         if(nextLot < lotMin) nextLot = lotMin;
+         if(nextLot > lotMax) nextLot = lotMax;
+
          g_LotTable[i] = nextLot;
       }
    }

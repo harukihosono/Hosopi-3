@@ -156,13 +156,20 @@ void ExecuteRealEntry(int type, string entryReason)
             } else {
                // それ以外は通常のマーチンゲール計算
                lots = lastLotSize * LotMultiplier;
-               lots = MathCeil(lots * 1000) / 1000; // 小数点以下3桁で切り上げ
             }
          }
       }
    }
-   
-   
+
+   // ロットをブローカーのステップに合わせて正規化
+   double lotStep = MarketInfo(_Symbol, MODE_LOTSTEP);
+   double lotMin = MarketInfo(_Symbol, MODE_MINLOT);
+   double lotMax = MarketInfo(_Symbol, MODE_MAXLOT);
+
+   lots = MathRound(lots / lotStep) * lotStep;
+   if(lots < lotMin) lots = lotMin;
+   if(lots > lotMax) lots = lotMax;
+
    // エントリー理由をログに記録
    LogEntryReason(type, "自動エントリー", entryReason);
    
@@ -282,15 +289,26 @@ void ExecuteRealNanpin(int typeOrder)
       else {
          // それ以外は通常のマーチンゲール計算
          lotsToUse = lastLotSize * LotMultiplier;
-         lotsToUse = MathCeil(lotsToUse * 1000) / 1000; // 小数点以下3桁で切り上げ
       }
    }
-   
-   
+
+   // ロットをブローカーのステップに合わせて正規化
+   double lotStep = MarketInfo(_Symbol, MODE_LOTSTEP);
+   double lotMin = MarketInfo(_Symbol, MODE_MINLOT);
+   double lotMax = MarketInfo(_Symbol, MODE_MAXLOT);
+
+   // ロットステップに合わせて丸める
+   lotsToUse = MathRound(lotsToUse / lotStep) * lotStep;
+
+   // 最小ロット・最大ロットの範囲内に収める
+   if(lotsToUse < lotMin) lotsToUse = lotMin;
+   if(lotsToUse > lotMax) lotsToUse = lotMax;
+
    // ナンピンロット計算のデバッグ情報を表示
    Print("ナンピン実行: ", (typeOrder == OP_BUY) ? "Buy" : "Sell",
          " | 現在ポジション数: リアル=", realPosCount, " 合計=", totalPosCount,
-         " | ロット=", DoubleToString(lotsToUse, 2));
+         " | ロット=", DoubleToString(lotsToUse, 2),
+         " (ステップ=", lotStep, ")");
 
    // 非同期注文を使用してナンピンエントリー
    #ifdef __MQL5__
@@ -376,15 +394,22 @@ void ExecuteDiscretionaryEntry(int typeOrder, double lotSize = 0)
             lotsToUse = InitialLot;
          } else {
             lotsToUse = lastLotSize * LotMultiplier;
-            lotsToUse = MathCeil(lotsToUse * 1000) / 1000; // 小数点以下3桁で切り上げ
          }
       }
    } else {
       // ポジションがない場合は初期ロットを使用
       lotsToUse = g_LotTable[0];
    }
-   
-   
+
+   // ロットをブローカーのステップに合わせて正規化
+   double lotStep = MarketInfo(_Symbol, MODE_LOTSTEP);
+   double lotMin = MarketInfo(_Symbol, MODE_MINLOT);
+   double lotMax = MarketInfo(_Symbol, MODE_MAXLOT);
+
+   lotsToUse = MathRound(lotsToUse / lotStep) * lotStep;
+   if(lotsToUse < lotMin) lotsToUse = lotMin;
+   if(lotsToUse > lotMax) lotsToUse = lotMax;
+
    // エントリー理由をログに記録
    LogEntryReason(typeOrder, "裁量エントリー", "手動ボタン操作によるエントリー");
    
