@@ -809,35 +809,41 @@ void CheckNanpinConditions(int side)
    int ghostPositionCount = ghost_position_count(operationType);
    
    
+   // デバッグログ用の静的変数（10秒に1回のみ出力）
+   static datetime lastDebugTime = 0;
+   bool shouldDebug = (TimeCurrent() - lastDebugTime > 10);
+   string direction = (side == 0) ? "Buy" : "Sell";
+
    // 最大ポジション数に達している場合のみスキップ（ポジションが0でも初回エントリーは実行）
    if(totalPositionCount >= (int)MaxPositions)
    {
-      // 最大ポジション数に達している場合は何もしない
+      if(shouldDebug) Print("ナンピン[", direction, "]: 最大ポジション数到達 (", totalPositionCount, "/", (int)MaxPositions, ")");
       return;
    }
 
    // ポジションがない場合は初回エントリーとして処理
    if(totalPositionCount == 0)
    {
+      if(shouldDebug) Print("ナンピン[", direction, "]: 初回エントリー実行");
       // 初回エントリーを実行
       ExecuteRealNanpin(operationType);
       return;
    }
-   
+
    // ナンピン機能が無効の場合はスキップ
    if(!EnableNanpin)
    {
-      // ナンピン機能が無効の場合は何もしない
+      if(shouldDebug) Print("ナンピン[", direction, "]: ナンピン機能無効");
       return;
    }
-   
+
    // 最後のエントリー時間を取得（改良版）
    datetime lastEntryTime = GetLastEntryTime(operationType);
-   
+
    // 最後のエントリーがない場合はスキップ
    if(lastEntryTime == 0)
    {
-      // 最後のエントリー時間が取得できない場合は何もしない
+      if(shouldDebug) Print("ナンピン[", direction, "]: 最後のエントリー時間取得失敗");
       return;
    }
    
@@ -850,31 +856,28 @@ void CheckNanpinConditions(int side)
 
       if(!intervalOK)
       {
-         // インターバル待機中は何もしない
+         if(shouldDebug) Print("ナンピン[", direction, "]: インターバル待機中");
          return;
       }
    }
 
    // 合計ポジション数は既に上で取得済み
-   
+
    // 最後のポジション価格を取得
    double lastPrice = GetLastCombinedPositionPrice(operationType);
    if(lastPrice <= 0)
    {
-      // 最後のポジション価格が取得できない場合は何もしない
+      if(shouldDebug) Print("ナンピン[", direction, "]: 最後のポジション価格取得失敗");
       return;
    }
-   
+
    // 現在の価格を取得（BuyならBid、SellならAsk）
    double currentPrice = (side == 0) ? GetBidPrice() : GetAskPrice();
-   
+
    // 現在のレベルに対応するナンピン幅を取得
    // 合計ポジション数を使用
    int nanpinSpread = g_NanpinSpreadTable[totalPositionCount - 1];
-   
-   // デバッグ出力を強化（重要なパラメータをすべて表示）
-   string direction = (side == 0) ? "Buy" : "Sell";
-   
+
    // ナンピン条件の判定
    bool nanpinCondition = false;
 
@@ -883,17 +886,32 @@ void CheckNanpinConditions(int side)
    else // Sell
       nanpinCondition = (currentPrice > lastPrice + nanpinSpread * GetPointValue());
 
+   // デバッグ情報（10秒毎）
+   if(shouldDebug)
+   {
+      double priceDiff = (side == 0) ? (lastPrice - currentPrice) : (currentPrice - lastPrice);
+      double requiredDiff = nanpinSpread * GetPointValue();
+      Print("ナンピン[", direction, "]: ポジ=", totalPositionCount,
+            " 現在価格=", currentPrice, " 最後=", lastPrice,
+            " 差=", (priceDiff / GetPointValue()), "pt",
+            " 必要=", nanpinSpread, "pt",
+            " 条件=", nanpinCondition ? "成立" : "未成立");
+      lastDebugTime = TimeCurrent();
+   }
+
    // ナンピン条件が満たされた場合
    if(nanpinCondition)
    {
-      
+      Print("ナンピン[", direction, "]: 条件成立 - ナンピン実行");
+
       // ナンピンスキップレベルのチェック
       int nextLevel = totalPositionCount + 1; // 次のポジションレベル
-      
+
       // スキップレベル以下の場合はゴーストナンピン、それ以外はリアルナンピン
       if(NanpinSkipLevel != SKIP_NONE && nextLevel <= (int)NanpinSkipLevel)
       {
-         
+         Print("ナンピン[", direction, "]: ゴーストナンピン実行 (レベル ", nextLevel, " <= ", (int)NanpinSkipLevel, ")");
+
          // ゴーストナンピンを実行
          double price = (operationType == OP_BUY) ? GetAskPrice() : GetBidPrice();
          
@@ -959,6 +977,7 @@ void CheckNanpinConditions(int side)
       }
       else
       {
+         Print("ナンピン[", direction, "]: リアルナンピン実行 (レベル ", nextLevel, " > ", (int)NanpinSkipLevel, ")");
          ExecuteRealNanpin(operationType);
       }
    }
