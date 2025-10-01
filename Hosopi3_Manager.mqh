@@ -221,10 +221,10 @@ void ExecuteRealNanpin(int typeOrder)
    // 現在のポジション数を確認（ゴースト含む）
    int realPosCount = position_count(typeOrder);
    int totalPosCount = combined_position_count(typeOrder);
-   
+
    if(totalPosCount <= 0)
    {
-      Print("ポジション（リアル・ゴースト含む）が存在しないため、リアルナンピンはスキップされました");
+      // ポジションがない場合は何もしない
       return;
    }
    
@@ -812,18 +812,13 @@ void CheckNanpinConditions(int side)
    // 最大ポジション数に達している場合のみスキップ（ポジションが0でも初回エントリーは実行）
    if(totalPositionCount >= (int)MaxPositions)
    {
-      Print("CheckNanpinConditions: 最大ポジション数(", (int)MaxPositions, ")に達しているため、ナンピンをスキップします");
+      // 最大ポジション数に達している場合は何もしない
       return;
    }
 
    // ポジションがない場合は初回エントリーとして処理
    if(totalPositionCount == 0)
    {
-      Print("CheckNanpinConditions [", (side == 0) ? "Buy" : "Sell", "]: ポジションがないため、初回エントリーとして処理します");
-
-      // 初回エントリーのロットサイズ
-      double initialLot = InitialLot;
-
       // 初回エントリーを実行
       ExecuteRealNanpin(operationType);
       return;
@@ -832,7 +827,7 @@ void CheckNanpinConditions(int side)
    // ナンピン機能が無効の場合はスキップ
    if(!EnableNanpin)
    {
-      Print("CheckNanpinConditions: ナンピン機能が無効のため、スキップします");
+      // ナンピン機能が無効の場合は何もしない
       return;
    }
    
@@ -842,7 +837,7 @@ void CheckNanpinConditions(int side)
    // 最後のエントリーがない場合はスキップ
    if(lastEntryTime == 0)
    {
-      Print("CheckNanpinConditions: 最後のエントリー時間が取得できません");
+      // 最後のエントリー時間が取得できない場合は何もしない
       return;
    }
    
@@ -852,12 +847,10 @@ void CheckNanpinConditions(int side)
    if(NanpinInterval > 0) // インターバルが設定されている場合のみチェック
    {
       intervalOK = (TimeCurrent() - lastEntryTime >= NanpinInterval * 60);
-      
+
       if(!intervalOK)
       {
-         Print("ナンピンインターバル待機中: ", 
-               (TimeCurrent() - lastEntryTime) / 60, "分 / ", 
-               NanpinInterval, "分");
+         // インターバル待機中は何もしない
          return;
       }
    }
@@ -868,7 +861,7 @@ void CheckNanpinConditions(int side)
    double lastPrice = GetLastCombinedPositionPrice(operationType);
    if(lastPrice <= 0)
    {
-      Print("CheckNanpinConditions: 最後のポジション価格が取得できません。スキップします。");
+      // 最後のポジション価格が取得できない場合は何もしない
       return;
    }
    
@@ -889,12 +882,6 @@ void CheckNanpinConditions(int side)
       nanpinCondition = (currentPrice < lastPrice - nanpinSpread * GetPointValue());
    else // Sell
       nanpinCondition = (currentPrice > lastPrice + nanpinSpread * GetPointValue());
-
-   // ナンピン条件デバッグ情報
-   Print("ナンピン条件チェック[", direction, "]: 現在価格=", currentPrice,
-         " | 最後の価格=", lastPrice,
-         " | ナンピン幅=", nanpinSpread,
-         " | 条件=", nanpinCondition ? "成立" : "未成立");
 
    // ナンピン条件が満たされた場合
    if(nanpinCondition)
