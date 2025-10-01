@@ -699,16 +699,19 @@ void OnTickManager()
          
          if(TimeCurrent() - lastAvgPriceUpdateTime > updateInterval)
          {
-            if(buyPositions > 0)
+            int buyGhosts = ghost_position_count(OP_BUY);
+            int sellGhosts = ghost_position_count(OP_SELL);
+
+            if(buyPositions > 0 || buyGhosts > 0)
                UpdateAveragePriceLines(0); // Buy側
             else
-               DeleteSpecificLine(0); // Buy側のラインを削除
-            
-            if(sellPositions > 0)
+               DeleteSpecificLine(0); // Buy側のラインを削除（リアル・ゴースト共に0）
+
+            if(sellPositions > 0 || sellGhosts > 0)
                UpdateAveragePriceLines(1); // Sell側
             else
-               DeleteSpecificLine(1); // Sell側のラインを削除
-            
+               DeleteSpecificLine(1); // Sell側のラインを削除（リアル・ゴースト共に0）
+
             lastAvgPriceUpdateTime = TimeCurrent();
          }
       }
