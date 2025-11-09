@@ -185,36 +185,40 @@ void ApplyLayoutPattern()
    int defaultPanelWidth = PANEL_WIDTH;
    int defaultPanelHeight = g_PanelMinimized ? TITLE_HEIGHT : (PANEL_HEIGHT + 170); // 最小化時は高さを縮小
    int defaultTableWidth = TABLE_WIDTH;
-   
+
+   // PanelX/PanelYが0の場合はデフォルト値を使用
+   int effectivePanelX = (PanelX == 0) ? 20 : PanelX;
+   int effectivePanelY = (PanelY == 0) ? 50 : PanelY;
+
    // レイアウトパターンに応じて位置を調整
    switch(LayoutPattern)
    {
       case LAYOUT_DEFAULT: // デフォルト (パネル上/テーブル下)
-         g_EffectivePanelX = PanelX;
-         g_EffectivePanelY = PanelY;
-         g_EffectiveTableX = PanelX;
-         g_EffectiveTableY = PanelY + (g_PanelMinimized ? TITLE_HEIGHT + 20 : 500); // テーブルを下に配置
+         g_EffectivePanelX = effectivePanelX;
+         g_EffectivePanelY = effectivePanelY;
+         g_EffectiveTableX = effectivePanelX;
+         g_EffectiveTableY = effectivePanelY + (g_PanelMinimized ? TITLE_HEIGHT + 20 : 500); // テーブルを下に配置
          break;
-         
+
       case LAYOUT_SIDE_BY_SIDE: // 横並び (パネル左/テーブル右)
-         g_EffectivePanelX = PanelX;
-         g_EffectivePanelY = PanelY;
-         g_EffectiveTableX = PanelX + defaultPanelWidth + 20; // パネルの右側にテーブルを配置
-         g_EffectiveTableY = PanelY;
+         g_EffectivePanelX = effectivePanelX;
+         g_EffectivePanelY = effectivePanelY;
+         g_EffectiveTableX = effectivePanelX + defaultPanelWidth + 20; // パネルの右側にテーブルを配置
+         g_EffectiveTableY = effectivePanelY;
          break;
          
       case LAYOUT_TABLE_TOP: // テーブル優先 (テーブル上/パネル下)
-         g_EffectivePanelX = PanelX;
-         g_EffectivePanelY = PanelY + 350; // パネルを下に配置
-         g_EffectiveTableX = PanelX;
-         g_EffectiveTableY = PanelY;
+         g_EffectivePanelX = effectivePanelX;
+         g_EffectivePanelY = effectivePanelY + 350; // パネルを下に配置
+         g_EffectiveTableX = effectivePanelX;
+         g_EffectiveTableY = effectivePanelY;
          break;
 
       case LAYOUT_COMPACT: // コンパクト (小さいパネル)
-         g_EffectivePanelX = PanelX;
-         g_EffectivePanelY = PanelY;
-         g_EffectiveTableX = PanelX;
-         g_EffectiveTableY = PanelY + (g_PanelMinimized ? TITLE_HEIGHT + 20 : 350); // 少し間隔を小さくする
+         g_EffectivePanelX = effectivePanelX;
+         g_EffectivePanelY = effectivePanelY;
+         g_EffectiveTableX = effectivePanelX;
+         g_EffectiveTableY = effectivePanelY + (g_PanelMinimized ? TITLE_HEIGHT + 20 : 350); // 少し間隔を小さくする
          break;
          
       case LAYOUT_CUSTOM: // カスタム (位置を個別指定)
@@ -225,10 +229,10 @@ void ApplyLayoutPattern()
          break;
          
       default: // デフォルトの設定
-         g_EffectivePanelX = PanelX;
-         g_EffectivePanelY = PanelY;
-         g_EffectiveTableX = PanelX;
-         g_EffectiveTableY = PanelY + (g_PanelMinimized ? TITLE_HEIGHT + 20 : 500);
+         g_EffectivePanelX = effectivePanelX;
+         g_EffectivePanelY = effectivePanelY;
+         g_EffectiveTableX = effectivePanelX;
+         g_EffectiveTableY = effectivePanelY + (g_PanelMinimized ? TITLE_HEIGHT + 20 : 500);
    }
    
 }
