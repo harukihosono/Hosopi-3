@@ -190,10 +190,59 @@ enum AVG_PRICE_CALCULATION_MODE
 enum LAYOUT_PATTERN
 {
    LAYOUT_DEFAULT = 0,       // デフォルト (パネル上/テーブル下)
-   LAYOUT_SIDE_BY_SIDE = 1,  // 横並び (パネル左/テーブル右)  
+   LAYOUT_SIDE_BY_SIDE = 1,  // 横並び (パネル左/テーブル右)
    LAYOUT_TABLE_TOP = 2,     // テーブル優先 (テーブル上/パネル下)
    LAYOUT_COMPACT = 3,       // コンパクト (小さいパネル)
    LAYOUT_CUSTOM = 4         // カスタム (位置を個別指定)
+};
+
+//+------------------------------------------------------------------+
+//|              インジケーターエントリー関連のenum定義                |
+//+------------------------------------------------------------------+
+
+// インジケーター使用モードの列挙型
+enum ENUM_INDICATOR_MODE
+{
+   INDICATOR_ENTRY_ONLY = 0,      // エントリーのみ
+   INDICATOR_EXIT_ONLY = 1,       // 決済のみ
+   INDICATOR_ENTRY_AND_EXIT = 2   // エントリー＆決済
+};
+
+// 価格条件タイプの列挙型
+enum ENUM_PRICE_CONDITION_TYPE
+{
+   PRICE_CONDITION_NONE = 0,               // -
+   PRICE_CONDITION_CROSS = 1,              // 交差（方向問わず）
+   PRICE_CONDITION_UP_CROSS = 2,           // 価格上抜け（価格がインジケーターを下から上に交差）
+   PRICE_CONDITION_DOWN_CROSS = 3,         // 価格下抜け（価格がインジケーターを上から下に交差）
+   PRICE_CONDITION_BELOW = 4,              // 価格下位（価格＜インジケーター）
+   PRICE_CONDITION_ABOVE = 5               // 価格上位（価格＞インジケーター）
+};
+
+// 数値条件タイプの列挙型
+enum ENUM_VALUE_CONDITION_TYPE
+{
+   VALUE_CONDITION_NONE = 0,               // -
+   VALUE_CONDITION_CROSS = 1,              // 交差（方向問わず）
+   VALUE_CONDITION_UP_CROSS = 2,           // 値上抜け（インジケーター値がしきい値を下から上に交差）
+   VALUE_CONDITION_DOWN_CROSS = 3,         // 値下抜け（インジケーター値がしきい値を上から下に交差）
+   VALUE_CONDITION_BELOW = 4,              // 値下位（インジケーター値＜しきい値）
+   VALUE_CONDITION_ABOVE = 5               // 値上位（インジケーター値＞しきい値）
+};
+
+// エントリー条件の列挙型（ポジション数制御）
+enum ENUM_ENTRY_CONDITION
+{
+   ENTRY_ALWAYS = 0,          // 常にエントリー（既存ポジションに関係なく新規エントリー）
+   ENTRY_NO_POSITION = 1,     // 完全ノーポジ時のみ（買い・売りともにポジション0の時のみエントリー）
+   ENTRY_NO_SAME_DIRECTION = 2 // 同方向ノーポジ時のみ（買いシグナル時は買いポジション0、売りシグナル時は売りポジション0の時のみエントリー）
+};
+
+// 反対シグナル決済の列挙型
+enum ENUM_OPPOSITE_SIGNAL_EXIT
+{
+   OPPOSITE_EXIT_OFF = 0,     // 無効
+   OPPOSITE_EXIT_ON = 1        // 有効（反対エントリーシグナルで決済）
 };
 
 #endif // HOSOPI3_ENUMS_MQH

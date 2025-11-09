@@ -27,6 +27,7 @@
 #include "Hosopi3_Async.mqh"
 #include "Hosopi3_CyberUI.mqh"
 #include "Hosopi3_InfoPanel.mqh"
+#include "Hosopi3_IndicatorEntry.mqh"
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |

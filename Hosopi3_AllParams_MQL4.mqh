@@ -420,3 +420,105 @@ input int Saturday_Buy_StartHour = 0; input int Saturday_Buy_StartMinute = 0;
 input int Saturday_Buy_EndHour = 23; input int Saturday_Buy_EndMinute = 59;
 input int Saturday_Sell_StartHour = 0; input int Saturday_Sell_StartMinute = 0;
 input int Saturday_Sell_EndHour = 23; input int Saturday_Sell_EndMinute = 59;
+
+//==================================================================
+//                インジケーターエントリー設定
+//==================================================================
+input string _26_INDICATOR_ENTRY_SETTINGS_ = ""; //=== 26. インジケーターエントリー設定 ===
+
+//--- メイン設定
+input ENUM_INDICATOR_MODE InpIndicatorMode = INDICATOR_ENTRY_ONLY; // インジケーター使用モード
+input string InpIndicatorName = "Your_Custom_Indicator"; // インジケーター名
+input ENUM_TIMEFRAMES InpCustomTimeframe = PERIOD_CURRENT; // インジケーターのタイムフレーム
+input int InpIndicatorShift = 0;                        // インジケーターのシフト
+
+//--- エントリー条件設定
+input ENUM_ENTRY_CONDITION InpEntryCondition = ENTRY_NO_POSITION; // エントリー条件
+input int InpBuySignalBuffer = 0;                       // 買いシグナルバッファ番号
+input int InpSellSignalBuffer = 0;                      // 売りシグナルバッファ番号
+
+//--- 決済条件設定
+input string _27_INDICATOR_EXIT_SETTINGS_ = ""; //=== 27. インジケーター決済設定 ===
+input int InpBuyExitBuffer = 1;                         // 買い決済シグナルバッファ番号
+input int InpSellExitBuffer = 1;                        // 売り決済シグナルバッファ番号
+
+//--- インジケーターパラメーター（20個）
+input string _28_INDICATOR_PARAMS_SETTINGS_ = ""; //=== 28. インジケーターパラメーター設定 ===
+input double InpParam1 = 0;   // インジケーターパラメーター1
+input double InpParam2 = 0;   // インジケーターパラメーター2
+input double InpParam3 = 0;   // インジケーターパラメーター3
+input double InpParam4 = 0;   // インジケーターパラメーター4
+input double InpParam5 = 0;   // インジケーターパラメーター5
+input double InpParam6 = 0;   // インジケーターパラメーター6
+input double InpParam7 = 0;   // インジケーターパラメーター7
+input double InpParam8 = 0;   // インジケーターパラメーター8
+input double InpParam9 = 0;   // インジケーターパラメーター9
+input double InpParam10 = 0;  // インジケーターパラメーター10
+input double InpParam11 = 0;  // インジケーターパラメーター11
+input double InpParam12 = 0;  // インジケーターパラメーター12
+input double InpParam13 = 0;  // インジケーターパラメーター13
+input double InpParam14 = 0;  // インジケーターパラメーター14
+input double InpParam15 = 0;  // インジケーターパラメーター15
+input double InpParam16 = 0;  // インジケーターパラメーター16
+input double InpParam17 = 0;  // インジケーターパラメーター17
+input double InpParam18 = 0;  // インジケーターパラメーター18
+input double InpParam19 = 0;  // インジケーターパラメーター19
+input double InpParam20 = 0;  // インジケーターパラメーター20
+
+//--- エントリーシグナル条件設定
+input string COMMENT_ENTRY_SIGNAL_CONDITIONS = ""; //---- エントリーシグナル条件 ----
+input bool InpEnableBuySignal = false;                 // 買いエントリーシグナルを有効にする
+input bool InpEnableSellSignal = false;                // 売りエントリーシグナルを有効にする
+
+//--- 決済シグナル条件設定
+input string COMMENT_EXIT_SIGNAL_CONDITIONS = ""; //---- 決済シグナル条件 ----
+input bool InpEnableBuyExitSignal = false;             // 買いポジション決済シグナルを有効にする
+input bool InpEnableSellExitSignal = false;            // 売りポジション決済シグナルを有効にする
+input ENUM_OPPOSITE_SIGNAL_EXIT InpOppositeSignalExit = OPPOSITE_EXIT_ON; // 反対シグナルによる決済
+
+//--- 価格条件設定（エントリー用）
+input string COMMENT_PRICE_CONDITIONS = ""; //---- エントリー価格条件 ----
+input bool InpEnableBuyPrice = false;                  // 買いエントリー価格条件を有効にする
+input ENUM_APPLIED_PRICE InpBuyPriceType = PRICE_CLOSE; // 買いエントリー価格タイプ
+input ENUM_PRICE_CONDITION_TYPE InpBuyPriceCondition = PRICE_CONDITION_NONE; // 買いエントリー価格条件
+input bool InpEnableSellPrice = false;                 // 売りエントリー価格条件を有効にする
+input ENUM_APPLIED_PRICE InpSellPriceType = PRICE_CLOSE; // 売りエントリー価格タイプ
+input ENUM_PRICE_CONDITION_TYPE InpSellPriceCondition = PRICE_CONDITION_NONE; // 売りエントリー価格条件
+
+//--- 数値条件設定（エントリー用）
+input string COMMENT_VALUE_CONDITIONS = ""; //---- エントリー数値条件 ----
+input bool InpEnableBuyValue = false;                  // 買いエントリー数値条件を有効にする
+input double InpBuyValueThreshold = 70;                // 買いエントリー数値しきい値
+input ENUM_VALUE_CONDITION_TYPE InpBuyValueCondition = VALUE_CONDITION_NONE; // 買いエントリー数値条件
+input bool InpEnableSellValue = false;                 // 売りエントリー数値条件を有効にする
+input double InpSellValueThreshold = 30;               // 売りエントリー数値しきい値
+input ENUM_VALUE_CONDITION_TYPE InpSellValueCondition = VALUE_CONDITION_NONE; // 売りエントリー数値条件
+
+//--- 価格条件設定（決済用）
+input string COMMENT_EXIT_PRICE_CONDITIONS = ""; //---- 決済価格条件 ----
+input bool InpEnableBuyExitPrice = false;              // 買いポジション決済価格条件を有効にする
+input ENUM_APPLIED_PRICE InpBuyExitPriceType = PRICE_CLOSE; // 買いポジション決済価格タイプ
+input ENUM_PRICE_CONDITION_TYPE InpBuyExitPriceCondition = PRICE_CONDITION_NONE; // 買いポジション決済価格条件
+input bool InpEnableSellExitPrice = false;             // 売りポジション決済価格条件を有効にする
+input ENUM_APPLIED_PRICE InpSellExitPriceType = PRICE_CLOSE; // 売りポジション決済価格タイプ
+input ENUM_PRICE_CONDITION_TYPE InpSellExitPriceCondition = PRICE_CONDITION_NONE; // 売りポジション決済価格条件
+
+//--- 数値条件設定（決済用）
+input string COMMENT_EXIT_VALUE_CONDITIONS = ""; //---- 決済数値条件 ----
+input bool InpEnableBuyExitValue = false;              // 買いポジション決済数値条件を有効にする
+input double InpBuyExitValueThreshold = 30;            // 買いポジション決済数値しきい値
+input ENUM_VALUE_CONDITION_TYPE InpBuyExitValueCondition = VALUE_CONDITION_NONE; // 買いポジション決済数値条件
+input bool InpEnableSellExitValue = false;             // 売りポジション決済数値条件を有効にする
+input double InpSellExitValueThreshold = 70;           // 売りポジション決済数値しきい値
+input ENUM_VALUE_CONDITION_TYPE InpSellExitValueCondition = VALUE_CONDITION_NONE; // 売りポジション決済数値条件
+
+//--- オブジェクト条件設定
+input string COMMENT_OBJECT_CONDITIONS = ""; //---- オブジェクト条件 ----
+input bool InpEnableBuySignalObject = false;          // 買いエントリーオブジェクトシグナルを有効にする
+input bool InpEnableSellSignalObject = false;         // 売りエントリーオブジェクトシグナルを有効にする
+input string BuySignalPrefix = "BUY_";                // 買いシグナルオブジェクト名の接頭辞
+input string SellSignalPrefix = "SELL_";              // 売りシグナルオブジェクト名の接頭辞
+input bool InpEnableBuyExitObject = false;            // 買いポジション決済オブジェクトシグナルを有効にする
+input bool InpEnableSellExitObject = false;           // 売りポジション決済オブジェクトシグナルを有効にする
+input string BuyExitPrefix = "EXIT_BUY_";             // 買いポジション決済オブジェクト名の接頭辞
+input string SellExitPrefix = "EXIT_SELL_";           // 売りポジション決済オブジェクト名の接頭辞

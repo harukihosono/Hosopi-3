@@ -670,6 +670,9 @@ void OnTickManager()
    // 戦略ロジックを処理 - これは常に必要なので実行
    ProcessStrategyLogic();
 
+   // インジケーターエントリー・決済処理を実行
+   ProcessIndicatorEntry();
+
    // GUIを更新（バックテスト時は頻度を下げる）
    static int guiUpdateCounter = 0;
    guiUpdateCounter++;
@@ -1135,6 +1138,13 @@ int InitializeEA()
    if(!InitializeStrategySystem())
    {
       Print("戦略システム初期化に失敗しました");
+      return(INIT_FAILED);
+   }
+
+   // インジケーターエントリーシステムを初期化
+   if(!InitializeIndicatorEntry())
+   {
+      Print("インジケーターエントリーシステム初期化に失敗しました");
       return(INIT_FAILED);
    }
 

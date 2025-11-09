@@ -174,6 +174,19 @@ bool EvaluateStrategyForEntry(int side)
         }
     }
 
+    // カスタムインジケーターエントリー
+    if(IndicatorEntryHasConfiguration() && InpIndicatorMode != INDICATOR_EXIT_ONLY)
+    {
+        enabledStrategies++;
+        if(CheckIndicatorEntrySignal(side))
+        {
+            validSignals++;
+            if(activeStrategies != "")
+                activeStrategies += ", ";
+            activeStrategies += IndicatorEntryDisplayName();
+        }
+    }
+
     // インジケーター条件評価
     bool indicatorSignalsValid = false;
 
