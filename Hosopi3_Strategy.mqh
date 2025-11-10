@@ -60,8 +60,8 @@ bool CanExecuteEntry(int operationType)
     if(InpVolatilityFilterEnabled)
     {
         // 初回エントリーの場合は常に適用
-        int buyPositions = PositionCount(OP_BUY);
-        int sellPositions = PositionCount(OP_SELL);
+        int buyPositions = position_count(OP_BUY);
+        int sellPositions = position_count(OP_SELL);
         bool isInitialEntry = (buyPositions == 0 && sellPositions == 0);
 
         // すべてのエントリーに適用、または初回エントリーの場合
