@@ -420,7 +420,7 @@ void InfoPanelManager::CreateHeader()
    ObjectSetInteger(0, headerText, OBJPROP_YDISTANCE, m_panelY + 8);
    ObjectSetString(0, headerText, OBJPROP_TEXT, "Technical Indicators");
    ObjectSetInteger(0, headerText, OBJPROP_COLOR, m_textColor);
-   ObjectSetString(0, headerText, OBJPROP_FONT, "Yu Gothic UI");
+   ObjectSetString(0, headerText, OBJPROP_FONT, "MS Gothic");
    ObjectSetInteger(0, headerText, OBJPROP_FONTSIZE, 9);
    ObjectSetInteger(0, headerText, OBJPROP_CORNER, CORNER_LEFT_UPPER);
    ObjectSetInteger(0, headerText, OBJPROP_BACK, false);
@@ -430,7 +430,7 @@ void InfoPanelManager::CreateHeader()
    ObjectCreate(headerText, OBJ_LABEL, 0, 0, 0);
    ObjectSet(headerText, OBJPROP_XDISTANCE, m_panelX + PANEL_MARGIN);
    ObjectSet(headerText, OBJPROP_YDISTANCE, m_panelY + 8);
-   ObjectSetText(headerText, "Technical Indicators", 9, "Yu Gothic UI", m_textColor);
+   ObjectSetText(headerText, "Technical Indicators", 9, "MS Gothic", m_textColor);
    ObjectSet(headerText, OBJPROP_CORNER, CORNER_LEFT_UPPER);
    ObjectSet(headerText, OBJPROP_BACK, false);
    ObjectSet(headerText, OBJPROP_SELECTABLE, false);
@@ -445,7 +445,7 @@ void InfoPanelManager::CreateHeader()
    ObjectSetInteger(0, colHeaders, OBJPROP_YDISTANCE, m_panelY + TITLE_HEIGHT + 5);
    ObjectSetString(0, colHeaders, OBJPROP_TEXT, "Indicator            Status          BUY      SELL");
    ObjectSetInteger(0, colHeaders, OBJPROP_COLOR, C'160,160,160');
-   ObjectSetString(0, colHeaders, OBJPROP_FONT, "Yu Gothic UI");
+   ObjectSetString(0, colHeaders, OBJPROP_FONT, "MS Gothic");
    ObjectSetInteger(0, colHeaders, OBJPROP_FONTSIZE, 8);
    ObjectSetInteger(0, colHeaders, OBJPROP_CORNER, CORNER_LEFT_UPPER);
    ObjectSetInteger(0, colHeaders, OBJPROP_BACK, false);
@@ -455,7 +455,7 @@ void InfoPanelManager::CreateHeader()
    ObjectCreate(colHeaders, OBJ_LABEL, 0, 0, 0);
    ObjectSet(colHeaders, OBJPROP_XDISTANCE, m_panelX + PANEL_MARGIN);
    ObjectSet(colHeaders, OBJPROP_YDISTANCE, m_panelY + TITLE_HEIGHT + 5);
-   ObjectSetText(colHeaders, "Indicator        Status        BUY    SELL", 8, "Yu Gothic UI", C'160,160,160');
+   ObjectSetText(colHeaders, "Indicator        Status        BUY    SELL", 8, "MS Gothic", C'160,160,160');
    ObjectSet(colHeaders, OBJPROP_CORNER, CORNER_LEFT_UPPER);
    ObjectSet(colHeaders, OBJPROP_BACK, false);
    ObjectSet(colHeaders, OBJPROP_SELECTABLE, false);
