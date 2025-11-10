@@ -499,7 +499,7 @@ void InfoPanelManager::CreateIndicatorRow(int index, TechnicalIndicatorInfo &ind
    // BUYシグナル
    string buyLabel = GenerateObjectName("Buy_" + IntegerToString(index));
    ObjectCreate(0, buyLabel, OBJ_LABEL, 0, 0, 0);
-   ObjectSetInteger(0, buyLabel, OBJPROP_XDISTANCE, m_panelX + 220);
+   ObjectSetInteger(0, buyLabel, OBJPROP_XDISTANCE, m_panelX + 240);
    ObjectSetInteger(0, buyLabel, OBJPROP_YDISTANCE, yPos);
    ObjectSetString(0, buyLabel, OBJPROP_TEXT, GetSignalText(indicator.buySignal));
    ObjectSetInteger(0, buyLabel, OBJPROP_COLOR, GetSignalColor(indicator.buySignal));
@@ -512,7 +512,7 @@ void InfoPanelManager::CreateIndicatorRow(int index, TechnicalIndicatorInfo &ind
    // SELLシグナル
    string sellLabel = GenerateObjectName("Sell_" + IntegerToString(index));
    ObjectCreate(0, sellLabel, OBJ_LABEL, 0, 0, 0);
-   ObjectSetInteger(0, sellLabel, OBJPROP_XDISTANCE, m_panelX + 260);
+   ObjectSetInteger(0, sellLabel, OBJPROP_XDISTANCE, m_panelX + 295);
    ObjectSetInteger(0, sellLabel, OBJPROP_YDISTANCE, yPos);
    ObjectSetString(0, sellLabel, OBJPROP_TEXT, GetSignalText(indicator.sellSignal));
    ObjectSetInteger(0, sellLabel, OBJPROP_COLOR, GetSignalColor(indicator.sellSignal));
