@@ -26,6 +26,10 @@
 #include "Hosopi3_Notification.mqh"
 #include "Hosopi3_Strategy.mqh"
 #include "Hosopi3_Async.mqh"
+#include "Hosopi3_CyberUI.mqh"
+#include "Hosopi3_InfoPanel.mqh"
+#include "Hosopi3_IndicatorEntry.mqh"
+#include "Hosopi3_VolatilityFilter.mqh"
 
 
 
