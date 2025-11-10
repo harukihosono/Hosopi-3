@@ -842,10 +842,10 @@ bool IndicatorEntryHasConfiguration()
 string IndicatorEntryDisplayName()
 {
    if(StringLen(InpIndicatorName) == 0)
-      return "";
+      return "Custom";
 
    if(InpIndicatorName == "Your_Custom_Indicator")
-      return "";
+      return "Custom";
 
    return InpIndicatorName;
 }

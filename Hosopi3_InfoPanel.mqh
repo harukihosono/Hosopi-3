@@ -55,7 +55,7 @@ private:
    color m_neutralColor;
 
    // テクニカル指標データ
-   TechnicalIndicatorInfo m_indicators[8];  // 7→8に変更（カスタムインジケーター追加）
+   TechnicalIndicatorInfo m_indicators[9];  // 8→9に変更（ボラティリティフィルター追加）
    int m_indicatorCount;
 
    // オブジェクト名管理
@@ -138,7 +138,7 @@ InfoPanelManager::InfoPanelManager()
    m_panelY = 100;
    m_panelWidth = 380; // InfoPanel専用幅
    m_rowHeight = 25;
-   m_indicatorCount = 8;  // 7→8に変更
+   m_indicatorCount = 9;  // 8→9に変更（ボラティリティフィルター追加）
    m_panelHeight = 40 + (m_indicatorCount * m_rowHeight) + 30; // ヘッダー + 指標行 + 30
    m_isVisible = false;
 
@@ -163,7 +163,8 @@ InfoPanelManager::InfoPanelManager()
    m_indicators[4].name = "Stochastic";
    m_indicators[5].name = "CCI";
    m_indicators[6].name = "ADX";
-   m_indicators[7].name = IndicatorEntryDisplayName();  // カスタムインジケーター追加
+   m_indicators[7].name = IndicatorEntryDisplayName();  // カスタムインジケーター
+   m_indicators[8].name = "VolFilter";  // ボラティリティフィルター追加
 
    for(int i = 0; i < m_indicatorCount; i++)
    {
@@ -325,6 +326,14 @@ void InfoPanelManager::UpdateIndicatorStates()
    m_indicators[7].sellSignal = m_indicators[7].enabled && CheckIndicatorEntrySignal(1) ? SIGNAL_SELL : SIGNAL_NONE;
    // 名前を更新（パラメータが変わった場合に対応）
    m_indicators[7].name = IndicatorEntryDisplayName();
+
+   // ボラティリティフィルター（BUY/SELLの概念なし、PASS/BLOCKのみ）
+   m_indicators[8].enabled = InpVolatilityFilterEnabled;
+   bool volPass = PassVolatilityEntryFilter();
+   // PASSの場合は両方●、BLOCKの場合は両方○で表示
+   ENUM_SIGNAL_STATE volState = m_indicators[8].enabled ? (volPass ? SIGNAL_BUY : SIGNAL_NONE) : SIGNAL_NONE;
+   m_indicators[8].buySignal = volState;
+   m_indicators[8].sellSignal = volState;
 }
 
 //+------------------------------------------------------------------+
