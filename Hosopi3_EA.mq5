@@ -20,7 +20,7 @@
 #include "Hosopi3_GUI.mqh"
 #include "Hosopi3_Table.mqh"
 #include "Hosopi3_Ghost.mqh"
-#include "Hosopi3_TakeProfit.mqh"  
+#include "Hosopi3_TakeProfit.mqh"
 #include "Hosopi3_Manager.mqh"
 #include "Hosopi3_Notification.mqh"
 #include "Hosopi3_Strategy.mqh"
@@ -28,6 +28,7 @@
 #include "Hosopi3_CyberUI.mqh"
 #include "Hosopi3_InfoPanel.mqh"
 #include "Hosopi3_IndicatorEntry.mqh"
+#include "Hosopi3_VolatilityFilter.mqh"
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |

@@ -522,3 +522,15 @@ input bool InpEnableBuyExitObject = false;            // 買いポジション�
 input bool InpEnableSellExitObject = false;           // 売りポジション決済オブジェクトシグナルを有効にする
 input string BuyExitPrefix = "EXIT_BUY_";             // 買いポジション決済オブジェクト名の接頭辞
 input string SellExitPrefix = "EXIT_SELL_";           // 売りポジション決済オブジェクト名の接頭辞
+
+//==================================================================
+//                ボラティリティフィルター設定
+//==================================================================
+input string _36_VOLATILITY_FILTER_SETTINGS_ = ""; //=== 36. ボラティリティフィルター設定 ===
+
+//--- メイン設定
+input bool InpVolatilityFilterEnabled = false;        // ボラありフィルターを有効にする
+input ENUM_TIMEFRAMES InpVolatilityATRTimeframe = PERIOD_M5; // ATR計算時間足
+input int InpVolatilityATRPeriod = 3;                 // ATR期間
+input double InpVolatilitySpreadMultiplier = 20.0;    // スプレッド倍率（ATR > スプレッド × この値でエントリー許可）
+input ENUM_VOLATILITY_FILTER_MODE InpVolatilityFilterMode = VOLATILITY_FILTER_ALL_ENTRIES; // フィルター適用モード

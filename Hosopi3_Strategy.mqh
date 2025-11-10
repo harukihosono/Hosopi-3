@@ -42,19 +42,36 @@ bool CanExecuteEntry(int operationType)
     // 基本的なエントリー可否チェック
     if(!CanEntry(operationType))
         return false;
-    
+
     // 時間フィルターチェック
     if(!IsTimeAllowed(operationType))
         return false;
-    
+
     // 偶数奇数戦略チェック
     if(!CanEntryByEvenOddStrategy(operationType))
         return false;
-    
+
     // テクニカル戦略チェック
     if(!CanEntryByTechnicalStrategy(operationType))
         return false;
-    
+
+    // ボラティリティフィルターチェック
+    // 適用モードに応じて判定
+    if(InpVolatilityFilterEnabled)
+    {
+        // 初回エントリーの場合は常に適用
+        int buyPositions = PositionCount(OP_BUY);
+        int sellPositions = PositionCount(OP_SELL);
+        bool isInitialEntry = (buyPositions == 0 && sellPositions == 0);
+
+        // すべてのエントリーに適用、または初回エントリーの場合
+        if(InpVolatilityFilterMode == VOLATILITY_FILTER_ALL_ENTRIES || isInitialEntry)
+        {
+            if(!PassVolatilityEntryFilter())
+                return false;
+        }
+    }
+
     return true;
 }
 

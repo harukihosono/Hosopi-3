@@ -1148,6 +1148,13 @@ int InitializeEA()
       return(INIT_FAILED);
    }
 
+   // ボラティリティフィルターを初期化
+   if(!InitializeVolatilityFilter())
+   {
+      Print("ボラティリティフィルター初期化に失敗しました");
+      return(INIT_FAILED);
+   }
+
    // グローバル変数とinputの設定を同期
    g_EnableNanpin = EnableNanpin;
    g_EnableGhostEntry = EnableGhostEntry;
@@ -1202,7 +1209,10 @@ void DeinitializeEA(const int reason)
    
    // 戦略システムを終了
    DeinitializeStrategySystem();
-   
+
+   // ボラティリティフィルターを終了
+   DeinitializeVolatilityFilter();
+
    // GUIを削除
    DeleteGUI();
    

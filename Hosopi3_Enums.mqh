@@ -245,4 +245,15 @@ enum ENUM_OPPOSITE_SIGNAL_EXIT
    OPPOSITE_EXIT_ON = 1        // 有効（反対エントリーシグナルで決済）
 };
 
+//+------------------------------------------------------------------+
+//|              ボラティリティフィルター関連のenum定義                |
+//+------------------------------------------------------------------+
+
+// ボラティリティフィルター適用モードの列挙型
+enum ENUM_VOLATILITY_FILTER_MODE
+{
+   VOLATILITY_FILTER_ALL_ENTRIES = 0,      // すべてのエントリーに適用（初回＋ナンピン）
+   VOLATILITY_FILTER_INITIAL_ONLY = 1      // 初回エントリーのみ適用（ナンピンは無効）
+};
+
 #endif // HOSOPI3_ENUMS_MQH
