@@ -140,7 +140,7 @@ InfoPanelManager::InfoPanelManager()
    m_rowHeight = 25;
    m_indicatorCount = 9;  // 8→9に変更（ボラティリティフィルター追加）
    m_panelHeight = 40 + (m_indicatorCount * m_rowHeight) + 30; // ヘッダー + 指標行 + 30
-   m_isVisible = false;
+   m_isVisible = true;  // デフォルトで表示
 
    // 色設定（メインパネルと同じ配色）
    m_bgColor = COLOR_PANEL_BG;
