@@ -429,10 +429,11 @@ void CreateGUI()
                g_AutoTrading ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE, COLOR_TEXT_WHITE);
    currentY += BUTTON_HEIGHT + PANEL_MARGIN;
 
-   // Info Panel トグルボタン
-   CreateButton("btnToggleInfoPanel", "INFO PANEL " + (IsInfoPanelVisible() ? "ON" : "OFF"),
+   // テクニカル指標状態表示トグルボタン
+   CreateButton("btnToggleInfoPanel", "テクニカル指標状態表示 " + (IsInfoPanelVisible() ? "ON" : "OFF"),
                adjustedPanelX + PANEL_MARGIN, currentY, fullWidth, BUTTON_HEIGHT,
-               IsInfoPanelVisible() ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE, COLOR_TEXT_LIGHT);
+               IsInfoPanelVisible() ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE,
+               IsInfoPanelVisible() ? COLOR_TEXT_WHITE : COLOR_TEXT_LIGHT);
    currentY += BUTTON_HEIGHT + PANEL_MARGIN;
 
    // ========== 行9: 情報表示ボタン ==========
