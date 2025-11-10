@@ -1063,10 +1063,10 @@ void ProcessButtonClick(string buttonName)
    else if(buttonName == "btnToggleInfoPanel")
    {
       ToggleInfoPanel();
-      // UpdateGUI()を呼ばず、ボタンのテキストのみ更新
-      ObjectSetString(0, "btnToggleInfoPanel", OBJPROP_TEXT, "INFO PANEL " + (IsInfoPanelVisible() ? "ON" : "OFF"));
-      ObjectSetInteger(0, "btnToggleInfoPanel", OBJPROP_BGCOLOR,
-                      IsInfoPanelVisible() ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE);
+
+      // GUIを更新（ボタンの色とテキストを即座に反映）
+      UpdateGUI();
+
       Print("テクニカル指標InfoPanel: ", IsInfoPanelVisible() ? "表示" : "非表示");
 
       // 強制的にテーブル位置を更新
