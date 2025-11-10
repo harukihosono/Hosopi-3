@@ -831,6 +831,27 @@ void UpdateGUI()
       ObjectSetText(avgPriceBtnPrefix, g_AvgPriceVisible ? "AVG PRICE ON" : "AVG PRICE OFF", 9, "Yu Gothic UI", COLOR_TEXT_LIGHT);
    #endif
 
+   // InfoPanelボタン状態更新
+   string infoPanelBtnPrefix = g_ObjectPrefix + "btnToggleInfoPanel";
+   bool infoPanelVisible = IsInfoPanelVisible();
+   color infoPanelButtonColor = infoPanelVisible ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE;
+   color infoPanelTextColor = infoPanelVisible ? COLOR_TEXT_WHITE : COLOR_TEXT_LIGHT;
+
+   #ifdef __MQL5__
+      ObjectSetInteger(0, infoPanelBtnPrefix + "BG", OBJPROP_BGCOLOR, infoPanelButtonColor);
+      ObjectSetInteger(0, infoPanelBtnPrefix + "BG", OBJPROP_COLOR, ColorDarken(infoPanelButtonColor, 20));
+      ObjectSetInteger(0, infoPanelBtnPrefix, OBJPROP_BGCOLOR, infoPanelButtonColor);
+      ObjectSetInteger(0, infoPanelBtnPrefix, OBJPROP_BORDER_COLOR, ColorDarken(infoPanelButtonColor, 20));
+      ObjectSetInteger(0, infoPanelBtnPrefix, OBJPROP_COLOR, infoPanelTextColor);
+      ObjectSetString(0, infoPanelBtnPrefix, OBJPROP_TEXT, "INDICATORS " + (infoPanelVisible ? "ON" : "OFF"));
+   #else
+      ObjectSet(infoPanelBtnPrefix + "BG", OBJPROP_BGCOLOR, infoPanelButtonColor);
+      ObjectSet(infoPanelBtnPrefix + "BG", OBJPROP_COLOR, ColorDarken(infoPanelButtonColor, 20));
+      ObjectSet(infoPanelBtnPrefix, OBJPROP_BGCOLOR, infoPanelButtonColor);
+      ObjectSet(infoPanelBtnPrefix, OBJPROP_BORDER_COLOR, ColorDarken(infoPanelButtonColor, 20));
+      ObjectSetText(infoPanelBtnPrefix, "INDICATORS " + (infoPanelVisible ? "ON" : "OFF"), 9, "Yu Gothic UI", infoPanelTextColor);
+   #endif
+
    // ChartRedraw()は必要な場合のみ呼び出す（HLINEちかちか防止）
    // ChartRedraw(); // HLINEちかちか防止のため無効化
 }
