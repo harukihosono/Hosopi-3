@@ -118,6 +118,8 @@ public:
    }
 
    // エントリー・決済条件をチェック
+   // 注意: エントリー処理は戦略システム（Hosopi3_Strategy.mqh）経由で実行されるため、
+   //       ここでは決済処理のみを実行する（AND条件を正しく機能させるため）
    void CheckConditions()
    {
       // 有効な条件がない場合は処理しない
@@ -129,37 +131,7 @@ public:
          return;
 #endif
 
-      // シフト0の場合はティック毎にチェック、それ以外は新しいバーでのみチェック
-      if(InpIndicatorShift > 0)
-      {
-         datetime currentBarTime = iTime(_Symbol, InpCustomTimeframe, 0);
-         if(currentBarTime <= m_lastBarTime)
-            return;
-
-         m_lastBarTime = currentBarTime;
-
-         // 新しいバーでエントリーフラグをリセット
-         m_buyEntryDone = false;
-         m_sellEntryDone = false;
-      }
-      else
-      {
-         // シフト0の場合、新しいバーでエントリーフラグをリセット
-         datetime currentBarTime = iTime(_Symbol, InpCustomTimeframe, 0);
-         if(currentBarTime > m_lastBarTime)
-         {
-            m_lastBarTime = currentBarTime;
-            m_buyEntryDone = false;
-            m_sellEntryDone = false;
-         }
-      }
-
-      // モードに応じて処理を分岐
-      if(InpIndicatorMode == INDICATOR_ENTRY_ONLY || InpIndicatorMode == INDICATOR_ENTRY_AND_EXIT)
-      {
-         CheckEntryConditions();
-      }
-
+      // 決済処理のみを実行（エントリーは戦略システム経由で実行される）
       if(InpIndicatorMode == INDICATOR_EXIT_ONLY || InpIndicatorMode == INDICATOR_ENTRY_AND_EXIT)
       {
          CheckExitConditions();

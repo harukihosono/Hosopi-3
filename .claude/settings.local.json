@@ -39,7 +39,9 @@
       "Bash(\"/c/Program Files/FXGT MT5 Terminal/metaeditor64.exe\" /compile \"C:\\Users\\lukeh\\AppData\\Roaming\\MetaQuotes\\Terminal\\53785E099C927DB68A545C249CDBCE06\\MQL5\\Experts\\Hosopi-3\\Hosopi3_EA.mq5\")",
       "Bash(cmd:*)",
       "Bash(\"/c/Program Files/MetaTrader 5 EXNESS/metaeditor64.exe\" /compile \"Hosopi3_EA.mq4\")",
-      "Bash(\"/c/Program Files/MetaTrader 5 EXNESS/metaeditor64.exe\" /compile \"Hosopi3_EA.mq5\")"
+      "Bash(\"/c/Program Files/MetaTrader 5 EXNESS/metaeditor64.exe\" /compile \"Hosopi3_EA.mq5\")",
+      "Bash(claude mcp list:*)",
+      "Bash(claude mcp add:*)"
     ],
     "deny": [],
     "ask": [],
