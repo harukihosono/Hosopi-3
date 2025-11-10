@@ -831,6 +831,24 @@ void UpdateGUI()
       ObjectSetText(avgPriceBtnPrefix, g_AvgPriceVisible ? "AVG PRICE ON" : "AVG PRICE OFF", 9, "Yu Gothic UI", COLOR_TEXT_LIGHT);
    #endif
 
+   // AUTO TRADINGボタン状態更新
+   string autoTradingBtnPrefix = g_ObjectPrefix + "btnToggleAutoTrading";
+   color autoTradingButtonColor = g_AutoTrading ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE;
+
+   #ifdef __MQL5__
+      ObjectSetInteger(0, autoTradingBtnPrefix + "BG", OBJPROP_BGCOLOR, autoTradingButtonColor);
+      ObjectSetInteger(0, autoTradingBtnPrefix + "BG", OBJPROP_COLOR, ColorDarken(autoTradingButtonColor, 20));
+      ObjectSetInteger(0, autoTradingBtnPrefix, OBJPROP_BGCOLOR, autoTradingButtonColor);
+      ObjectSetInteger(0, autoTradingBtnPrefix, OBJPROP_BORDER_COLOR, ColorDarken(autoTradingButtonColor, 20));
+      ObjectSetString(0, autoTradingBtnPrefix, OBJPROP_TEXT, "AUTO TRADING " + (g_AutoTrading ? "ON" : "OFF"));
+   #else
+      ObjectSet(autoTradingBtnPrefix + "BG", OBJPROP_BGCOLOR, autoTradingButtonColor);
+      ObjectSet(autoTradingBtnPrefix + "BG", OBJPROP_COLOR, ColorDarken(autoTradingButtonColor, 20));
+      ObjectSet(autoTradingBtnPrefix, OBJPROP_BGCOLOR, autoTradingButtonColor);
+      ObjectSet(autoTradingBtnPrefix, OBJPROP_BORDER_COLOR, ColorDarken(autoTradingButtonColor, 20));
+      ObjectSetText(autoTradingBtnPrefix, "AUTO TRADING " + (g_AutoTrading ? "ON" : "OFF"), 9, "Yu Gothic UI", COLOR_TEXT_WHITE);
+   #endif
+
    // InfoPanelボタン状態更新
    string infoPanelBtnPrefix = g_ObjectPrefix + "btnToggleInfoPanel";
    bool infoPanelVisible = IsInfoPanelVisible();
