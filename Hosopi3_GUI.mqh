@@ -430,7 +430,7 @@ void CreateGUI()
    currentY += BUTTON_HEIGHT + PANEL_MARGIN;
 
    // テクニカル指標表示トグルボタン
-   CreateButton("btnToggleInfoPanel", "指標状態表示 " + (IsInfoPanelVisible() ? "ON" : "OFF"),
+   CreateButton("btnToggleInfoPanel", "INDICATORS " + (IsInfoPanelVisible() ? "ON" : "OFF"),
                adjustedPanelX + PANEL_MARGIN, currentY, fullWidth, BUTTON_HEIGHT,
                IsInfoPanelVisible() ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON_INACTIVE,
                IsInfoPanelVisible() ? COLOR_TEXT_WHITE : COLOR_TEXT_LIGHT);
@@ -470,7 +470,7 @@ void CreateLabel(string name, string text, int x, int y, color textColor)
       ObjectSetInteger(0, objectName, OBJPROP_XDISTANCE, x);
       ObjectSetInteger(0, objectName, OBJPROP_YDISTANCE, y);
       ObjectSetString(0, objectName, OBJPROP_TEXT, text);
-      ObjectSetString(0, objectName, OBJPROP_FONT, "MS Gothic");
+      ObjectSetString(0, objectName, OBJPROP_FONT, "Yu Gothic UI");
       ObjectSetInteger(0, objectName, OBJPROP_FONTSIZE, 9);
       ObjectSetInteger(0, objectName, OBJPROP_COLOR, textColor);
       ObjectSetInteger(0, objectName, OBJPROP_SELECTABLE, false);
@@ -480,7 +480,7 @@ void CreateLabel(string name, string text, int x, int y, color textColor)
       ObjectSet(objectName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
       ObjectSet(objectName, OBJPROP_XDISTANCE, x);
       ObjectSet(objectName, OBJPROP_YDISTANCE, y);
-      ObjectSetText(objectName, text, 9, "MS Gothic", textColor);
+      ObjectSetText(objectName, text, 9, "Yu Gothic UI", textColor);
       ObjectSet(objectName, OBJPROP_SELECTABLE, false);
       ObjectSet(objectName, OBJPROP_ZORDER, 3020);
    #endif
@@ -582,7 +582,7 @@ void CreateTitleBar(string name, int x, int y, int width, int height, color bgCo
       ObjectSetInteger(0, textName, OBJPROP_XDISTANCE, x + 10);
       ObjectSetInteger(0, textName, OBJPROP_YDISTANCE, y + 8);
       ObjectSetString(0, textName, OBJPROP_TEXT, title);
-      ObjectSetString(0, textName, OBJPROP_FONT, "MS Gothic");
+      ObjectSetString(0, textName, OBJPROP_FONT, "Yu Gothic UI");
       ObjectSetInteger(0, textName, OBJPROP_FONTSIZE, 10);
       ObjectSetInteger(0, textName, OBJPROP_COLOR, COLOR_TITLE_TEXT);
       ObjectSetInteger(0, textName, OBJPROP_SELECTABLE, false);
@@ -610,7 +610,7 @@ void CreateTooltip(string objectName, string tooltipText)
 #ifdef __MQL5__
    ObjectCreate(0, tooltipName, OBJ_LABEL, 0, 0, 0);
    ObjectSetString(0, tooltipName, OBJPROP_TEXT, tooltipText);
-   ObjectSetString(0, tooltipName, OBJPROP_FONT, "MS Gothic");
+   ObjectSetString(0, tooltipName, OBJPROP_FONT, "Yu Gothic UI");
    ObjectSetInteger(0, tooltipName, OBJPROP_FONTSIZE, 8);
    ObjectSetInteger(0, tooltipName, OBJPROP_COLOR, COLOR_TEXT_LIGHT);
    ObjectSetInteger(0, tooltipName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
@@ -619,7 +619,7 @@ void CreateTooltip(string objectName, string tooltipText)
 #else
    ObjectCreate(tooltipName, OBJ_LABEL, 0, 0, 0);
    ObjectSet(tooltipName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSetText(tooltipName, tooltipText, 8, "MS Gothic", COLOR_TEXT_LIGHT);
+   ObjectSetText(tooltipName, tooltipText, 8, "Yu Gothic UI", COLOR_TEXT_LIGHT);
    ObjectSet(tooltipName, OBJPROP_TIMEFRAMES, OBJ_NO_PERIODS); // 非表示にする
 #endif
    
@@ -627,7 +627,7 @@ void CreateTooltip(string objectName, string tooltipText)
 }
 
 //+------------------------------------------------------------------+
-//| ボタン作成 - フォントをMS Gothicに変更                           |
+//| ボタン作成 - フォントをYu Gothic UIに変更                           |
 //+------------------------------------------------------------------+
 void CreateButton(string name, string text, int x, int y, int width, int height, color bgColor, color textColor)
 {
@@ -676,7 +676,7 @@ void CreateButton(string name, string text, int x, int y, int width, int height,
       ObjectSetInteger(0, objectName, OBJPROP_XSIZE, width);
       ObjectSetInteger(0, objectName, OBJPROP_YSIZE, height);
       ObjectSetString(0, objectName, OBJPROP_TEXT, text);
-      ObjectSetString(0, objectName, OBJPROP_FONT, "MS Gothic");
+      ObjectSetString(0, objectName, OBJPROP_FONT, "Yu Gothic UI");
       ObjectSetInteger(0, objectName, OBJPROP_FONTSIZE, 9);
       ObjectSetInteger(0, objectName, OBJPROP_COLOR, textColor);
       ObjectSetInteger(0, objectName, OBJPROP_BGCOLOR, bgColor);
@@ -690,7 +690,7 @@ void CreateButton(string name, string text, int x, int y, int width, int height,
       ObjectSet(objectName, OBJPROP_YDISTANCE, y);
       ObjectSet(objectName, OBJPROP_XSIZE, width);
       ObjectSet(objectName, OBJPROP_YSIZE, height);
-      ObjectSetText(objectName, text, 9, "MS Gothic", textColor);
+      ObjectSetText(objectName, text, 9, "Yu Gothic UI", textColor);
       ObjectSet(objectName, OBJPROP_BGCOLOR, bgColor);
       ObjectSet(objectName, OBJPROP_BORDER_COLOR, ColorDarken(bgColor, 20));
       ObjectSet(objectName, OBJPROP_COLOR, textColor);
@@ -793,8 +793,8 @@ void UpdateGUI()
       ObjectSetString(0, levelBuyBtnPrefix, OBJPROP_TEXT, "BUY Level " + IntegerToString(buyLevel));
       ObjectSetString(0, levelSellBtnPrefix, OBJPROP_TEXT, "SELL Level " + IntegerToString(sellLevel));
    #else
-      ObjectSetText(levelBuyBtnPrefix, "BUY Level " + IntegerToString(buyLevel), 9, "MS Gothic", COLOR_TEXT_LIGHT);
-      ObjectSetText(levelSellBtnPrefix, "SELL Level " + IntegerToString(sellLevel), 9, "MS Gothic", COLOR_TEXT_LIGHT);
+      ObjectSetText(levelBuyBtnPrefix, "BUY Level " + IntegerToString(buyLevel), 9, "Yu Gothic UI", COLOR_TEXT_LIGHT);
+      ObjectSetText(levelSellBtnPrefix, "SELL Level " + IntegerToString(sellLevel), 9, "Yu Gothic UI", COLOR_TEXT_LIGHT);
    #endif
    
    // Ghost ON/OFFボタン状態更新
@@ -811,7 +811,7 @@ void UpdateGUI()
       ObjectSet(ghostBtnPrefix + "BG", OBJPROP_COLOR, ColorDarken(ghostButtonColor, 20));
       ObjectSet(ghostBtnPrefix, OBJPROP_BGCOLOR, ghostButtonColor);
       ObjectSet(ghostBtnPrefix, OBJPROP_BORDER_COLOR, ColorDarken(ghostButtonColor, 20));
-      ObjectSetText(ghostBtnPrefix, g_GhostMode ? "GHOST ON" : "GHOST OFF", 9, "MS Gothic", COLOR_TEXT_LIGHT);
+      ObjectSetText(ghostBtnPrefix, g_GhostMode ? "GHOST ON" : "GHOST OFF", 9, "Yu Gothic UI", COLOR_TEXT_LIGHT);
    #endif
    
    // 平均取得単価表示ボタン状態更新
@@ -828,7 +828,7 @@ void UpdateGUI()
       ObjectSet(avgPriceBtnPrefix + "BG", OBJPROP_COLOR, ColorDarken(avgPriceButtonColor, 20));
       ObjectSet(avgPriceBtnPrefix, OBJPROP_BGCOLOR, avgPriceButtonColor);
       ObjectSet(avgPriceBtnPrefix, OBJPROP_BORDER_COLOR, ColorDarken(avgPriceButtonColor, 20));
-      ObjectSetText(avgPriceBtnPrefix, g_AvgPriceVisible ? "AVG PRICE ON" : "AVG PRICE OFF", 9, "MS Gothic", COLOR_TEXT_LIGHT);
+      ObjectSetText(avgPriceBtnPrefix, g_AvgPriceVisible ? "AVG PRICE ON" : "AVG PRICE OFF", 9, "Yu Gothic UI", COLOR_TEXT_LIGHT);
    #endif
 
    // ChartRedraw()は必要な場合のみ呼び出す（HLINEちかちか防止）
