@@ -211,19 +211,34 @@ void ExecuteRealEntry(int type, string entryReason)
 //+------------------------------------------------------------------+
 void ExecuteRealNanpin(int typeOrder)
 {
+   string direction = (typeOrder == OP_BUY) ? "Buy" : "Sell";
+
+   if(EnableDebugLog)
+      Print("ExecuteRealNanpin[", direction, "]: 開始 - AutoTrading=", g_AutoTrading);
+
    // 自動売買が無効の場合は何もしない
    if(!g_AutoTrading)
    {
-      Print("自動売買が無効のため、リアルナンピンはスキップされました");
+      if(EnableDebugLog)
+         Print("ExecuteRealNanpin[", direction, "]: 自動売買が無効のため、リアルナンピンはスキップされました");
       return;
    }
-   
+
    // スプレッドチェック
-   if((GetAskPrice() - GetBidPrice()) / GetPointValue() > MaxSpreadPoints && MaxSpreadPoints > 0)
+   double currentSpread = (GetAskPrice() - GetBidPrice()) / GetPointValue();
+   if(currentSpread > MaxSpreadPoints && MaxSpreadPoints > 0)
    {
-      Print("スプレッドが大きすぎるため、リアルナンピンはスキップされました: ", (GetAskPrice() - GetBidPrice()) / GetPointValue(), " > ", MaxSpreadPoints);
+      static datetime lastSpreadLogTime = 0;
+      if(EnableDebugLog && TimeCurrent() - lastSpreadLogTime > 300) // 5分に1回
+      {
+         Print("ExecuteRealNanpin[", direction, "]: スプレッドが大きすぎるため、リアルナンピンはスキップされました: ", currentSpread, " > ", MaxSpreadPoints);
+         lastSpreadLogTime = TimeCurrent();
+      }
       return;
    }
+
+   if(EnableDebugLog)
+      Print("ExecuteRealNanpin[", direction, "]: スプレッドチェック通過 - Spread=", currentSpread, " <= ", MaxSpreadPoints);
    
    // 現在のポジション数を確認（ゴースト含む）
    int realPosCount = position_count(typeOrder);
@@ -842,7 +857,7 @@ void CheckNanpinConditions(int side)
    
    // デバッグログ用の静的変数（60秒に1回のみ出力）
    static datetime lastDebugTime = 0;
-   bool shouldDebug = (TimeCurrent() - lastDebugTime > 60);
+   bool shouldDebug = EnableDebugLog && (TimeCurrent() - lastDebugTime > 60);
    string direction = (side == 0) ? "Buy" : "Sell";
 
    // 最大ポジション数に達している場合のみスキップ（ポジションが0でも初回エントリーは実行）
@@ -855,7 +870,7 @@ void CheckNanpinConditions(int side)
    // ポジションがない場合は初回エントリーとして処理
    if(totalPositionCount == 0)
    {
-      if(shouldDebug) Print("ナンピン[", direction, "]: 初回エントリー実行");
+      if(shouldDebug) Print("ナンピン[", direction, "]: 初回エントリー判定 - ExecuteRealNanpin呼び出し");
       // 初回エントリーを実行
       ExecuteRealNanpin(operationType);
       return;

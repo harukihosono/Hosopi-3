@@ -880,18 +880,36 @@ void UpdateGUI()
 //+------------------------------------------------------------------+
 void ProcessButtonClick(string buttonName)
 {
+   // デバッグログ
+   if(EnableDebugLog)
+      Print("【デバッグ】ボタンクリック検知: ", buttonName);
+
    // プレフィックスを除去してボタン名を比較（複数チャート対策）
    string originalName = buttonName;
-   
-   // プレフィックスチェック
-   if(StringFind(buttonName, g_ObjectPrefix) == 0) {
+   bool isInfoPanelButton = false;
+
+   // InfoPanelのプレフィックスをチェック
+   string infoPanelPrefix = "InfoPanel_";
+   if(StringFind(buttonName, infoPanelPrefix) == 0) {
+      // InfoPanelのボタン
+      isInfoPanelButton = true;
+      buttonName = StringSubstr(buttonName, StringLen(infoPanelPrefix));
+      if(EnableDebugLog)
+         Print("【デバッグ】InfoPanelボタン検知: originalName=", originalName, " buttonName=", buttonName);
+   }
+   // メインGUIのプレフィックスをチェック
+   else if(StringFind(buttonName, g_ObjectPrefix) == 0) {
       // プレフィックスを除去
       buttonName = StringSubstr(buttonName, StringLen(g_ObjectPrefix));
+      if(EnableDebugLog)
+         Print("【デバッグ】メインGUIボタン検知: originalName=", originalName, " buttonName=", buttonName);
    } else {
       // このEAに属さないボタンならスキップ
+      if(EnableDebugLog)
+         Print("【デバッグ】スキップ - EAに属さないボタン: ", buttonName);
       return;
    }
-   
+
    // ボタンの状態をリセット（押したままにならないように）
    #ifdef __MQL5__
       ObjectSetInteger(0, originalName, OBJPROP_STATE, false);
@@ -1074,23 +1092,18 @@ void ProcessButtonClick(string buttonName)
    }
 
    // InfoPanel Close Button (×ボタン)
-   else if(StringFind(buttonName, "CloseButton") >= 0)
+   else if(buttonName == "CloseButton" && isInfoPanelButton)
    {
-      // InfoPanelManagerのプレフィックスも確認
-      string infoPanelPrefix = "InfoPanel_";
-      if(StringFind(originalName, infoPanelPrefix) >= 0)
-      {
-         // InfoPanelを閉じる
-         HideInfoPanel();
+      Print("InfoPanel: 閉じるボタンがクリックされました");
 
-         // メインパネルのボタンを更新（INDICATORSボタンをOFF状態に）
-         UpdateGUI();
+      // InfoPanelを閉じる
+      HideInfoPanel();
 
-         Print("InfoPanel: 閉じるボタンがクリックされました");
+      // メインパネルのボタンを更新（INDICATORSボタンをOFF状態に）
+      UpdateGUI();
 
-         // テーブル位置を更新
-         ForceUpdatePositionTableLocation();
-      }
+      // テーブル位置を更新
+      ForceUpdatePositionTableLocation();
    }
 
    // Panel Minimize/Maximize

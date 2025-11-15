@@ -22,6 +22,7 @@ input ENTRY_MODE EntryMode = MODE_BOTH;             // エントリー方向制�
 input bool EnableAutomaticTrading = true;          // 自動売買を有効化
 input int MaxSpreadPoints = 2000;                  // 最大スプレッド（Point）
 input int Slippage = 100;                          // スリッページ許容値（Point）
+input bool EnableDebugLog = false;                 // デバッグログを有効化
 
 //==================================================================
 //                    ナンピンマーチン設定
