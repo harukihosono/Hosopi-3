@@ -1182,6 +1182,19 @@ int InitializeEA()
    g_BuyClosedTime = 0;
    g_SellClosedTime = 0;
 
+   // パネルの最小化状態をグローバル変数から復元
+   // 注: g_GlobalVarPrefixは"Ghost_"が付いているため、別のキーを使う
+   string panelMinimizedKey = Symbol() + "_" + IntegerToString(MagicNumber) + "_" + IntegerToString(g_AccountNumber) + "_PanelMinimized";
+   if(GlobalVariableCheck(panelMinimizedKey))
+   {
+      g_PanelMinimized = (GlobalVariableGet(panelMinimizedKey) > 0);
+      Print("パネル最小化状態を復元: ", g_PanelMinimized ? "最小化" : "通常表示");
+   }
+   else
+   {
+      g_PanelMinimized = false; // デフォルトは通常表示
+   }
+
    CreateGUI();
 
    // ポジションテーブルを作成

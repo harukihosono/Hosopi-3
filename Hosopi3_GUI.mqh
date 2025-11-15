@@ -496,11 +496,15 @@ void CreatePanel(string name, int x, int y, int width, int height, color bgColor
 {
    // オブジェクト名にプレフィックスを追加（複数チャート対策）
    string objectName = g_ObjectPrefix + name;
-   
+
    // パネル背景
    string bgName = objectName + "BG";
-   
+
    #ifdef __MQL5__
+      // 既存オブジェクトがあれば削除
+      if(ObjectFind(0, bgName) >= 0)
+         ObjectDelete(0, bgName);
+
       ObjectCreate(0, bgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
       ObjectSetInteger(0, bgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
       ObjectSetInteger(0, bgName, OBJPROP_XDISTANCE, x);
@@ -515,6 +519,10 @@ void CreatePanel(string name, int x, int y, int width, int height, color bgColor
       ObjectSetInteger(0, bgName, OBJPROP_SELECTABLE, false);
       ObjectSetInteger(0, bgName, OBJPROP_ZORDER, 3000);
    #else
+      // 既存オブジェクトがあれば削除
+      if(ObjectFind(bgName) >= 0)
+         ObjectDelete(bgName);
+
       ObjectCreate(bgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
       ObjectSet(bgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
       ObjectSet(bgName, OBJPROP_XDISTANCE, x);
@@ -544,8 +552,12 @@ void CreateTitleBar(string name, int x, int y, int width, int height, color bgCo
    
    // タイトルバー背景
    string bgName = objectName + "BG";
-   
+
    #ifdef __MQL5__
+      // 既存オブジェクトがあれば削除
+      if(ObjectFind(0, bgName) >= 0)
+         ObjectDelete(0, bgName);
+
       ObjectCreate(0, bgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
       ObjectSetInteger(0, bgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
       ObjectSetInteger(0, bgName, OBJPROP_XDISTANCE, x);
@@ -559,6 +571,10 @@ void CreateTitleBar(string name, int x, int y, int width, int height, color bgCo
       ObjectSetInteger(0, bgName, OBJPROP_SELECTABLE, false);
       ObjectSetInteger(0, bgName, OBJPROP_ZORDER, 3010);
    #else
+      // 既存オブジェクトがあれば削除
+      if(ObjectFind(bgName) >= 0)
+         ObjectDelete(bgName);
+
       ObjectCreate(bgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
       ObjectSet(bgName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
       ObjectSet(bgName, OBJPROP_XDISTANCE, x);
@@ -575,8 +591,12 @@ void CreateTitleBar(string name, int x, int y, int width, int height, color bgCo
    
    // タイトルテキスト
    string textName = objectName + "Text";
-   
+
    #ifdef __MQL5__
+      // 既存オブジェクトがあれば削除
+      if(ObjectFind(0, textName) >= 0)
+         ObjectDelete(0, textName);
+
       ObjectCreate(0, textName, OBJ_LABEL, 0, 0, 0);
       ObjectSetInteger(0, textName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
       ObjectSetInteger(0, textName, OBJPROP_XDISTANCE, x + 10);
@@ -587,6 +607,10 @@ void CreateTitleBar(string name, int x, int y, int width, int height, color bgCo
       ObjectSetInteger(0, textName, OBJPROP_COLOR, COLOR_TITLE_TEXT);
       ObjectSetInteger(0, textName, OBJPROP_SELECTABLE, false);
    #else
+      // 既存オブジェクトがあれば削除
+      if(ObjectFind(textName) >= 0)
+         ObjectDelete(textName);
+
       ObjectCreate(textName, OBJ_LABEL, 0, 0, 0);
       ObjectSet(textName, OBJPROP_CORNER, CORNER_LEFT_UPPER);
       ObjectSet(textName, OBJPROP_XDISTANCE, x + 10);
@@ -759,6 +783,7 @@ string GetEntryModeString(int mode)
 //+------------------------------------------------------------------+
 void DeleteGUI()
 {
+   // 配列に保存されたパネルオブジェクトを削除
    for(int i = 0; i < g_PanelObjectCount; i++)
    {
       #ifdef __MQL5__
@@ -769,7 +794,49 @@ void DeleteGUI()
             ObjectDelete(g_PanelNames[i]);
       #endif
    }
-   
+
+   // プレフィックスベースで残存するパネルオブジェクトも削除（MT5再起動時の対策）
+   // ただし、ポジションテーブル、ゴースト矢印、価格ラインは除外
+   #ifdef __MQL5__
+      int totalObjects = ObjectsTotal(0, -1, -1);
+      for(int i = totalObjects - 1; i >= 0; i--)
+      {
+         string objName = ObjectName(0, i, -1, -1);
+         // プレフィックスが一致し、かつパネル関連のオブジェクト名を含む場合のみ削除
+         if(StringFind(objName, g_ObjectPrefix) == 0)
+         {
+            // ポジションテーブル、ゴースト、価格ラインは除外
+            if(StringFind(objName, "PosTable") < 0 &&
+               StringFind(objName, "Ghost") < 0 &&
+               StringFind(objName, "AvgPrice") < 0 &&
+               StringFind(objName, "TPLine") < 0 &&
+               StringFind(objName, "InfoPanel") < 0)
+            {
+               ObjectDelete(0, objName);
+            }
+         }
+      }
+   #else
+      // MQL4では個別に削除
+      int totalObjects = ObjectsTotal();
+      for(int i = totalObjects - 1; i >= 0; i--)
+      {
+         string objName = ObjectName(i);
+         if(StringFind(objName, g_ObjectPrefix) == 0)
+         {
+            // ポジションテーブル、ゴースト、価格ラインは除外
+            if(StringFind(objName, "PosTable") < 0 &&
+               StringFind(objName, "Ghost") < 0 &&
+               StringFind(objName, "AvgPrice") < 0 &&
+               StringFind(objName, "TPLine") < 0 &&
+               StringFind(objName, "InfoPanel") < 0)
+            {
+               ObjectDelete(objName);
+            }
+         }
+      }
+   #endif
+
    g_PanelObjectCount = 0;
    ChartRedraw(); // チャートを再描画
 }
@@ -1110,6 +1177,12 @@ void ProcessButtonClick(string buttonName)
    else if(buttonName == "btnMinimize")
    {
       g_PanelMinimized = !g_PanelMinimized;
+
+      // パネル最小化状態をグローバル変数に保存
+      // 注: g_GlobalVarPrefixは"Ghost_"が付いているため、別のキーを使う
+      string panelMinimizedKey = Symbol() + "_" + IntegerToString(MagicNumber) + "_" + IntegerToString(g_AccountNumber) + "_PanelMinimized";
+      GlobalVariableSet(panelMinimizedKey, g_PanelMinimized ? 1.0 : 0.0);
+      Print("パネル最小化状態を保存: ", g_PanelMinimized ? "最小化" : "通常表示");
 
       // GUIを再構築
       CreateGUI();
