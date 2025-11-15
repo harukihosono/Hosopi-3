@@ -39,6 +39,60 @@ void DeinitializeStrategySystem()
 //+------------------------------------------------------------------+
 bool CanExecuteEntry(int operationType)
 {
+    // ボラティリティフィルターチェック（最優先で実行して早期リターン）
+    // 適用モードに応じて判定
+    if(InpVolatilityFilterEnabled)
+    {
+        // 初回エントリーの場合は常に適用
+        int buyPositions = position_count(OP_BUY);
+        int sellPositions = position_count(OP_SELL);
+        bool isInitialEntry = (buyPositions == 0 && sellPositions == 0);
+
+        // デバッグ用：ポジション状況をログ出力
+        static datetime lastPosLogTime = 0;
+        static int lastBuyPos = -1;
+        static int lastSellPos = -1;
+
+        // ポジション数が変化したか、定期的にログ出力
+        if(buyPositions != lastBuyPos || sellPositions != lastSellPos ||
+           TimeCurrent() - lastPosLogTime > 1800) { // 30分に1回または変化時
+            Print("【ボラティリティフィルター状況】");
+            Print("  ポジション: BUY=", buyPositions, " SELL=", sellPositions);
+            Print("  初回エントリー判定: ", isInitialEntry ? "YES(初回)" : "NO(ナンピン)");
+            Print("  フィルターモード: ", InpVolatilityFilterMode == VOLATILITY_FILTER_ALL_ENTRIES ? "ALL(すべて)" : "INITIAL_ONLY(初回のみ)");
+            Print("  フィルター適用: ", InpVolatilityFilterEnabled ? "有効" : "無効");
+
+            lastPosLogTime = TimeCurrent();
+            lastBuyPos = buyPositions;
+            lastSellPos = sellPositions;
+        }
+
+        // フィルター適用条件の判定
+        bool shouldApplyFilter = false;
+        if(InpVolatilityFilterMode == VOLATILITY_FILTER_ALL_ENTRIES) {
+            // すべてのエントリーに適用
+            shouldApplyFilter = true;
+        }
+        else if(InpVolatilityFilterMode == VOLATILITY_FILTER_INITIAL_ONLY && isInitialEntry) {
+            // 初回エントリーのみに適用
+            shouldApplyFilter = true;
+        }
+
+        if(shouldApplyFilter)
+        {
+            if(!PassVolatilityEntryFilter()) {
+                // フィルターでブロックされた場合のログ
+                static datetime lastBlockLogTime = 0;
+                if(TimeCurrent() - lastBlockLogTime > 300) { // 5分に1回
+                    Print("エントリーブロック: ボラティリティフィルターにより",
+                          operationType == OP_BUY ? "BUY" : "SELL", "エントリーを拒否");
+                    lastBlockLogTime = TimeCurrent();
+                }
+                return false;
+            }
+        }
+    }
+
     // 基本的なエントリー可否チェック
     if(!CanEntry(operationType))
         return false;
@@ -54,23 +108,6 @@ bool CanExecuteEntry(int operationType)
     // テクニカル戦略チェック
     if(!CanEntryByTechnicalStrategy(operationType))
         return false;
-
-    // ボラティリティフィルターチェック
-    // 適用モードに応じて判定
-    if(InpVolatilityFilterEnabled)
-    {
-        // 初回エントリーの場合は常に適用
-        int buyPositions = position_count(OP_BUY);
-        int sellPositions = position_count(OP_SELL);
-        bool isInitialEntry = (buyPositions == 0 && sellPositions == 0);
-
-        // すべてのエントリーに適用、または初回エントリーの場合
-        if(InpVolatilityFilterMode == VOLATILITY_FILTER_ALL_ENTRIES || isInitialEntry)
-        {
-            if(!PassVolatilityEntryFilter())
-                return false;
-        }
-    }
 
     return true;
 }

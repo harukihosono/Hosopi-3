@@ -533,4 +533,4 @@ input bool InpVolatilityFilterEnabled = false;        // ボラありフィル�
 input ENUM_TIMEFRAMES InpVolatilityATRTimeframe = PERIOD_M5; // ATR計算時間足
 input int InpVolatilityATRPeriod = 3;                 // ATR期間
 input double InpVolatilitySpreadMultiplier = 20.0;    // スプレッド倍率（ATR > スプレッド × この値でエントリー許可）
-input ENUM_VOLATILITY_FILTER_MODE InpVolatilityFilterMode = VOLATILITY_FILTER_ALL_ENTRIES; // フィルター適用モード
+input ENUM_VOLATILITY_FILTER_MODE InpVolatilityFilterMode = VOLATILITY_FILTER_INITIAL_ONLY; // フィルター適用モード

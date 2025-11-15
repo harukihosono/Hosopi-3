@@ -114,15 +114,24 @@ bool PassVolatilityEntryFilter()
    double threshold = spreadValue * InpVolatilitySpreadMultiplier;
    bool result = (atr > threshold);
 
-   // デバッグログ（必要に応じてコメント解除）
-   // static datetime lastLogTime = 0;
-   // if(TimeCurrent() - lastLogTime > 3600) {  // 1時間に1回ログ出力
-   //    Print("ボラありフィルター: ATR=", DoubleToString(atr, 5),
-   //          " Spread=", DoubleToString(spreadValue, 5),
-   //          " Threshold=", DoubleToString(threshold, 5),
-   //          " Result=", result ? "PASS" : "BLOCK");
-   //    lastLogTime = TimeCurrent();
-   // }
+   // デバッグログ（30分に1回、状態変化時は即座に出力）
+   static datetime lastLogTime = 0;
+   static bool lastResult = true;
+   bool logNow = false;
+
+   // 状態が変わった時、または定期的にログ出力
+   if(result != lastResult || TimeCurrent() - lastLogTime > 1800) {
+      logNow = true;
+      lastLogTime = TimeCurrent();
+      lastResult = result;
+   }
+
+   if(logNow) {
+      Print("ボラありフィルター: ATR=", DoubleToString(atr, 5),
+            " Spread=", DoubleToString(spreadValue, 5),
+            " Threshold(Spread×", InpVolatilitySpreadMultiplier, ")=", DoubleToString(threshold, 5),
+            " → ", result ? "PASS(エントリー可)" : "BLOCK(ボラティリティ不足)");
+   }
 
    // 5分に1回、フィルターによるブロックをログ出力
    if(!result)
