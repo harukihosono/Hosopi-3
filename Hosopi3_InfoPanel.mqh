@@ -254,11 +254,12 @@ void InfoPanelManager::DeletePanel()
 {
    // InfoPanel専用のオブジェクトを明示的に削除（他のオブジェクトを保護）
    string objectsToDelete[];
-   ArrayResize(objectsToDelete, 4);
+   ArrayResize(objectsToDelete, 5);  // 4→5に変更（閉じるボタン追加）
    objectsToDelete[0] = GenerateObjectName("Background");
    objectsToDelete[1] = GenerateObjectName("TitleBar");
    objectsToDelete[2] = GenerateObjectName("TitleText");
    objectsToDelete[3] = GenerateObjectName("ColumnHeaders");
+   objectsToDelete[4] = GenerateObjectName("CloseButton");  // 閉じるボタンを追加
 
 
    // 基本オブジェクトを削除
@@ -435,6 +436,41 @@ void InfoPanelManager::CreateHeader()
    ObjectSet(headerText, OBJPROP_BACK, false);
    ObjectSet(headerText, OBJPROP_SELECTABLE, false);
    ObjectSet(headerText, OBJPROP_ZORDER, 2120);
+#endif
+
+   // 閉じるボタン（×ボタン）を追加
+   string closeBtn = GenerateObjectName("CloseButton");
+#ifdef __MQL5__
+   ObjectCreate(0, closeBtn, OBJ_BUTTON, 0, 0, 0);
+   ObjectSetInteger(0, closeBtn, OBJPROP_XDISTANCE, m_panelX + m_panelWidth - 25);
+   ObjectSetInteger(0, closeBtn, OBJPROP_YDISTANCE, m_panelY + 3);
+   ObjectSetInteger(0, closeBtn, OBJPROP_XSIZE, 20);
+   ObjectSetInteger(0, closeBtn, OBJPROP_YSIZE, 20);
+   ObjectSetString(0, closeBtn, OBJPROP_TEXT, "×");
+   ObjectSetString(0, closeBtn, OBJPROP_FONT, "MS Gothic");
+   ObjectSetInteger(0, closeBtn, OBJPROP_FONTSIZE, 10);
+   ObjectSetInteger(0, closeBtn, OBJPROP_COLOR, White);
+   ObjectSetInteger(0, closeBtn, OBJPROP_BGCOLOR, C'200,50,50');  // 赤系の色
+   ObjectSetInteger(0, closeBtn, OBJPROP_BORDER_COLOR, C'150,30,30');
+   ObjectSetInteger(0, closeBtn, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetInteger(0, closeBtn, OBJPROP_BACK, false);
+   ObjectSetInteger(0, closeBtn, OBJPROP_SELECTABLE, false);
+   ObjectSetInteger(0, closeBtn, OBJPROP_ZORDER, 2125);
+   ObjectSetInteger(0, closeBtn, OBJPROP_STATE, false);
+#else
+   ObjectCreate(closeBtn, OBJ_BUTTON, 0, 0, 0);
+   ObjectSet(closeBtn, OBJPROP_XDISTANCE, m_panelX + m_panelWidth - 25);
+   ObjectSet(closeBtn, OBJPROP_YDISTANCE, m_panelY + 3);
+   ObjectSet(closeBtn, OBJPROP_XSIZE, 20);
+   ObjectSet(closeBtn, OBJPROP_YSIZE, 20);
+   ObjectSetText(closeBtn, "×", 10, "MS Gothic", White);
+   ObjectSet(closeBtn, OBJPROP_COLOR, White);
+   ObjectSet(closeBtn, OBJPROP_BGCOLOR, C'200,50,50');
+   ObjectSet(closeBtn, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSet(closeBtn, OBJPROP_BACK, false);
+   ObjectSet(closeBtn, OBJPROP_SELECTABLE, false);
+   ObjectSet(closeBtn, OBJPROP_ZORDER, 2125);
+   ObjectSet(closeBtn, OBJPROP_STATE, false);
 #endif
 
    // 列ヘッダー

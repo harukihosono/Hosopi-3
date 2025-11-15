@@ -1073,6 +1073,26 @@ void ProcessButtonClick(string buttonName)
       ForceUpdatePositionTableLocation();
    }
 
+   // InfoPanel Close Button (×ボタン)
+   else if(StringFind(buttonName, "CloseButton") >= 0)
+   {
+      // InfoPanelManagerのプレフィックスも確認
+      string infoPanelPrefix = "InfoPanel_";
+      if(StringFind(originalName, infoPanelPrefix) >= 0)
+      {
+         // InfoPanelを閉じる
+         HideInfoPanel();
+
+         // メインパネルのボタンを更新（INDICATORSボタンをOFF状態に）
+         UpdateGUI();
+
+         Print("InfoPanel: 閉じるボタンがクリックされました");
+
+         // テーブル位置を更新
+         ForceUpdatePositionTableLocation();
+      }
+   }
+
    // Panel Minimize/Maximize
    else if(buttonName == "btnMinimize")
    {
