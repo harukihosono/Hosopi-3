@@ -188,6 +188,15 @@ InfoPanelManager::~InfoPanelManager()
 bool InfoPanelManager::Initialize()
 {
    UpdateIndicatorStates();
+
+   // デフォルトで表示する場合はパネルを作成
+   if(m_isVisible)
+   {
+      CreatePanel();
+      // ポジションテーブルの位置も更新
+      UpdatePositionTableLocation();
+   }
+
    return true;
 }
 
