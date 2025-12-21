@@ -82,6 +82,7 @@ enum ON_OFF {
 
 // 時間取得方法の列挙型
 enum USE_TIMES {
+    GMT_AUTO,          // 自動検出（推奨）- ブローカー別に自動設定
     GMT9,              // WindowsPCの時間を使って計算する
     GMT9_BACKTEST,     // EAで計算された時間を使う（バックテスト用）
     GMT_KOTEI          // サーバータイムがGMT+0で固定されている（バックテスト用）

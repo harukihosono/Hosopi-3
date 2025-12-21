@@ -87,7 +87,7 @@ input int GhostArrowSize = 1;                      // ゴースト矢印サイ�
 //                    時間フィルター設定
 //==================================================================
 input string TimeFilterTitle = "7. 時間帯・曜日制御設定"; // 時間フィルター設定
-input USE_TIMES set_time = GMT9;                   // 時間取得方法
+input USE_TIMES set_time = GMT_AUTO;               // 時間取得方法（自動検出推奨）
 input int natu = 6;                               // 夏時間オフセット（時間）
 input int huyu = 7;                               // 冬時間オフセット（時間）
 input ON_OFF EnablePositionByDay = OFF_MODE;      // 曜日別エントリー制御

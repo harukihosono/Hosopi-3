@@ -83,7 +83,7 @@ input bool EnablePriceLabels = true;          // 価格ラベル表示を有効�
 
 // ======== 時間設定 ========
 sinput string Comment_Time = ""; //+--- 時間設定 ---+
-input USE_TIMES set_time = GMT9;              // 時間取得方法
+input USE_TIMES set_time = GMT_AUTO;          // 時間取得方法（自動検出推奨）
 input int natu = 6;                           // 夏加算時間（バックテスト用）
 input int huyu = 7;                           // 冬加算時間（バックテスト用）
 

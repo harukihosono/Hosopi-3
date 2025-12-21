@@ -1044,7 +1044,10 @@ void CheckNanpinConditions(int side)
 int InitializeEA()
 {
    // デバッグモード無効
-   
+
+   // 時間システムを初期化（ブローカー自動検出）
+   InitializeTimeSystem();
+
    // キャッシュをリセット（高速化のため）
    ResetTradingCaches();
 

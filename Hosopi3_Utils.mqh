@@ -5,6 +5,7 @@
 //+------------------------------------------------------------------+
 #include "Hosopi3_Defines.mqh"
 #include "Hosopi3_Compat.mqh"
+#include "Hosopi3_BrokerTimeZone.mqh"
 
 //+------------------------------------------------------------------+
 //| MQL4/MQL5 互換性のための定義                                      |
@@ -520,23 +521,62 @@ void DeleteAllGhostObjectsByType(int type)
 }
 
 //+------------------------------------------------------------------+
-//| 時間計算関数                                                      |
+//| 時間計算関数（新システム対応版）                                  |
 //+------------------------------------------------------------------+
 datetime calculate_time()
 {
+   // 新しいAUTOモード（推奨）
+   if(set_time == GMT_AUTO)
+   {
+      return GetJapanTimeByMode(TIME_MODE_AUTO);
+   }
+   // 従来モード：PC時間
    if(set_time == GMT9)
    {
-      return TimeGMT() + 60 * 60 * 9;
+      return GetJapanTimeByMode(TIME_MODE_PC);
    }
+   // 従来モード：バックテスト用（手動設定）
    if(set_time == GMT9_BACKTEST)
    {
-      return GetJapanTime();
+      return GetJapanTimeByMode(TIME_MODE_MANUAL);
    }
+   // 従来モード：GMT+0固定
    if(set_time == GMT_KOTEI)
    {
-      return TimeCurrent() + 60 * 60 * 9;
+      return GetJapanTimeByMode(TIME_MODE_GMT0_FIXED);
    }
    return 0;
+}
+
+//+------------------------------------------------------------------+
+//| 時間システム初期化関数                                            |
+//+------------------------------------------------------------------+
+void InitializeTimeSystem()
+{
+   ENUM_TIME_MODE mode;
+
+   switch(set_time)
+   {
+      case GMT_AUTO:
+         mode = TIME_MODE_AUTO;
+         break;
+      case GMT9:
+         mode = TIME_MODE_PC;
+         break;
+      case GMT9_BACKTEST:
+         mode = TIME_MODE_MANUAL;
+         break;
+      case GMT_KOTEI:
+         mode = TIME_MODE_GMT0_FIXED;
+         break;
+      default:
+         mode = TIME_MODE_AUTO;
+   }
+
+   // BrokerTimeZoneを初期化
+   InitBrokerTimeZone(mode, huyu, natu);
+
+   Print("時間システム初期化完了: モード=", EnumToString(mode));
 }
 
 //+------------------------------------------------------------------+
