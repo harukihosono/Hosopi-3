@@ -509,29 +509,18 @@ void ManageTakeProfit(int side)
          // 決済前に利益を計算
          ghostProfit = CalculateGhostProfit(operationType);
 
-         // ゴーストポジションをリセット（リアルポジションの有無に関わらず）
+         // ゴーストポジションを完全にリセット（オブジェクトも削除）
+         ResetGhostPositions(operationType);
+
+         // 決済済みフラグを設定
          if(operationType == OP_BUY) {
-            // ゴーストポジションの状態をリセット
-            int buyMaxIndex = MathMin(g_GhostBuyCount, 40);
-            for(int i = 0; i < buyMaxIndex; i++) {
-               g_GhostBuyPositions[i].isGhost = false;  // ゴーストフラグをオフに
-            }
-            // 決済済みフラグを設定
             g_BuyGhostClosed = true;
-            g_GhostBuyCount = 0;
          } else {
-            // ゴーストポジションの状態をリセット
-            int sellMaxIndex = MathMin(g_GhostSellCount, 40);
-            for(int i = 0; i < sellMaxIndex; i++) {
-               g_GhostSellPositions[i].isGhost = false;  // ゴーストフラグをオフに
-            }
-            // 決済済みフラグを設定
             g_SellGhostClosed = true;
-            g_GhostSellCount = 0;
          }
 
-         // 点線オブジェクトを削除
-         DeleteGhostLinesAndPreventRecreation(operationType);
+         // 追加：ゴーストグローバル変数もクリア
+         ClearGhostGlobalVariablesForType(operationType);
 
          // グローバル変数を更新
          SaveGhostPositionsToGlobal();

@@ -921,8 +921,17 @@ void CheckNanpinConditions(int side)
    double currentPrice = (side == 0) ? GetBidPrice() : GetAskPrice();
 
    // 現在のレベルに対応するナンピン幅を取得
-   // 合計ポジション数を使用
-   int nanpinSpread = g_NanpinSpreadTable[totalPositionCount - 1];
+   // ATRベースが有効かつ個別スプレッド無効の場合はATRを使用
+   int nanpinSpread;
+   if(UseAtrNanpinSpread && IndividualSpreadEnabled != ON_MODE)
+   {
+      nanpinSpread = GetAtrNanpinSpread();
+   }
+   else
+   {
+      // 合計ポジション数を使用
+      nanpinSpread = g_NanpinSpreadTable[totalPositionCount - 1];
+   }
 
    // ナンピン条件の判定
    bool nanpinCondition = false;

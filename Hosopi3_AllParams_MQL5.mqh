@@ -40,6 +40,12 @@ input bool Enable001LotFix = true;                 // 0.01ロット特別処理�
 input bool UseAsyncOrders = true;                  // 非同期注文を使用（高速化）
 input int NanpinInterval = 0;                      // ナンピン最小間隔（分）
 
+// ATRベースのナンピン幅設定
+input bool UseAtrNanpinSpread = false;            // ATRベースのナンピン幅を使用
+input ENUM_TIMEFRAMES AtrTimeframe = PERIOD_H1;   // ATR計算時間軸
+input int AtrPeriod = 14;                          // ATR期間
+input double AtrMultiplier = 1.0;                  // ATR乗数
+
 
 //==================================================================
 //                      利確設定

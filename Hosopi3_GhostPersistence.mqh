@@ -193,6 +193,77 @@ void ClearGhostGlobalVariables()
 }
 
 //+------------------------------------------------------------------+
+//| 指定タイプのゴーストポジション関連グローバル変数をクリア          |
+//+------------------------------------------------------------------+
+void ClearGhostGlobalVariablesForType(int operationType)
+{
+    string prefix = GenerateGlobalVarPrefix();
+
+    if(operationType == OP_BUY)
+    {
+        // Buy側のクリア
+        if(GlobalVariableCheck(prefix + "GhostBuyCount"))
+        {
+            int buyCount = (int)GlobalVariableGet(prefix + "GhostBuyCount");
+
+            for(int i = 0; i < buyCount; i++)
+            {
+                string buyPrefix = prefix + "GhostBuy_" + IntegerToString(i) + "_";
+
+                GlobalVariableDel(buyPrefix + "isGhost");
+                GlobalVariableDel(buyPrefix + "openPrice");
+                GlobalVariableDel(buyPrefix + "lot");
+                GlobalVariableDel(buyPrefix + "openTime");
+                GlobalVariableDel(buyPrefix + "magic");
+                GlobalVariableDel(buyPrefix + "ticket");
+                GlobalVariableDel(buyPrefix + "stopLoss");
+                GlobalVariableDel(buyPrefix + "takeProfit");
+                GlobalVariableDel(buyPrefix + "swap");
+                GlobalVariableDel(buyPrefix + "commission");
+                GlobalVariableDel(buyPrefix + "profit");
+                GlobalVariableDel(buyPrefix + "entryPoint");
+                GlobalVariableDel(buyPrefix + "commentLength");
+            }
+
+            GlobalVariableDel(prefix + "GhostBuyCount");
+        }
+
+        Print("Buy側ゴーストグローバル変数をクリアしました");
+    }
+    else if(operationType == OP_SELL)
+    {
+        // Sell側のクリア
+        if(GlobalVariableCheck(prefix + "GhostSellCount"))
+        {
+            int sellCount = (int)GlobalVariableGet(prefix + "GhostSellCount");
+
+            for(int i = 0; i < sellCount; i++)
+            {
+                string sellPrefix = prefix + "GhostSell_" + IntegerToString(i) + "_";
+
+                GlobalVariableDel(sellPrefix + "isGhost");
+                GlobalVariableDel(sellPrefix + "openPrice");
+                GlobalVariableDel(sellPrefix + "lot");
+                GlobalVariableDel(sellPrefix + "openTime");
+                GlobalVariableDel(sellPrefix + "magic");
+                GlobalVariableDel(sellPrefix + "ticket");
+                GlobalVariableDel(sellPrefix + "stopLoss");
+                GlobalVariableDel(sellPrefix + "takeProfit");
+                GlobalVariableDel(sellPrefix + "swap");
+                GlobalVariableDel(sellPrefix + "commission");
+                GlobalVariableDel(sellPrefix + "profit");
+                GlobalVariableDel(sellPrefix + "entryPoint");
+                GlobalVariableDel(sellPrefix + "commentLength");
+            }
+
+            GlobalVariableDel(prefix + "GhostSellCount");
+        }
+
+        Print("Sell側ゴーストグローバル変数をクリアしました");
+    }
+}
+
+//+------------------------------------------------------------------+
 //| 起動時のゴーストポジション復元処理                                |
 //+------------------------------------------------------------------+
 void RestoreGhostPositionsOnStartup()

@@ -805,13 +805,34 @@ bool IsInitialEntryTimeAllowed(int type)
       }
    }
    
-   // 共通設定と曜日別設定のどちらかがOKならOK（OR条件）
-   bool isCommonOK = (DayTimeControl_Active == ON_MODE) && IsInTimeRange(currentMinutes, commonStart, commonEnd);
-   bool isDayOK = (DayTimeControl_Active == OFF_MODE) && IsInTimeRange(currentMinutes, dayStart, dayEnd);
-   
+   // DayTimeControl_ActiveがOFF_MODEの場合は時間フィルターを無効化（常にtrue）
+   if(DayTimeControl_Active == OFF_MODE)
+   {
+      g_InitialTimeAllowedCache[typeIndex] = true;
+      return true;
+   }
+
+   // DayTimeControl_Active == ON_MODEの場合、共通時間設定をチェック
+   bool isTimeOK = IsInTimeRange(currentMinutes, commonStart, commonEnd);
+
+   // デバッグログ（EnableDebugLogがtrueの場合のみ）
+   if(EnableDebugLog)
+   {
+      static datetime lastTimeLogTime = 0;
+      if(TimeCurrent() - lastTimeLogTime > 60) // 60秒に1回のみログ
+      {
+         string typeStr = (type == OP_BUY) ? "Buy" : "Sell";
+         Print("時間フィルター[", typeStr, "]: 現在=", hour, ":", minute,
+               " 許可範囲=", (type == OP_BUY ? buy_StartHour : sell_StartHour), ":", (type == OP_BUY ? buy_StartMinute : sell_StartMinute),
+               "-", (type == OP_BUY ? buy_EndHour : sell_EndHour), ":", (type == OP_BUY ? buy_EndMinute : sell_EndMinute),
+               " 結果=", isTimeOK ? "許可" : "禁止");
+         lastTimeLogTime = TimeCurrent();
+      }
+   }
+
    // 結果をキャッシュに保存して返す
-   g_InitialTimeAllowedCache[typeIndex] = isCommonOK || isDayOK;
-   
+   g_InitialTimeAllowedCache[typeIndex] = isTimeOK;
+
    return g_InitialTimeAllowedCache[typeIndex];
 }
 
@@ -890,6 +911,88 @@ void InitializeLotTable()
    // ロットテーブル初期化完了
    
    // ロット使用ポリシー設定完了
+}
+
+//+------------------------------------------------------------------+
+//| ATRベースのナンピン幅を取得（Point単位で返す）                    |
+//| ELDRA2のバグ対策：浮動小数点エラー防止のためポイント変換を使用    |
+//+------------------------------------------------------------------+
+int GetAtrNanpinSpread()
+{
+   // ATRベースのナンピン幅が無効な場合は固定値を返す
+   if(!UseAtrNanpinSpread)
+   {
+      return NanpinSpread;
+   }
+
+   double atrValue = 0.0;
+
+#ifdef __MQL5__
+   // MQL5: インジケーターハンドルを使用
+   static int s_AtrHandle = INVALID_HANDLE;
+   static ENUM_TIMEFRAMES s_LastTimeframe = PERIOD_CURRENT;
+
+   // タイムフレームが変更された場合、ハンドルを再作成
+   if(s_LastTimeframe != AtrTimeframe && s_AtrHandle != INVALID_HANDLE)
+   {
+      IndicatorRelease(s_AtrHandle);
+      s_AtrHandle = INVALID_HANDLE;
+   }
+
+   // ハンドルが未作成の場合、作成する
+   if(s_AtrHandle == INVALID_HANDLE)
+   {
+      s_AtrHandle = iATR(Symbol(), AtrTimeframe, AtrPeriod);
+      s_LastTimeframe = AtrTimeframe;
+
+      if(s_AtrHandle == INVALID_HANDLE)
+      {
+         if(EnableDebugLog) Print("[ATR] ATRインジケーターの作成に失敗しました");
+         return NanpinSpread; // フォールバック
+      }
+   }
+
+   // ATR値を取得
+   double atrBuffer[1];
+   if(CopyBuffer(s_AtrHandle, 0, 0, 1, atrBuffer) <= 0)
+   {
+      if(EnableDebugLog) Print("[ATR] ATR値の取得に失敗しました");
+      return NanpinSpread; // フォールバック
+   }
+   atrValue = atrBuffer[0];
+
+#else
+   // MQL4: iATR関数を直接使用
+   atrValue = iATR(Symbol(), AtrTimeframe, AtrPeriod, 0);
+
+   if(atrValue <= 0)
+   {
+      if(EnableDebugLog) Print("[ATR] ATR値の取得に失敗しました");
+      return NanpinSpread; // フォールバック
+   }
+#endif
+
+   // ATR値に乗数を適用
+   double atrDistance = atrValue * AtrMultiplier;
+
+   // ELDRA2のバグ対策：浮動小数点エラー防止
+   // まずポイントに変換し、クリーンな値を計算
+   int atrPoints = (int)MathRound(atrDistance / _Point);
+
+   // 最低でも1ポイント以上を確保
+   if(atrPoints < 1)
+   {
+      atrPoints = 1;
+   }
+
+   if(EnableDebugLog)
+   {
+      Print("[ATR] ATR値=", DoubleToString(atrValue, _Digits),
+            " 乗数=", DoubleToString(AtrMultiplier, 2),
+            " ナンピン幅=", atrPoints, " Points");
+   }
+
+   return atrPoints;
 }
 
 //+------------------------------------------------------------------+
