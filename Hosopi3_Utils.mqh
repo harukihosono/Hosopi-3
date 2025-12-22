@@ -747,10 +747,18 @@ bool IsInitialEntryTimeAllowed(int type)
    
    // 時間が経過したら再チェック
    g_LastInitialTimeAllowedCheckTime[typeIndex] = currentTime;
-   
+
+   // ★ 重要：DayTimeControl_ActiveがOFF_MODEの場合は時間フィルターを完全無効化（常にtrue）
+   // この判定を最初に行うことで、曜日チェックもスキップする
+   if(DayTimeControl_Active == OFF_MODE)
+   {
+      g_InitialTimeAllowedCache[typeIndex] = true;
+      return true;
+   }
+
    // 日本時間取得
    datetime jpTime = calculate_time();
-   
+
 #ifdef __MQL5__
    MqlDateTime dt;
    TimeToStruct(jpTime, dt);
@@ -762,7 +770,7 @@ bool IsInitialEntryTimeAllowed(int type)
    int hour = TimeHour(jpTime);
    int minute = TimeMinute(jpTime);
 #endif
-   
+
    // 曜日別ポジション制御が有効な場合のみ曜日チェック
    if(EnablePositionByDay) {
       // 曜日別ポジション許可チェック
@@ -845,13 +853,6 @@ bool IsInitialEntryTimeAllowed(int type)
       }
    }
    
-   // DayTimeControl_ActiveがOFF_MODEの場合は時間フィルターを無効化（常にtrue）
-   if(DayTimeControl_Active == OFF_MODE)
-   {
-      g_InitialTimeAllowedCache[typeIndex] = true;
-      return true;
-   }
-
    // DayTimeControl_Active == ON_MODEの場合、共通時間設定をチェック
    bool isTimeOK = IsInTimeRange(currentMinutes, commonStart, commonEnd);
 
