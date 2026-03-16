@@ -253,7 +253,8 @@ enum ENUM_OPPOSITE_SIGNAL_EXIT
 enum ENUM_VOLATILITY_FILTER_MODE
 {
    VOLATILITY_FILTER_ALL_ENTRIES = 0,      // すべてのエントリーに適用（初回＋ナンピン）
-   VOLATILITY_FILTER_INITIAL_ONLY = 1      // 初回エントリーのみ適用（ナンピンは無効）
+   VOLATILITY_FILTER_INITIAL_ONLY = 1,     // 初回エントリーのみ適用（ナンピンは無効）
+   VOLATILITY_FILTER_NANPIN_ONLY = 2       // ナンピンのみ適用（初回は無効）
 };
 
 #endif // HOSOPI3_ENUMS_MQH

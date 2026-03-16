@@ -831,14 +831,28 @@ void CheckNanpinConditions(int side)
    // 前回のチェックからの経過時間を確認
    static datetime lastCheckTime[2] = {0, 0}; // [0] = Buy, [1] = Sell
    int typeIndex = side;
-   
+
    if(TimeCurrent() - lastCheckTime[typeIndex] < 10) // 10秒間隔でチェック
       return;
-   
+
    lastCheckTime[typeIndex] = TimeCurrent();
-   
+
    // 処理対象のオペレーションタイプを決定
    int operationType = (side == 0) ? OP_BUY : OP_SELL;
+
+   // ボラティリティフィルターチェック（ナンピンに適用するモードの場合）
+   if(InpVolatilityFilterEnabled &&
+      (InpVolatilityFilterMode == VOLATILITY_FILTER_ALL_ENTRIES ||
+       InpVolatilityFilterMode == VOLATILITY_FILTER_NANPIN_ONLY) &&
+      !PassVolatilityEntryFilter())
+      return;
+
+   // 高ボラティリティフィルターチェック（ナンピンに適用するモードの場合）
+   if(InpHighVolFilterEnabled &&
+      (InpHighVolFilterMode == VOLATILITY_FILTER_ALL_ENTRIES ||
+       InpHighVolFilterMode == VOLATILITY_FILTER_NANPIN_ONLY) &&
+      !PassHighVolatilityFilter())
+      return;
    
    // ポジションカウントを取得（リアルのみ - ゴーストは含めない）
    // マジックナンバー0の場合は全ポジションをチェック
@@ -1438,12 +1452,36 @@ void CheckPositionChanges()
 void ProcessRealEntries(int side)
 {
    string direction = (side == 0) ? "Buy" : "Sell";
-   
+
    // 同方向のリアルポジション数をチェック
    int operationType = (side == 0) ? OP_BUY : OP_SELL;
    int existingCount = position_count(operationType);
-   
-   // 戦略エントリー条件をチェック  
+
+   // ボラティリティフィルターチェック（モードに応じて適用）
+   if(InpVolatilityFilterEnabled)
+   {
+      int totalPos = combined_position_count(operationType);
+      bool isInitial = (totalPos == 0);
+      bool shouldApply = (InpVolatilityFilterMode == VOLATILITY_FILTER_ALL_ENTRIES) ||
+                         (InpVolatilityFilterMode == VOLATILITY_FILTER_INITIAL_ONLY && isInitial) ||
+                         (InpVolatilityFilterMode == VOLATILITY_FILTER_NANPIN_ONLY && !isInitial);
+      if(shouldApply && !PassVolatilityEntryFilter())
+         return;
+   }
+
+   // 高ボラティリティフィルターチェック（モードに応じて適用）
+   if(InpHighVolFilterEnabled)
+   {
+      int totalPos2 = combined_position_count(operationType);
+      bool isInitial2 = (totalPos2 == 0);
+      bool shouldApply2 = (InpHighVolFilterMode == VOLATILITY_FILTER_ALL_ENTRIES) ||
+                          (InpHighVolFilterMode == VOLATILITY_FILTER_INITIAL_ONLY && isInitial2) ||
+                          (InpHighVolFilterMode == VOLATILITY_FILTER_NANPIN_ONLY && !isInitial2);
+      if(shouldApply2 && !PassHighVolatilityFilter())
+         return;
+   }
+
+   // 戦略エントリー条件をチェック
    if(!CheckStrategyEntryCondition(operationType)) {
       return;
    }

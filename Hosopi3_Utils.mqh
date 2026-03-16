@@ -421,6 +421,20 @@ void ProcessConstantEntry(int operationType)
         return;
     }
 
+    // ボラティリティフィルターチェック（常時エントリー＝初回エントリー扱い）
+    if(InpVolatilityFilterEnabled &&
+       (InpVolatilityFilterMode == VOLATILITY_FILTER_ALL_ENTRIES ||
+        InpVolatilityFilterMode == VOLATILITY_FILTER_INITIAL_ONLY) &&
+       !PassVolatilityEntryFilter())
+        return;
+
+    // 高ボラティリティフィルターチェック
+    if(InpHighVolFilterEnabled &&
+       (InpHighVolFilterMode == VOLATILITY_FILTER_ALL_ENTRIES ||
+        InpHighVolFilterMode == VOLATILITY_FILTER_INITIAL_ONLY) &&
+       !PassHighVolatilityFilter())
+        return;
+
     // ローソク足チェックは削除 - ノーポジならどんどんエントリー
 
     // 時間制限チェック（初回エントリーのみ）
