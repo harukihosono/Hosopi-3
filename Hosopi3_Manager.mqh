@@ -1178,7 +1178,14 @@ int InitializeEA()
    // ボラティリティフィルターを初期化
    if(!InitializeVolatilityFilter())
    {
-      Print("ボラティリティフィルター初期化に失敗しました");
+      Print("ボラありフィルター初期化に失敗しました");
+      return(INIT_FAILED);
+   }
+
+   // 高ボラティリティフィルターを初期化
+   if(!InitializeHighVolatilityFilter())
+   {
+      Print("高ボラフィルター初期化に失敗しました");
       return(INIT_FAILED);
    }
 

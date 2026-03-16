@@ -13,10 +13,14 @@
 //+------------------------------------------------------------------+
 
 #ifdef __MQL5__
-// MQL5用ATRハンドル
+// MQL5用ATRハンドル（ボラありフィルター）
 int g_atrHandle = INVALID_HANDLE;
 ENUM_TIMEFRAMES g_lastATRTimeframe = PERIOD_CURRENT;
 int g_lastATRPeriod = 0;
+
+// MQL5用ATRハンドル（高ボラティリティフィルター）
+int g_highVolATRHandle = INVALID_HANDLE;
+int g_lastHighVolATRPeriod = 0;
 #endif
 
 //+------------------------------------------------------------------+
@@ -39,8 +43,31 @@ bool InitializeVolatilityFilter()
    g_lastATRPeriod = InpVolatilityATRPeriod;
 #endif
 
-   Print("ボラティリティフィルターを初期化しました (ATR期間:", InpVolatilityATRPeriod,
+   Print("ボラありフィルターを初期化しました (ATR期間:", InpVolatilityATRPeriod,
          " スプレッド倍率:", InpVolatilitySpreadMultiplier, ")");
+   return true;
+}
+
+//+------------------------------------------------------------------+
+//| 高ボラティリティフィルター初期化                                  |
+//+------------------------------------------------------------------+
+bool InitializeHighVolatilityFilter()
+{
+   if(!InpHighVolFilterEnabled)
+      return true;
+
+#ifdef __MQL5__
+   g_highVolATRHandle = iATR(_Symbol, PERIOD_CURRENT, InpHighVolATRPeriod);
+   if(g_highVolATRHandle == INVALID_HANDLE)
+   {
+      Print("高ボラフィルター: ATRハンドル作成エラー");
+      return false;
+   }
+   g_lastHighVolATRPeriod = InpHighVolATRPeriod;
+#endif
+
+   Print("高ボラフィルターを初期化しました (ATR期間:", InpHighVolATRPeriod,
+         " ATR倍率:", InpHighVolATRMultiplier, ")");
    return true;
 }
 
@@ -54,6 +81,11 @@ void DeinitializeVolatilityFilter()
    {
       IndicatorRelease(g_atrHandle);
       g_atrHandle = INVALID_HANDLE;
+   }
+   if(g_highVolATRHandle != INVALID_HANDLE)
+   {
+      IndicatorRelease(g_highVolATRHandle);
+      g_highVolATRHandle = INVALID_HANDLE;
    }
 #endif
 }
@@ -146,6 +178,85 @@ bool PassVolatilityEntryFilter()
    }
 
    return result;  // ATR > (スプレッド × 倍率) ならtrue
+}
+
+//+------------------------------------------------------------------+
+//| 高ボラティリティフィルター判定（ELDRA2 Grid Volatility Filterから移植）|
+//| 戻り値: true = エントリー許可, false = エントリーブロック          |
+//| 判定基準: 現在ATR ≤ (平均ATR × 倍率) なら許可                     |
+//| ※ボラありフィルターの逆で、ボラティリティが高すぎる場合をブロック  |
+//+------------------------------------------------------------------+
+bool PassHighVolatilityFilter()
+{
+   // フィルターが無効の場合は常にパス
+   if(!InpHighVolFilterEnabled)
+      return true;
+
+#ifdef __MQL5__
+   // パラメータが変更された場合はハンドルを再作成
+   if(g_highVolATRHandle == INVALID_HANDLE ||
+      g_lastHighVolATRPeriod != InpHighVolATRPeriod)
+   {
+      if(g_highVolATRHandle != INVALID_HANDLE)
+      {
+         IndicatorRelease(g_highVolATRHandle);
+      }
+      g_highVolATRHandle = iATR(_Symbol, PERIOD_CURRENT, InpHighVolATRPeriod);
+      if(g_highVolATRHandle == INVALID_HANDLE)
+      {
+         Print("高ボラフィルター: ATRハンドル作成エラー");
+         return false;
+      }
+      g_lastHighVolATRPeriod = InpHighVolATRPeriod;
+   }
+
+   // ATRバッファを2本分取得
+   double atr_buffer[];
+   ArraySetAsSeries(atr_buffer, true);
+   if(CopyBuffer(g_highVolATRHandle, 0, 0, 2, atr_buffer) <= 1)
+   {
+      Print("高ボラフィルター: ATRバッファ取得エラー");
+      return true;  // 取得失敗時はフィルター無効
+   }
+
+   double atr = atr_buffer[0];
+   double avgAtr = (atr_buffer[0] + atr_buffer[1]) / 2.0;
+
+#else
+   // MQL4の場合
+   double atr = iATR(_Symbol, 0, InpHighVolATRPeriod, 0);
+   double avgAtr = (iATR(_Symbol, 0, InpHighVolATRPeriod, 0) + iATR(_Symbol, 0, InpHighVolATRPeriod, 1)) / 2.0;
+#endif
+
+   double threshold = avgAtr * InpHighVolATRMultiplier;
+   bool result = !(atr > threshold);  // ATRが閾値以下ならPASS
+
+   // デバッグログ（30分に1回、状態変化時は即座に出力）
+   static datetime lastHighVolLogTime = 0;
+   static bool lastHighVolResult = true;
+
+   if(result != lastHighVolResult || TimeCurrent() - lastHighVolLogTime > 1800) {
+      Print("高ボラフィルター: ATR=", DoubleToString(atr, 5),
+            " AvgATR=", DoubleToString(avgAtr, 5),
+            " Threshold(AvgATR×", InpHighVolATRMultiplier, ")=", DoubleToString(threshold, 5),
+            " → ", result ? "PASS(通常ボラティリティ)" : "BLOCK(ボラティリティ過大)");
+      lastHighVolLogTime = TimeCurrent();
+      lastHighVolResult = result;
+   }
+
+   // ブロック時は5分に1回通知
+   if(!result)
+   {
+      static datetime lastHighVolNotifyTime = 0;
+      if(TimeCurrent() - lastHighVolNotifyTime > 300)
+      {
+         Print("高ボラフィルター: ボラティリティ過大のためエントリーブロック (ATR=",
+               DoubleToString(atr, 5), " > Threshold=", DoubleToString(threshold, 5), ")");
+         lastHighVolNotifyTime = TimeCurrent();
+      }
+   }
+
+   return result;
 }
 
 #endif // HOSOPI3_VOLATILITY_FILTER_MQH

@@ -93,6 +93,20 @@ bool CanExecuteEntry(int operationType)
         }
     }
 
+    // 高ボラティリティフィルターチェック（ボラティリティ過大時のブロック）
+    if(InpHighVolFilterEnabled)
+    {
+        if(!PassHighVolatilityFilter()) {
+            static datetime lastHighVolBlockLogTime = 0;
+            if(TimeCurrent() - lastHighVolBlockLogTime > 300) {
+                Print("エントリーブロック: 高ボラフィルターにより",
+                      operationType == OP_BUY ? "BUY" : "SELL", "エントリーを拒否");
+                lastHighVolBlockLogTime = TimeCurrent();
+            }
+            return false;
+        }
+    }
+
     // 基本的なエントリー可否チェック
     if(!CanEntry(operationType))
         return false;

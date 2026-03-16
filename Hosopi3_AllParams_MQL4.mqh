@@ -541,3 +541,13 @@ input ENUM_TIMEFRAMES InpVolatilityATRTimeframe = PERIOD_M5; // ATR計算時間�
 input int InpVolatilityATRPeriod = 3;                 // ATR期間
 input double InpVolatilitySpreadMultiplier = 20.0;    // スプレッド倍率（ATR > スプレッド × この値でエントリー許可）
 input ENUM_VOLATILITY_FILTER_MODE InpVolatilityFilterMode = VOLATILITY_FILTER_INITIAL_ONLY; // フィルター適用モード
+
+//==================================================================
+//                高ボラティリティフィルター設定
+//==================================================================
+input string _37_HIGH_VOL_FILTER_SETTINGS_ = ""; //=== 37. 高ボラティリティフィルター設定 ===
+
+//--- メイン設定
+input bool InpHighVolFilterEnabled = false;              // 高ボラフィルターを有効にする
+input int InpHighVolATRPeriod = 14;                      // ATR期間
+input double InpHighVolATRMultiplier = 2.0;              // ATR倍率（現在ATR > 平均ATR × この値でブロック）
