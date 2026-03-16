@@ -847,12 +847,7 @@ void CheckNanpinConditions(int side)
       !PassVolatilityEntryFilter())
       return;
 
-   // 高ボラティリティフィルターチェック（ナンピンに適用するモードの場合）
-   if(InpHighVolFilterEnabled &&
-      (InpHighVolFilterMode == VOLATILITY_FILTER_ALL_ENTRIES ||
-       InpHighVolFilterMode == VOLATILITY_FILTER_NANPIN_ONLY) &&
-      !PassHighVolatilityFilter())
-      return;
+   // ※高ボラフィルターはリアルナンピン直前でチェック（ゴーストナンピンは通す）
    
    // ポジションカウントを取得（リアルのみ - ゴーストは含めない）
    // マジックナンバー0の場合は全ポジションをチェック
@@ -885,6 +880,8 @@ void CheckNanpinConditions(int side)
    if(totalPositionCount == 0)
    {
       if(shouldDebug) Print("ナンピン[", direction, "]: 初回エントリー判定 - ExecuteRealNanpin呼び出し");
+      // 高ボラフィルター（リアルエントリーのみ適用、ゴーストは通す）
+      if(!PassHighVolFilterForReal(operationType)) return;
       // 初回エントリーを実行
       ExecuteRealNanpin(operationType);
       return;
@@ -1047,6 +1044,8 @@ void CheckNanpinConditions(int side)
       else
       {
          Print("ナンピン[", direction, "]: リアルナンピン実行 (レベル ", nextLevel, " > ", (int)NanpinSkipLevel, ")");
+         // 高ボラフィルター（リアルエントリーのみ適用、ゴーストは通す）
+         if(!PassHighVolFilterForReal(operationType)) return;
          ExecuteRealNanpin(operationType);
       }
    }
@@ -1469,17 +1468,7 @@ void ProcessRealEntries(int side)
          return;
    }
 
-   // 高ボラティリティフィルターチェック（モードに応じて適用）
-   if(InpHighVolFilterEnabled)
-   {
-      int totalPos2 = combined_position_count(operationType);
-      bool isInitial2 = (totalPos2 == 0);
-      bool shouldApply2 = (InpHighVolFilterMode == VOLATILITY_FILTER_ALL_ENTRIES) ||
-                          (InpHighVolFilterMode == VOLATILITY_FILTER_INITIAL_ONLY && isInitial2) ||
-                          (InpHighVolFilterMode == VOLATILITY_FILTER_NANPIN_ONLY && !isInitial2);
-      if(shouldApply2 && !PassHighVolatilityFilter())
-         return;
-   }
+   // ※高ボラフィルターはリアルエントリー直前でチェック（ゴーストは通す）
 
    // 戦略エントリー条件をチェック
    if(!CheckStrategyEntryCondition(operationType)) {
@@ -1557,11 +1546,15 @@ void ProcessRealEntries(int side)
             } else {
             }
             // スキップレベルを超えた場合またはSKIP_NONEの場合はリアルエントリーを実行
+            // 高ボラフィルター（リアルエントリーのみ適用、ゴーストは通す）
+            if(!PassHighVolFilterForReal(operationType)) return;
             ExecuteRealEntry(operationType, "戦略シグナル（スキップ後）");
          }
       }
       else
       {
+         // 高ボラフィルター（リアルエントリーのみ適用、ゴーストは通す）
+         if(!PassHighVolFilterForReal(operationType)) return;
          ExecuteRealEntry(operationType, "インジケーターシグナル");
       }
    } 

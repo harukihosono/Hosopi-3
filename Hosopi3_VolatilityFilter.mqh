@@ -259,4 +259,27 @@ bool PassHighVolatilityFilter()
    return result;
 }
 
+//+------------------------------------------------------------------+
+//| 高ボラフィルター（リアルエントリー専用ヘルパー）                  |
+//| ゴーストエントリーには適用せず、リアルエントリーのみブロック        |
+//| モードに応じて初回/ナンピンを判定                                 |
+//+------------------------------------------------------------------+
+bool PassHighVolFilterForReal(int operationType)
+{
+   if(!InpHighVolFilterEnabled)
+      return true;
+
+   int totalPos = combined_position_count(operationType);
+   bool isInitial = (totalPos == 0);
+
+   bool shouldApply = (InpHighVolFilterMode == VOLATILITY_FILTER_ALL_ENTRIES) ||
+                      (InpHighVolFilterMode == VOLATILITY_FILTER_INITIAL_ONLY && isInitial) ||
+                      (InpHighVolFilterMode == VOLATILITY_FILTER_NANPIN_ONLY && !isInitial);
+
+   if(shouldApply && !PassHighVolatilityFilter())
+      return false;
+
+   return true;
+}
+
 #endif // HOSOPI3_VOLATILITY_FILTER_MQH
