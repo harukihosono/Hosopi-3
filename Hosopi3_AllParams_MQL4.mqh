@@ -552,3 +552,4 @@ input bool InpHighVolFilterEnabled = false;              // 高ボラフィル�
 input int InpHighVolATRPeriod = 14;                      // ATR期間
 input double InpHighVolATRMultiplier = 2.0;              // ATR倍率（現在ATR > 平均ATR × この値でブロック）
 input ENUM_VOLATILITY_FILTER_MODE InpHighVolFilterMode = VOLATILITY_FILTER_ALL_ENTRIES; // フィルター適用モード
+input bool InpHighVolFilterApplyToGhost = false;         // ゴーストエントリーにも適用する

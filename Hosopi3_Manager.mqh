@@ -847,7 +847,12 @@ void CheckNanpinConditions(int side)
       !PassVolatilityEntryFilter())
       return;
 
-   // ※高ボラフィルターはリアルナンピン直前でチェック（ゴーストナンピンは通す）
+   // 高ボラフィルター（ゴースト適用ON時はゴーストナンピンもブロック）
+   if(InpHighVolFilterEnabled && InpHighVolFilterApplyToGhost &&
+      (InpHighVolFilterMode == VOLATILITY_FILTER_ALL_ENTRIES ||
+       InpHighVolFilterMode == VOLATILITY_FILTER_NANPIN_ONLY) &&
+      !PassHighVolatilityFilter())
+      return;
    
    // ポジションカウントを取得（リアルのみ - ゴーストは含めない）
    // マジックナンバー0の場合は全ポジションをチェック
@@ -1468,7 +1473,17 @@ void ProcessRealEntries(int side)
          return;
    }
 
-   // ※高ボラフィルターはリアルエントリー直前でチェック（ゴーストは通す）
+   // 高ボラフィルター（ゴースト適用ON時は全エントリーをここでブロック）
+   if(InpHighVolFilterEnabled && InpHighVolFilterApplyToGhost)
+   {
+      int totalPos2 = combined_position_count(operationType);
+      bool isInitial2 = (totalPos2 == 0);
+      bool shouldApply2 = (InpHighVolFilterMode == VOLATILITY_FILTER_ALL_ENTRIES) ||
+                          (InpHighVolFilterMode == VOLATILITY_FILTER_INITIAL_ONLY && isInitial2) ||
+                          (InpHighVolFilterMode == VOLATILITY_FILTER_NANPIN_ONLY && !isInitial2);
+      if(shouldApply2 && !PassHighVolatilityFilter())
+         return;
+   }
 
    // 戦略エントリー条件をチェック
    if(!CheckStrategyEntryCondition(operationType)) {
