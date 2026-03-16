@@ -62,16 +62,38 @@ bool SendOrderWithRetryAsync(MqlTradeRequest &request, MqlTradeResult &result,
       request.type_filling = ORDER_FILLING_RETURN;
    }
 
-   // フィリングモードの優先順位リスト
-   ENUM_ORDER_TYPE_FILLING fillingModes[] = {
+   // フィリングモードの優先順位リスト（重複を除外）
+   ENUM_ORDER_TYPE_FILLING fillingModes[];
+   int fillingModeCount = 0;
+
+   // 重複しないようにフィリングモードリストを構築
+   ENUM_ORDER_TYPE_FILLING allModes[] = {
       cachedFillingMode,      // 最初に自動検出されたモード
-      ORDER_FILLING_FOK,      // 次にFOK
-      ORDER_FILLING_IOC,      // 次にIOC
-      ORDER_FILLING_RETURN    // 最後にRETURN
+      ORDER_FILLING_FOK,      // FOK
+      ORDER_FILLING_IOC,      // IOC
+      ORDER_FILLING_RETURN    // RETURN
    };
 
-   // リトライループ
-   for(int retry = 0; retry < maxRetries; retry++) {
+   for(int m = 0; m < ArraySize(allModes); m++) {
+      bool isDuplicate = false;
+      for(int n = 0; n < fillingModeCount; n++) {
+         if(fillingModes[n] == allModes[m]) {
+            isDuplicate = true;
+            break;
+         }
+      }
+      if(!isDuplicate) {
+         ArrayResize(fillingModes, fillingModeCount + 1);
+         fillingModes[fillingModeCount] = allModes[m];
+         fillingModeCount++;
+      }
+   }
+
+   // リトライループ（フィリングモード数分リトライ）
+   int totalRetries = MathMax(maxRetries, fillingModeCount);
+   int fillingModeIndex = 0;
+
+   for(int retry = 0; retry < totalRetries; retry++) {
 
       // 非同期/同期選択可能な送信
       bool orderResult = useAsync ? OrderSendAsync(request, result) : OrderSend(request, result);
@@ -87,19 +109,13 @@ bool SendOrderWithRetryAsync(MqlTradeRequest &request, MqlTradeResult &result,
       // フィリングモードエラー（4756 = INVALID_FILL）または無効なリクエスト（10030）の場合
       if(errorCode == 4756 || errorCode == 10030 || result.retcode == TRADE_RETCODE_INVALID_FILL) {
          consecutiveFillingErrors++;
+         fillingModeIndex++;
 
          // 次のフィリングモードを試す
-         int currentModeIndex = -1;
-         for(int i = 0; i < ArraySize(fillingModes); i++) {
-            if(fillingModes[i] == request.type_filling) {
-               currentModeIndex = i;
-               break;
-            }
-         }
-
-         if(currentModeIndex >= 0 && currentModeIndex < ArraySize(fillingModes) - 1) {
-            request.type_filling = fillingModes[currentModeIndex + 1];
-            Print("フィリングモードを変更: ", EnumToString(fillingModes[currentModeIndex]),
+         if(fillingModeIndex < fillingModeCount) {
+            ENUM_ORDER_TYPE_FILLING prevMode = request.type_filling;
+            request.type_filling = fillingModes[fillingModeIndex];
+            Print("フィリングモードを変更: ", EnumToString(prevMode),
                   " → ", EnumToString(request.type_filling));
 
             // キャッシュも更新
@@ -108,22 +124,32 @@ bool SendOrderWithRetryAsync(MqlTradeRequest &request, MqlTradeResult &result,
             }
             continue;  // リトライ
          }
+
+         // 全フィリングモードを試しても失敗
+         Print("エラー: 全フィリングモード試行失敗 - errorCode=", errorCode, " retcode=", result.retcode);
+
+         // 連続エラーが3回以上でキャッシュリセット
+         if(consecutiveFillingErrors >= 3) {
+            fillingModeInitialized = false;
+            consecutiveFillingErrors = 0;
+         }
+         return false;
       }
 
       // 流動性不足またはマーケットクローズドエラー
-      if(errorCode == 4756 || result.retcode == TRADE_RETCODE_NO_MONEY ||
+      if(result.retcode == TRADE_RETCODE_NO_MONEY ||
          result.retcode == TRADE_RETCODE_MARKET_CLOSED) {
          Print("エラー: 注文送信失敗 - ", errorCode, " retcode=", result.retcode);
          return false;  // リトライしない
       }
 
       // その他のエラーはリトライ
-      if(retry < maxRetries - 1) {
+      if(retry < totalRetries - 1) {
          Sleep(100);  // 100ms待機
       }
    }
 
-   Print("エラー: 注文送信が", maxRetries, "回失敗しました");
+   Print("エラー: 注文送信が", totalRetries, "回失敗しました");
    return false;
 
    #else // MQL4の場合

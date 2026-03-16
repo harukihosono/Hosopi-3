@@ -122,6 +122,17 @@ void CheckTrailingStopConditions(int side)
 
          Print("トレール[Buy]発動: ストップ価格=", stopPrice);
 
+         // 仮想トレールSLによるチェック（SL変更が失敗した場合のフォールバック）
+         // 現在価格がストップ価格以下なら成行決済
+         if(currentPrice <= stopPrice)
+         {
+            Print("トレール[Buy]仮想SL発動: 成行決済実行 価格=", currentPrice, " <= ストップ=", stopPrice);
+            position_close(OP_BUY);
+            ResetSpecificGhost(OP_BUY);
+            CleanupLinesOnClose(0);
+            return;
+         }
+
          // 各ポジションの決済条件をチェック
 #ifdef __MQL5__
          for(int i = PositionsTotal() - 1; i >= 0; i--)
@@ -129,36 +140,35 @@ void CheckTrailingStopConditions(int side)
             ulong ticket = PositionGetTicket(i);
             if(ticket > 0)
             {
-               if(PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY && 
-                  PositionGetString(POSITION_SYMBOL) == Symbol() && 
+               if(PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY &&
+                  PositionGetString(POSITION_SYMBOL) == Symbol() &&
                   PositionGetInteger(POSITION_MAGIC) == MagicNumber)
                {
                   // 現在のストップロスを確認
                   double currentSL = PositionGetDouble(POSITION_SL);
-                  
+
                   // ストップロスが設定されていないか、または新しいストップが現在より高い場合
                   if(currentSL == 0 || stopPrice > currentSL)
                   {
-                     // ストップロスを修正
+                     // ストップロスを修正（TRADE_ACTION_SLTPにtype_fillingは不要）
                      MqlTradeRequest request;
                      MqlTradeResult result;
                      ZeroMemory(request);
                      ZeroMemory(result);
-                     
+
                      request.action = TRADE_ACTION_SLTP;
                      request.position = ticket;
                      request.symbol = Symbol();
                      request.sl = stopPrice;
                      request.tp = PositionGetDouble(POSITION_TP);
-                     request.type_filling = (ENUM_ORDER_TYPE_FILLING)OrderFillingType;
-                     
+
                      if(SendOrderWithRetryAsync(request, result, 3, UseAsyncOrders))
                      {
                         Print("トレール[Buy]SL更新成功: チケット=", ticket, " SL=", stopPrice);
                      }
                      else
                      {
-                        Print("トレール[Buy]SL更新失敗: チケット=", ticket, " エラー=", result.retcode);
+                        Print("トレール[Buy]SL更新失敗(仮想SLで監視継続): チケット=", ticket, " エラー=", result.retcode);
                      }
                   }
                }
@@ -216,6 +226,17 @@ void CheckTrailingStopConditions(int side)
 
          Print("トレール[Sell]発動: ストップ価格=", stopPrice);
 
+         // 仮想トレールSLによるチェック（SL変更が失敗した場合のフォールバック）
+         // 現在価格がストップ価格以上なら成行決済
+         if(currentPrice >= stopPrice)
+         {
+            Print("トレール[Sell]仮想SL発動: 成行決済実行 価格=", currentPrice, " >= ストップ=", stopPrice);
+            position_close(OP_SELL);
+            ResetSpecificGhost(OP_SELL);
+            CleanupLinesOnClose(1);
+            return;
+         }
+
          // 各ポジションの決済条件をチェック
 #ifdef __MQL5__
          for(int i = PositionsTotal() - 1; i >= 0; i--)
@@ -223,36 +244,35 @@ void CheckTrailingStopConditions(int side)
             ulong ticket = PositionGetTicket(i);
             if(ticket > 0)
             {
-               if(PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_SELL && 
-                  PositionGetString(POSITION_SYMBOL) == Symbol() && 
+               if(PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_SELL &&
+                  PositionGetString(POSITION_SYMBOL) == Symbol() &&
                   PositionGetInteger(POSITION_MAGIC) == MagicNumber)
                {
                   // 現在のストップロスを確認
                   double currentSL = PositionGetDouble(POSITION_SL);
-                  
+
                   // ストップロスが設定されていないか、または新しいストップが現在より低い場合
                   if(currentSL == 0 || stopPrice < currentSL)
                   {
-                     // ストップロスを修正
+                     // ストップロスを修正（TRADE_ACTION_SLTPにtype_fillingは不要）
                      MqlTradeRequest request;
                      MqlTradeResult result;
                      ZeroMemory(request);
                      ZeroMemory(result);
-                     
+
                      request.action = TRADE_ACTION_SLTP;
                      request.position = ticket;
                      request.symbol = Symbol();
                      request.sl = stopPrice;
                      request.tp = PositionGetDouble(POSITION_TP);
-                     request.type_filling = (ENUM_ORDER_TYPE_FILLING)OrderFillingType;
-                     
+
                      if(SendOrderWithRetryAsync(request, result, 3, UseAsyncOrders))
                      {
                         Print("トレール[Sell]SL更新成功: チケット=", ticket, " SL=", stopPrice);
                      }
                      else
                      {
-                        Print("トレール[Sell]SL更新失敗: チケット=", ticket, " エラー=", result.retcode);
+                        Print("トレール[Sell]SL更新失敗(仮想SLで監視継続): チケット=", ticket, " エラー=", result.retcode);
                      }
                   }
                }
