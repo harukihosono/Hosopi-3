@@ -4,7 +4,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025"
 #property link      ""
-#property version   "3.2"
+#property version   "3.8"
 #property strict
 
 // インクルードファイル
@@ -15,6 +15,9 @@
 #else
    #include "Hosopi3_AllParams_MQL4.mqh"  // 全パラメータ（MQL4版）
 #endif
+#include "ParamReport/Hosopi3_ParamReport.mqh"  // パラメータ差分HTMLレポート（Δボタン）
+#include "Hosopi3_FundsGuard.mqh"                // 資金不足ガード（証拠金不足時のエントリー見送り）
+#include "Hosopi3_OrderRateGuard.mqh"            // 注文レートガード（連続失敗・過剰連打で停止）
 #include "Hosopi3_Trading.mqh"
 #include "Hosopi3_Utils.mqh"
 #include "Hosopi3_IndicatorEntry.mqh"
@@ -30,6 +33,7 @@
 #include "Hosopi3_InfoPanel.mqh"
 #include "Hosopi3_IndicatorEntry.mqh"
 #include "Hosopi3_VolatilityFilter.mqh"
+#include "Hosopi3_TimeClose.mqh"                 // 時間決済・週末クローズ
 
 
 

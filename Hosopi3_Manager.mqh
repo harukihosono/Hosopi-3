@@ -65,6 +65,10 @@ void SaveEntryLogToFile(string logMessage)
 //+------------------------------------------------------------------+
 void ExecuteRealEntry(int type, string entryReason)
 {
+   // 決済処理中のエントリーをブロック（連打・ロット暴走防止）
+   if(BlockEntryOrderIfClosing("ExecuteRealEntry " + ((type == OP_BUY) ? "BUY" : "SELL")))
+      return;
+
    if(!g_AutoTrading)
    {
       Print("自動売買が無効のため、リアルエントリーはスキップされました");
@@ -213,6 +217,11 @@ void ExecuteRealNanpin(int typeOrder)
 {
    string direction = (typeOrder == OP_BUY) ? "Buy" : "Sell";
 
+   // 決済処理中のナンピンをブロック（非同期close中のポジション0誤検知防止）
+   // ナンピンは前回ロット×倍率方式のため、一度暴走すると指数的に拡大する
+   if(BlockEntryOrderIfClosing("ExecuteRealNanpin " + direction))
+      return;
+
    if(EnableDebugLog)
       Print("ExecuteRealNanpin[", direction, "]: 開始 - AutoTrading=", g_AutoTrading);
 
@@ -255,8 +264,25 @@ void ExecuteRealNanpin(int typeOrder)
       Print("すでに最大ポジション数に達しているため、リアルナンピンはスキップされました");
       return;
    }
-   
-   
+
+   // ナンピンインターバル: 前回ナンピンから指定時間が経過していなければスキップ
+   // （急変時の高速ナンピン積み増しを抑制）
+   if(EnableNanpinInterval && NanpinIntervalMinutes > 0)
+   {
+      datetime lastNanpinTime = (typeOrder == OP_BUY) ? g_LastNanpinTimeBuy : g_LastNanpinTimeSell;
+      if(lastNanpinTime > 0 && TimeCurrent() - lastNanpinTime < (long)NanpinIntervalMinutes * 60)
+      {
+         static datetime lastIntervalLog = 0;
+         if(EnableDebugLog && TimeCurrent() - lastIntervalLog > 60)
+         {
+            Print("ExecuteRealNanpin[", direction, "]: ナンピンインターバル中のためスキップ（残り",
+                  (int)((long)NanpinIntervalMinutes * 60 - (TimeCurrent() - lastNanpinTime)), "秒）");
+            lastIntervalLog = TimeCurrent();
+         }
+         return;
+      }
+   }
+
    // ===== ロットサイズの選択ロジックを修正 =====
    double lotsToUse = InitialLot; // 初期値で初期化
 
@@ -341,6 +367,7 @@ void ExecuteRealNanpin(int typeOrder)
    request.comment = "Hosopi 3 EA Nanpin";
 
    bool entryResult = SendOrderWithRetryAsync(request, resultAsync, 3, UseAsyncOrders);
+   OrderRateGuard_Record();  // サーバーへ送信した注文操作を記録（MQL5ナンピンはposition_entryを経由しない）
    #else
    // MQL4では従来の関数を使用
    Print("ナンピンエントリー実行: position_entry(", typeOrder, ", ", lotsToUse, ")");
@@ -350,10 +377,25 @@ void ExecuteRealNanpin(int typeOrder)
    if(entryResult) {
       Print("ナンピンエントリー成功: ", (typeOrder == OP_BUY) ? "Buy" : "Sell",
             " ロット=", DoubleToString(lotsToUse, 2));
+      // ナンピンインターバル用に実行時刻を記録
+      if(typeOrder == OP_BUY) g_LastNanpinTimeBuy = TimeCurrent();
+      else                    g_LastNanpinTimeSell = TimeCurrent();
+#ifdef __MQL5__
+      // MQL5ナンピンはposition_entryを経由しないため、ここでレートガードに成功を記録
+      OrderRateGuard_RecordResult(true, "ExecuteRealNanpin MQL5");
+#endif
       // 修正: ゴーストポジションはリセットしない
    }
    else {
-      Print("リアル", typeOrder == OP_BUY ? "Buy" : "Sell", "ナンピンエラー: ", GetLastError());
+      uint ecNanpin = (uint)GetLastError();
+      Print("リアル", typeOrder == OP_BUY ? "Buy" : "Sell", "ナンピンエラー: ", ecNanpin);
+#ifdef __MQL5__
+      if(resultAsync.retcode == TRADE_RETCODE_NO_MONEY)
+         FundsGuardOnNoMoneyError("ExecuteRealNanpin MQL5");
+      if(OrderRateGuard_IsServerRateLimit(ecNanpin, resultAsync.retcode))
+         OrderRateGuard_OnServerRateLimit("ExecuteRealNanpin MQL5");
+      OrderRateGuard_RecordResult(false, "ExecuteRealNanpin MQL5");
+#endif
    }
 }
 
@@ -362,6 +404,10 @@ void ExecuteRealNanpin(int typeOrder)
 //+------------------------------------------------------------------+
 void ExecuteDiscretionaryEntry(int typeOrder, double lotSize = 0)
 {
+   // 決済処理中のエントリーをブロック
+   if(BlockEntryOrderIfClosing("ExecuteDiscretionaryEntry " + ((typeOrder == OP_BUY) ? "BUY" : "SELL")))
+      return;
+
    if(!g_AutoTrading)
    {
       Print("自動売買が無効のため、裁量エントリーはスキップされました");
@@ -465,6 +511,10 @@ void ExecuteDiscretionaryEntry(int typeOrder, double lotSize = 0)
 //+------------------------------------------------------------------+
 void ExecuteEntryFromLevel(int type, int level)
 {
+   // 決済処理中のエントリーをブロック
+   if(BlockEntryOrderIfClosing("ExecuteEntryFromLevel " + ((type == OP_BUY) ? "BUY" : "SELL") + " Lv=" + IntegerToString(level)))
+      return;
+
    if(!g_AutoTrading)
    {
       Print("自動売買が無効のため、レベル指定エントリーはスキップされました");
@@ -624,7 +674,17 @@ void OnTickManager()
 {
    // バックテスト時の処理を最適化
    bool isTesting = IsTesting();
-   
+
+   // 資金不足ガードの状態更新（証拠金不足時は以降の新規/ナンピンエントリーをブロック）
+   UpdateFundsGuard();
+
+   // 注文レートガードの状態更新（クールダウン解除・完全停止からの自動復帰）
+   OrderRateGuard_Update();
+
+   // 時間決済・週末クローズ（内部でスロットル）
+   ProcessTimeClose();
+   ProcessWeekendClose();
+
    // テーブル更新の処理
    if(TimeCurrent() >= g_LastUpdateTime + UpdateInterval)
    {
@@ -774,17 +834,29 @@ void OnTickManager()
       // リアルポジションのトレーリングストップ
       CheckTrailingStopConditions(0); // Buy側
       CheckTrailingStopConditions(1); // Sell側
-      
+
       // ゴーストポジションのトレーリングストップ
       CheckGhostTrailingStopConditions(0); // Buy側
       CheckGhostTrailingStopConditions(1); // Sell側
    }
+
+   // トレーリングSL一括決済検出→全決済処理
+   ProcessTrailingStopCloseAll();
+
+   // SLリトライキュー処理・AsyncTrackerクリーンアップ（MT5のみ）
+#ifdef __MQL5__
+   ProcessSLRetries();
+   AsyncTracker_Cleanup();
+#endif
 
    // ポジション数に応じた建値決済機能を実行
    CheckBreakEvenByPositions();
    
    // 損失額による決済機能を実行
    CheckMaxLossClose();
+
+   // 残高パーセント損失限度による全決済
+   CheckPercentLossClose();
 
    // リアルポジション数の変化をチェック
    CheckPositionChanges();
@@ -801,8 +873,8 @@ void DeleteSpecificLine(int side)
    string direction = (side == 0) ? "Buy" : "Sell";
    
    // 平均価格ライン関連のオブジェクトを削除
-   string objects[6]; // 配列サイズを宣言
-   
+   string objects[8]; // 配列サイズを宣言
+
    // 各要素に個別に値を代入
    objects[0] = g_ObjectPrefix + "AvgPrice" + direction;
    objects[1] = g_ObjectPrefix + "TPLine" + direction;
@@ -810,6 +882,8 @@ void DeleteSpecificLine(int side)
    objects[3] = g_ObjectPrefix + "TPLabel" + direction;
    objects[4] = g_ObjectPrefix + "LimitTP" + direction;
    objects[5] = g_ObjectPrefix + "LimitTPLabel" + direction;
+   objects[6] = g_ObjectPrefix + "TrailTrigger" + direction;
+   objects[7] = g_ObjectPrefix + "TrailTriggerLabel" + direction;
    
    for(int i = 0; i < ArraySize(objects); i++)
    {
@@ -936,10 +1010,15 @@ void CheckNanpinConditions(int side)
    // 現在の価格を取得（BuyならBid、SellならAsk）
    double currentPrice = (side == 0) ? GetBidPrice() : GetAskPrice();
 
+   // 次のポジションがゴーストかリアルかを判定
+   int nextLevel = totalPositionCount + 1;
+   bool nextIsGhost = (NanpinSkipLevel != SKIP_NONE && nextLevel <= (int)NanpinSkipLevel);
+
    // 現在のレベルに対応するナンピン幅を取得
-   // ATRベースが有効かつ個別スプレッド無効の場合はATRを使用
+   // ATRベースが有効かつ個別スプレッド無効かつリアルエントリーの場合のみATRを使用
+   // ゴーストエントリーには固定ナンピン幅を適用
    int nanpinSpread;
-   if(UseAtrNanpinSpread && IndividualSpreadEnabled != ON_MODE)
+   if(UseAtrNanpinSpread && IndividualSpreadEnabled != ON_MODE && !nextIsGhost)
    {
       nanpinSpread = GetAtrNanpinSpread();
    }
@@ -975,11 +1054,9 @@ void CheckNanpinConditions(int side)
    {
       Print("ナンピン[", direction, "]: 条件成立 - ナンピン実行");
 
-      // ナンピンスキップレベルのチェック
-      int nextLevel = totalPositionCount + 1; // 次のポジションレベル
-
       // スキップレベル以下の場合はゴーストナンピン、それ以外はリアルナンピン
-      if(NanpinSkipLevel != SKIP_NONE && nextLevel <= (int)NanpinSkipLevel)
+      // nextLevel, nextIsGhost はナンピン幅計算時に既に算出済み
+      if(nextIsGhost)
       {
          Print("ナンピン[", direction, "]: ゴーストナンピン実行 (レベル ", nextLevel, " <= ", (int)NanpinSkipLevel, ")");
 
@@ -1280,7 +1357,11 @@ void DeinitializeEA(const int reason)
 
    // GUIを削除
    DeleteGUI();
-   
+
+   // 資金不足ガード・注文レートガードの警告ラベルを削除
+   FundsGuardHideLabel();
+   OrderRateGuardHideLabel();
+
    // テーブルを削除
    DeletePositionTable();
 

@@ -76,6 +76,14 @@ public:
       if(!HasAnyEnabledCondition())
          return true;
 
+      // オブジェクト名／矢印コード判定のみの場合はインジケーターハンドル不要
+      // （InpIndicatorName が未設定/無効でも、チャート上の矢印・オブジェクトから検出できる）
+      if(!NeedsIndicatorHandle())
+      {
+         Print("インジケーターエントリー: オブジェクト名/矢印コード判定のみ（ハンドル不使用）");
+         return true;
+      }
+
 #ifdef __MQL5__
       // MQL5: カスタムインジケーターのハンドルを取得
       m_indicatorHandle = iCustom(_Symbol, InpCustomTimeframe, InpIndicatorName,
@@ -127,7 +135,9 @@ public:
          return;
 
 #ifdef __MQL5__
-      if(m_indicatorHandle == INVALID_HANDLE)
+      // ハンドルを必要とする条件が有効なのにハンドルが無効な時のみ中断。
+      // オブジェクト名／矢印コード判定だけの場合はハンドル無効でも継続する。
+      if(NeedsIndicatorHandle() && m_indicatorHandle == INVALID_HANDLE)
          return;
 #endif
 
@@ -171,6 +181,16 @@ public:
          buySignal |= CheckObjectSignal(BuySignalPrefix);
       }
 
+      // 矢印コード条件チェック（オブジェクト名マッチングとは別系統の追加機能）
+      if(InpEnableBuySignalArrow)
+      {
+         bool arrowResult = CheckArrowCodeSignal(InpBuySignalArrowCode);
+         if(arrowResult) {
+            Print("[ShouldBuy] Buy signal detected from arrow code ", InpBuySignalArrowCode);
+         }
+         buySignal |= arrowResult;
+      }
+
       return buySignal;
    }
 
@@ -205,6 +225,16 @@ public:
       if(InpEnableSellSignalObject)
       {
          sellSignal |= CheckObjectSignal(SellSignalPrefix);
+      }
+
+      // 矢印コード条件チェック（オブジェクト名マッチングとは別系統の追加機能）
+      if(InpEnableSellSignalArrow)
+      {
+         bool arrowResult = CheckArrowCodeSignal(InpSellSignalArrowCode);
+         if(arrowResult) {
+            Print("[ShouldSell] Sell signal detected from arrow code ", InpSellSignalArrowCode);
+         }
+         sellSignal |= arrowResult;
       }
 
       return sellSignal;
@@ -400,13 +430,15 @@ private:
       bool hasEntryCondition = InpEnableBuySignal || InpEnableSellSignal ||
                               InpEnableBuyPrice || InpEnableSellPrice ||
                               InpEnableBuyValue || InpEnableSellValue ||
-                              InpEnableBuySignalObject || InpEnableSellSignalObject;
+                              InpEnableBuySignalObject || InpEnableSellSignalObject ||
+                              InpEnableBuySignalArrow || InpEnableSellSignalArrow;
 
       // 決済条件
       bool hasExitCondition = InpEnableBuyExitSignal || InpEnableSellExitSignal ||
                              InpEnableBuyExitPrice || InpEnableSellExitPrice ||
                              InpEnableBuyExitValue || InpEnableSellExitValue ||
-                             InpEnableBuyExitObject || InpEnableSellExitObject;
+                             InpEnableBuyExitObject || InpEnableSellExitObject ||
+                             InpEnableBuyExitArrow || InpEnableSellExitArrow;
 
       // モードに応じて必要な条件をチェック
       if(InpIndicatorMode == INDICATOR_ENTRY_ONLY)
@@ -415,6 +447,27 @@ private:
          return hasExitCondition;
       else // INDICATOR_ENTRY_AND_EXIT
          return hasEntryCondition || hasExitCondition;
+   }
+
+   // インジケーターハンドル（iCustom値）を必要とする条件が有効かどうか
+   // ※ オブジェクト名／矢印コード判定はチャートオブジェクトのみ参照するためハンドル不要
+   //   （チャートに手動で貼ったインジの矢印だけを読む用途を許可する）
+   bool NeedsIndicatorHandle()
+   {
+      bool entryNeeds = InpEnableBuySignal || InpEnableSellSignal ||
+                        InpEnableBuyPrice  || InpEnableSellPrice  ||
+                        InpEnableBuyValue  || InpEnableSellValue;
+
+      bool exitNeeds  = InpEnableBuyExitSignal || InpEnableSellExitSignal ||
+                        InpEnableBuyExitPrice  || InpEnableSellExitPrice  ||
+                        InpEnableBuyExitValue  || InpEnableSellExitValue;
+
+      if(InpIndicatorMode == INDICATOR_ENTRY_ONLY)
+         return entryNeeds;
+      else if(InpIndicatorMode == INDICATOR_EXIT_ONLY)
+         return exitNeeds;
+      else // INDICATOR_ENTRY_AND_EXIT
+         return entryNeeds || exitNeeds;
    }
 
    // 買いポジション決済シグナル判定
@@ -449,6 +502,16 @@ private:
       if(InpEnableBuyExitObject)
       {
          exitSignal |= CheckObjectSignal(BuyExitPrefix);
+      }
+
+      // 矢印コード条件チェック（オブジェクト名マッチングとは別系統の追加機能）
+      if(InpEnableBuyExitArrow)
+      {
+         bool arrowResult = CheckArrowCodeSignal(InpBuyExitArrowCode);
+         if(arrowResult) {
+            Print("[ExitBuy] 買いポジション決済シグナル検出 from arrow code ", InpBuyExitArrowCode);
+         }
+         exitSignal |= arrowResult;
       }
 
       return exitSignal;
@@ -486,6 +549,16 @@ private:
       if(InpEnableSellExitObject)
       {
          exitSignal |= CheckObjectSignal(SellExitPrefix);
+      }
+
+      // 矢印コード条件チェック（オブジェクト名マッチングとは別系統の追加機能）
+      if(InpEnableSellExitArrow)
+      {
+         bool arrowResult = CheckArrowCodeSignal(InpSellExitArrowCode);
+         if(arrowResult) {
+            Print("[ExitSell] 売りポジション決済シグナル検出 from arrow code ", InpSellExitArrowCode);
+         }
+         exitSignal |= arrowResult;
       }
 
       return exitSignal;
@@ -592,7 +665,7 @@ private:
       for(int i = ObjectsTotal(0, -1, -1) - 1; i >= 0; i--)
       {
          string objName = ObjectName(0, i, -1, -1);
-         if(StringFind(objName, prefix) == 0)
+         if(StringFind(objName, prefix) >= 0)   // 部分一致（オブジェクト名に指定文字列が含まれる）
          {
             datetime objTime = (datetime)ObjectGetInteger(0, objName, OBJPROP_TIME);
             if(objTime == barTime)
@@ -601,6 +674,38 @@ private:
                return objValue != 0;
             }
          }
+      }
+
+      return false;
+   }
+
+   // 矢印コードシグナルチェック（オブジェクト名マッチングとは別系統の追加機能）
+   // 指定した矢印コード(OBJPROP_ARROWCODE)を持つ矢印オブジェクトが
+   // 現在バーに存在すればシグナルとみなす（オブジェクト名は問わない）
+   bool CheckArrowCodeSignal(int arrowCode)
+   {
+      // 0以下は未設定扱いとして判定しない
+      if(arrowCode <= 0)
+         return false;
+
+      datetime barTime = iTime(_Symbol, InpCustomTimeframe, InpIndicatorShift);
+
+      for(int i = ObjectsTotal(0, -1, -1) - 1; i >= 0; i--)
+      {
+         string objName = ObjectName(0, i, -1, -1);
+
+         // 矢印オブジェクト（OBJ_ARROW）のみを対象
+         if(ObjectGetInteger(0, objName, OBJPROP_TYPE) != OBJ_ARROW)
+            continue;
+
+         // 矢印コード（OBJPROP_ARROWCODE）の一致判定
+         if((int)ObjectGetInteger(0, objName, OBJPROP_ARROWCODE) != arrowCode)
+            continue;
+
+         // 現在バーの時刻と一致すればシグナル
+         datetime objTime = (datetime)ObjectGetInteger(0, objName, OBJPROP_TIME);
+         if(objTime == barTime)
+            return true;
       }
 
       return false;
@@ -816,12 +921,14 @@ bool IndicatorEntryHasConfiguration()
    bool hasEntryCondition = InpEnableBuySignal  || InpEnableSellSignal  ||
                             InpEnableBuyPrice   || InpEnableSellPrice   ||
                             InpEnableBuyValue   || InpEnableSellValue   ||
-                            InpEnableBuySignalObject || InpEnableSellSignalObject;
+                            InpEnableBuySignalObject || InpEnableSellSignalObject ||
+                            InpEnableBuySignalArrow || InpEnableSellSignalArrow;
 
    bool hasExitCondition  = InpEnableBuyExitSignal  || InpEnableSellExitSignal  ||
                             InpEnableBuyExitPrice   || InpEnableSellExitPrice   ||
                             InpEnableBuyExitValue   || InpEnableSellExitValue   ||
-                            InpEnableBuyExitObject || InpEnableSellExitObject;
+                            InpEnableBuyExitObject || InpEnableSellExitObject ||
+                            InpEnableBuyExitArrow || InpEnableSellExitArrow;
 
    switch(InpIndicatorMode)
    {

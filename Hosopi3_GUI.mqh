@@ -161,6 +161,73 @@ void UpdateAveragePriceLines(int operationType)
          }
       }
    }
+
+   // トレーリング発動ライン表示（トレーリングストップが有効な場合のみ）
+   if(EnableTrailingStop && TrailingTrigger > 0)
+   {
+      double trailTriggerPrice = 0;
+      if(operationType == 0) { // Buy
+         trailTriggerPrice = avgPrice + TrailingTrigger * GetPointValue();
+      } else { // Sell
+         trailTriggerPrice = avgPrice - TrailingTrigger * GetPointValue();
+      }
+
+      string trailLineName = "TrailTrigger" + direction;
+      string trailLabelName = "TrailTriggerLabel" + direction;
+
+#ifdef __MQL5__
+      bool trailLineExists = (ObjectFind(0, g_ObjectPrefix + trailLineName) >= 0);
+#else
+      bool trailLineExists = (ObjectFind(g_ObjectPrefix + trailLineName) >= 0);
+#endif
+
+      if(trailLineExists) {
+#ifdef __MQL5__
+         ObjectSetDouble(0, g_ObjectPrefix + trailLineName, OBJPROP_PRICE, trailTriggerPrice);
+#else
+         ObjectSet(g_ObjectPrefix + trailLineName, OBJPROP_PRICE1, trailTriggerPrice);
+#endif
+      } else {
+         CreateHorizontalLine(g_ObjectPrefix + trailLineName, trailTriggerPrice, TrailTriggerLineColor, STYLE_DOT, 1);
+      }
+
+      // トレーリング発動ラベル
+      if(EnablePriceLabels) {
+         string sign = (operationType == 0) ? "+" : "-";
+         string trailText = "Trail: " + DoubleToString(trailTriggerPrice, GetDigitsValue()) + " (" + sign + IntegerToString(TrailingTrigger) + "pt)";
+
+#ifdef __MQL5__
+         bool trailLabelExists = (ObjectFind(0, g_ObjectPrefix + trailLabelName) >= 0);
+#else
+         bool trailLabelExists = (ObjectFind(g_ObjectPrefix + trailLabelName) >= 0);
+#endif
+
+         if(trailLabelExists) {
+#ifdef __MQL5__
+            ObjectSetDouble(0, g_ObjectPrefix + trailLabelName, OBJPROP_PRICE, trailTriggerPrice);
+            ObjectSetString(0, g_ObjectPrefix + trailLabelName, OBJPROP_TEXT, trailText);
+#else
+            ObjectSet(g_ObjectPrefix + trailLabelName, OBJPROP_PRICE1, trailTriggerPrice);
+            ObjectSetText(g_ObjectPrefix + trailLabelName, trailText);
+#endif
+         } else {
+            CreatePriceLabel(g_ObjectPrefix + trailLabelName, trailText, trailTriggerPrice, TrailTriggerLineColor, operationType == 0);
+         }
+      }
+   }
+   else
+   {
+      // トレーリングストップが無効の場合、オブジェクトを削除
+      string trailLineName = g_ObjectPrefix + "TrailTrigger" + direction;
+      string trailLabelName = g_ObjectPrefix + "TrailTriggerLabel" + direction;
+#ifdef __MQL5__
+      if(ObjectFind(0, trailLineName) >= 0) ObjectDelete(0, trailLineName);
+      if(ObjectFind(0, trailLabelName) >= 0) ObjectDelete(0, trailLabelName);
+#else
+      if(ObjectFind(trailLineName) >= 0) ObjectDelete(trailLineName);
+      if(ObjectFind(trailLabelName) >= 0) ObjectDelete(trailLabelName);
+#endif
+   }
 }
 
 
@@ -444,7 +511,12 @@ void CreateGUI()
    // 設定情報表示ボタン (右)
    CreateButton("btnShowSettings", "Settings", adjustedPanelX + PANEL_MARGIN * 2 + buttonWidth, currentY, buttonWidth, BUTTON_HEIGHT, COLOR_BUTTON_NEUTRAL, COLOR_TEXT_LIGHT);
    currentY += BUTTON_HEIGHT + PANEL_MARGIN;
-   
+
+   // ========== 行10: パラメータ差分レポートボタン ==========
+   CreateButton("btnParamDiff", "Δ パラメータ差分HTML", adjustedPanelX + PANEL_MARGIN, currentY, fullWidth, BUTTON_HEIGHT, COLOR_BUTTON_NEUTRAL, COLOR_TEXT_LIGHT);
+   CreateTooltip("btnParamDiff", "初期値から変更したパラメータをHTMLで一覧表示します");
+   currentY += BUTTON_HEIGHT + PANEL_MARGIN;
+
    // パネルの高さを調整
    panelHeight = currentY - adjustedPanelY;
    #ifdef __MQL5__
@@ -983,7 +1055,14 @@ void ProcessButtonClick(string buttonName)
    #else
       ObjectSet(originalName, OBJPROP_STATE, false);
    #endif
-   
+
+   // パラメータ差分HTMLレポート（初期inputとの差分をHTML出力してブラウザで開く）
+   if(buttonName == "btnParamDiff")
+   {
+      GenerateParamDiffReport();
+      return;
+   }
+
    // Buy Close - 非同期対応
    if(buttonName == "btnCloseBuy")
    {
@@ -1031,8 +1110,10 @@ void ProcessButtonClick(string buttonName)
    {
       Print("=== Close All実行開始（相殺決済優先） ===");
 
-      // 非同期で相殺決済を優先して全決済
-      CloseAllPositionsAsync(UseAsyncOrders, true);  // 相殺決済を優先
+      // 同期close化（CloseBy未コミット中の重複送信回避のため、v3.48対策）
+      // useAsync=falseでOrderSendAsyncを使わず、ClosePositionByTicketSyncで
+      // retcode確認しながら順次決済
+      CloseAllPositionsAsync(false, true);  // 同期 + 相殺決済優先
 
       // 少し待機してからゴーストポジションもクリア
       Sleep(100);
@@ -1598,14 +1679,16 @@ void CleanupLinesOnClose(int side)
     // 方向に対応するラインを削除
     string direction = (side == 0) ? "Buy" : "Sell";
     
-    // 平均価格ライン、TPライン、各ラベルを削除
-    string objects[6];
+    // 平均価格ライン、TPライン、トレーリング発動ライン、各ラベルを削除
+    string objects[8];
     objects[0] = g_ObjectPrefix + "AvgPrice" + direction;
     objects[1] = g_ObjectPrefix + "TPLine" + direction;
     objects[2] = g_ObjectPrefix + "AvgPriceLabel" + direction;
     objects[3] = g_ObjectPrefix + "TPLabel" + direction;
     objects[4] = g_ObjectPrefix + "LimitTP" + direction;
     objects[5] = g_ObjectPrefix + "LimitTPLabel" + direction;
+    objects[6] = g_ObjectPrefix + "TrailTrigger" + direction;
+    objects[7] = g_ObjectPrefix + "TrailTriggerLabel" + direction;
     
     for(int i = 0; i < ArraySize(objects); i++)
     {

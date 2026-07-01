@@ -266,6 +266,10 @@ string g_ObjectPrefix = "";      // オブジェクト名プレフィックス
 
 datetime g_LastUpdateTime = 0;   // 前回の更新時間
 
+// ナンピンインターバル用: 最終ナンピン実行時刻（side別）
+datetime g_LastNanpinTimeBuy = 0;
+datetime g_LastNanpinTimeSell = 0;
+
 // キャッシュを活用するための変数を追加 (Hosopi3_Defines.mqh に追加)
 // グローバル変数でエントリー制限の状態をキャッシュ
 bool g_EquitySufficientCache = true;
@@ -282,5 +286,62 @@ datetime g_LastInitialTimeAllowedCheckTime[2] = {0, 0}; // [0]=Buy, [1]=Sell
    // オーダーフィリングモードのパラメータ
    input ENUM_ORDER_TYPE_FILLING OrderFillingMode = ORDER_FILLING_FOK;
 #endif
+
+//+------------------------------------------------------------------+
+//| 決済処理中ガード（ELDRA2 v3.47 脆弱性修正から移植）               |
+//| 非同期close中の「ポジション数0」誤検知による                     |
+//| 連打・ロット暴走・常時エントリー再発動を防止                     |
+//+------------------------------------------------------------------+
+#define CLOSING_GUARD_DEFAULT_SEC 3
+
+datetime g_ClosingInProgressUntil = 0; // 0=非決済中、>0=この時刻までガード有効
+
+void MarkClosingInProgress(int seconds = CLOSING_GUARD_DEFAULT_SEC)
+{
+   g_ClosingInProgressUntil = TimeCurrent() + seconds;
+}
+
+void ClearClosingInProgress()
+{
+   g_ClosingInProgressUntil = 0;
+}
+
+bool IsClosingInProgress()
+{
+   if(g_ClosingInProgressUntil == 0) return false;
+   if(TimeCurrent() >= g_ClosingInProgressUntil) {
+      g_ClosingInProgressUntil = 0; // タイムアウトで自動解除（永続ブロック防止）
+      return false;
+   }
+   return true;
+}
+
+bool BlockEntryOrderIfClosing(string context)
+{
+   // 資金不足ガード: 証拠金不足時は新規/ナンピンエントリーを送信前にブロック
+   // （FundsGuardBlocked/FundsGuardLogBlocked は Hosopi3_FundsGuard.mqh で定義）
+   if(FundsGuardBlocked())
+   {
+      FundsGuardLogBlocked(context);
+      return true;
+   }
+
+   // 注文レートガード: 連続注文失敗・過剰連打・完全停止中は新規/ナンピンをブロック
+   // （OrderRateGuard_* は Hosopi3_OrderRateGuard.mqh で定義）
+   if(OrderRateGuard_Blocked())
+   {
+      OrderRateGuardLogBlocked(context);
+      return true;
+   }
+
+   if(!IsClosingInProgress()) return false;
+   static datetime lastLogTime = 0;
+   datetime now = TimeCurrent();
+   if(now - lastLogTime >= 1) {
+      Print("[CloseGuard] 決済処理中のためエントリーをブロック: ", context);
+      lastLogTime = now;
+   }
+   return true;
+}
 
 #endif // HOSOPI3_DEFINES_MQH

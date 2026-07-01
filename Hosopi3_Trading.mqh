@@ -318,6 +318,11 @@ double NormalizeVolume(double volume, string symbol = "")
 //+------------------------------------------------------------------+
 bool position_entry(int side, double lot = 0.1, int slippage = 10, int magic = 0, string comment = "")
 {
+   // 決済処理中のエントリーをOrderSend送信前にブロック
+   // （非同期close中のポジション0誤検知による連打・ロット暴走を防止）
+   if(BlockEntryOrderIfClosing("position_entry " + ((side == OP_BUY) ? "BUY" : "SELL")))
+      return false;
+
    // 高頻度呼び出し対策: キャッシュを使用したエントリー制限チェック
 
    if(magic == 0) magic = MagicNumber;
@@ -342,14 +347,25 @@ bool position_entry(int side, double lot = 0.1, int slippage = 10, int magic = 0
    request.type_filling = GetFillingMode(); // 自動検出されたフィリングモード
    
    bool success = SendOrderWithRetryAsync(request, result, 3, UseAsyncOrders);
-   
+   OrderRateGuard_Record();  // サーバーへ送信した注文操作を記録（レート監視）
+
    if(!success || result.retcode != TRADE_RETCODE_DONE)
    {
-      Print("注文エラー: retcode=", result.retcode, " LastError=", GetLastError());
+      uint errCode = (uint)GetLastError();
+      Print("注文エラー: retcode=", result.retcode, " LastError=", errCode);
+      // 資金不足エラーは即時ラッチして以後の発注連打を停止
+      if(result.retcode == TRADE_RETCODE_NO_MONEY)
+         FundsGuardOnNoMoneyError("position_entry MQL5");
+      // サーバーのレート制限応答（10024等）は即時バックオフ
+      if(OrderRateGuard_IsServerRateLimit(errCode, result.retcode))
+         OrderRateGuard_OnServerRateLimit("position_entry MQL5");
+      // 連続失敗ブレーカーに失敗を記録
+      OrderRateGuard_RecordResult(false, "position_entry MQL5");
       return false;
    }
-   
-   // 注文成功
+
+   // 注文成功 → 連続失敗カウントをリセット
+   OrderRateGuard_RecordResult(true, "position_entry MQL5");
    return true;
    
    #else
@@ -370,14 +386,25 @@ bool position_entry(int side, double lot = 0.1, int slippage = 10, int magic = 0
       
       double currentPrice = (side == OP_BUY) ? Ask : Bid;
       ticket = OrderSend(Symbol(), side, normalizedLot, currentPrice, slippage * 2, 0, 0, comment, magic, 0, (side == OP_BUY) ? clrGreen : clrRed);
-      
+      OrderRateGuard_Record();  // サーバーへ送信した注文操作を記録（レート監視）
+
       if(ticket > 0)
       {
          // 注文成功
          break;
       }
-      
+
       int error = GetLastError();
+      // 資金不足エラー(134)は即時ラッチして以後の発注連打を停止
+      if(error == 134) // 134=ERR_NOT_ENOUGH_MONEY
+      {
+         FundsGuardOnNoMoneyError("position_entry MQL4");
+         Print("注文エラー: 資金不足 (134)");
+         break;
+      }
+      // サーバーのレート制限応答（4/8/137/141）は即時バックオフ
+      if(OrderRateGuard_IsServerRateLimit((uint)error, 0))
+         OrderRateGuard_OnServerRateLimit("position_entry MQL4");
       // リクォートエラー以外なら即座に失敗として扱う
       if(error != 138 && error != 4202 && error != 3) // 138=Requote, 4202=Invalid price, 3=Common error
       {
@@ -385,13 +412,17 @@ bool position_entry(int side, double lot = 0.1, int slippage = 10, int magic = 0
          break;
       }
    }
-   
+
    if(ticket <= 0)
    {
       Print("注文失敗: ", GetLastError());
+      // 連続失敗ブレーカーに失敗を記録
+      OrderRateGuard_RecordResult(false, "position_entry MQL4");
       return false;
    }
-   
+
+   // 注文成功 → 連続失敗カウントをリセット
+   OrderRateGuard_RecordResult(true, "position_entry MQL4");
    return true;
    #endif
 }
@@ -405,9 +436,11 @@ bool position_close(int side, double lot = 0.0, int slippage = 10, int magic = 0
    
    #ifdef __MQL5__
    // MQL5でのポジション決済
-   bool found = false;
-   
-   // 該当するポジションを探す
+   // Phase 1: チケットを先に収集（ループ中のインデックスシフト対策）
+   ulong tickets[];
+   double volumes[];
+   int ticketCount = 0;
+
    for(int i = PositionsTotal() - 1; i >= 0; i--)
    {
       ulong ticket = PositionGetTicket(i);
@@ -417,41 +450,99 @@ bool position_close(int side, double lot = 0.0, int slippage = 10, int magic = 0
             PositionGetInteger(POSITION_MAGIC) == magic &&
             PositionGetInteger(POSITION_TYPE) == (side == OP_BUY ? POSITION_TYPE_BUY : POSITION_TYPE_SELL))
          {
-            double volume = (lot <= 0) ? PositionGetDouble(POSITION_VOLUME) : MathMin(lot, PositionGetDouble(POSITION_VOLUME));
-            volume = NormalizeVolume(volume);
-            
-            // ポジションを決済
-            MqlTradeRequest request = {};
-            MqlTradeResult result = {};
-            
-            request.action = TRADE_ACTION_DEAL;
-            request.position = ticket;
-            request.symbol = Symbol();
-            request.volume = volume;
-            request.type = (side == OP_BUY) ? ORDER_TYPE_SELL : ORDER_TYPE_BUY;
-            request.price = (side == OP_BUY) ? GetBidPrice() : GetAskPrice();
-            request.deviation = slippage;
-            request.magic = magic;
-            request.type_filling = GetFillingMode(); // 自動検出されたフィリングモード
-            
-            bool success = SendOrderWithRetryAsync(request, result, 3, UseAsyncOrders);
-            
-            if(!success || result.retcode != TRADE_RETCODE_DONE)
-            {
-               Print("決済エラー: ", result.retcode, " - ", GetLastError());
-               return false;
-            }
-            
-            found = true;
-            
-            // lotが指定され、部分決済の場合はここで終了
-            if(lot > 0 && lot < PositionGetDouble(POSITION_VOLUME))
-               return true;
+            ArrayResize(tickets, ticketCount + 1);
+            ArrayResize(volumes, ticketCount + 1);
+            tickets[ticketCount] = ticket;
+            volumes[ticketCount] = PositionGetDouble(POSITION_VOLUME);
+            ticketCount++;
          }
       }
    }
-   
-   return found;
+
+   if(ticketCount == 0) return false;
+
+   // Phase 2: 収集したチケットを順に決済（インデックスに依存しない）
+   bool anySuccess = false;
+   for(int t = 0; t < ticketCount; t++)
+   {
+      // ポジションがまだ存在するか確認
+      if(!PositionSelectByTicket(tickets[t])) continue; // 既に決済済み
+
+      double volume = (lot <= 0) ? volumes[t] : MathMin(lot, volumes[t]);
+      volume = NormalizeVolume(volume);
+
+      MqlTradeRequest request = {};
+      MqlTradeResult result = {};
+
+      request.action = TRADE_ACTION_DEAL;
+      request.position = tickets[t];
+      request.symbol = Symbol();
+      request.volume = volume;
+      request.type = (side == OP_BUY) ? ORDER_TYPE_SELL : ORDER_TYPE_BUY;
+      request.price = (side == OP_BUY) ? GetBidPrice() : GetAskPrice();
+      request.deviation = slippage;
+      request.magic = magic;
+      request.type_filling = GetFillingMode();
+
+      bool success = SendOrderWithRetryAsync(request, result, 3, UseAsyncOrders);
+
+      // 非同期モード: TRADE_RETCODE_PLACED(10008)も成功扱い
+      bool isSuccess = success && (result.retcode == TRADE_RETCODE_DONE || result.retcode == TRADE_RETCODE_PLACED);
+
+      if(!isSuccess)
+      {
+         Print("決済エラー: ticket=", tickets[t], " retcode=", result.retcode, " err=", GetLastError());
+         // ループを中断しない（残りのポジションも決済を試みる）
+      }
+      else
+      {
+         anySuccess = true;
+      }
+
+      // lotが指定され、部分決済の場合はここで終了
+      if(lot > 0 && lot < volumes[t])
+         return true;
+
+      Sleep(10); // ブローカーへの負荷軽減
+   }
+
+   // Phase 3: 非同期の場合、決済完了を待って残りをリトライ
+   if(UseAsyncOrders && lot <= 0)
+   {
+      Sleep(500); // サーバー処理待ち
+      for(int t = 0; t < ticketCount; t++)
+      {
+         if(!PositionSelectByTicket(tickets[t])) continue; // 決済済み
+
+         // 残っているポジションを同期モードでリトライ
+         Print("決済リトライ(同期): ticket=", tickets[t]);
+         double retryVolume = PositionGetDouble(POSITION_VOLUME);
+         retryVolume = NormalizeVolume(retryVolume);
+
+         MqlTradeRequest retryReq = {};
+         MqlTradeResult retryRes = {};
+
+         retryReq.action = TRADE_ACTION_DEAL;
+         retryReq.position = tickets[t];
+         retryReq.symbol = Symbol();
+         retryReq.volume = retryVolume;
+         retryReq.type = (side == OP_BUY) ? ORDER_TYPE_SELL : ORDER_TYPE_BUY;
+         retryReq.price = (side == OP_BUY) ? GetBidPrice() : GetAskPrice();
+         retryReq.deviation = slippage;
+         retryReq.magic = magic;
+         retryReq.type_filling = GetFillingMode();
+
+         bool retrySuccess = SendOrderWithRetryAsync(retryReq, retryRes, 3, false); // 同期でリトライ
+         if(!retrySuccess)
+            Print("決済リトライ失敗: ticket=", tickets[t], " retcode=", retryRes.retcode);
+         else
+            anySuccess = true;
+
+         Sleep(50);
+      }
+   }
+
+   return anySuccess;
    
    #else
    // MQL4でのポジション決済

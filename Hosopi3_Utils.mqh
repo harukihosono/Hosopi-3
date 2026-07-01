@@ -415,6 +415,11 @@ void ProcessConstantEntries()
 // 常時エントリー個別処理関数
 void ProcessConstantEntry(int operationType)
 {
+    // 決済処理中のエントリーをブロック（非同期close中のポジション0誤検知防止）
+    // 常時エントリーは「ノーポジなら即エントリー」のため、決済中の空白時間に連打が発生する
+    if(BlockEntryOrderIfClosing("ProcessConstantEntry " + ((operationType == OP_BUY) ? "BUY" : "SELL")))
+        return;
+
     // ★ 重要：Buy側はBuyポジションのみチェック、Sell側はSellポジションのみチェック
     if(HasPositions(operationType))
     {

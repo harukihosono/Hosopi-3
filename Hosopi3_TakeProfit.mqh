@@ -64,6 +64,117 @@ int GetTakeProfitPointsByPositionCount(int positionCount)
 
 
 //+------------------------------------------------------------------+
+//| トレーリングSL一括決済マネージャー（ELDRA2 TSMから移植）          |
+//| SLがヒットして1つ決済されたら残り全部を即座に成行決済する        |
+//+------------------------------------------------------------------+
+struct TSM_DirectionState {
+   bool     active;      // トレーリング発動中（SL設定済み）
+   int      posCount;    // SL設定時のポジション数
+   double   targetSL;    // 設定したSL価格
+};
+
+struct TrailingSLManager {
+   TSM_DirectionState buy;
+   TSM_DirectionState sell;
+   bool initialized;
+};
+
+TrailingSLManager g_TSM;
+
+void InitializeTSM()
+{
+   g_TSM.buy.active = false;
+   g_TSM.buy.posCount = 0;
+   g_TSM.buy.targetSL = 0;
+   g_TSM.sell.active = false;
+   g_TSM.sell.posCount = 0;
+   g_TSM.sell.targetSL = 0;
+   g_TSM.initialized = true;
+}
+
+void TSM_Activate(bool isBuy, double sl)
+{
+   if(!g_TSM.initialized) InitializeTSM();
+
+   if(isBuy) {
+      g_TSM.buy.active = true;
+      g_TSM.buy.targetSL = sl;
+      g_TSM.buy.posCount = position_count(OP_BUY);
+   } else {
+      g_TSM.sell.active = true;
+      g_TSM.sell.targetSL = sl;
+      g_TSM.sell.posCount = position_count(OP_SELL);
+   }
+}
+
+void TSM_Reset(bool isBuy)
+{
+   if(isBuy) {
+      g_TSM.buy.active = false;
+      g_TSM.buy.posCount = 0;
+      g_TSM.buy.targetSL = 0;
+   } else {
+      g_TSM.sell.active = false;
+      g_TSM.sell.posCount = 0;
+      g_TSM.sell.targetSL = 0;
+   }
+}
+
+//+------------------------------------------------------------------+
+//| トレーリングSL一括決済処理（毎ティック呼び出し）                  |
+//| ポジション数が減少したら残りを全決済                              |
+//+------------------------------------------------------------------+
+void ProcessTrailingStopCloseAll()
+{
+   if(!g_TSM.initialized) InitializeTSM();
+
+   // --- BUY ---
+   if(g_TSM.buy.active) {
+      int cnt = position_count(OP_BUY);
+      if(cnt == 0) {
+         // 全ポジション決済完了
+         Print("[TSM] BUY 全決済完了、リセット");
+         ResetSpecificGhost(OP_BUY);
+         CleanupLinesOnClose(0);
+         TSM_Reset(true);
+      } else if(g_TSM.buy.posCount > 0 && cnt < g_TSM.buy.posCount) {
+         // ポジション減少検出 → 残りを全決済
+         Print("[TSM] BUY ポジション減少検出！(", g_TSM.buy.posCount, "→", cnt, ") 残り", cnt, "を全決済");
+         MarkClosingInProgress();  // エントリー割り込み防止
+         position_close(OP_BUY);
+         // リセットはしない。次のティックでcnt==0を確認してからリセットする
+         // position_close内でリトライするが、非同期の場合まだ残る可能性がある
+         g_TSM.buy.posCount = 0; // 再度減少検出しないようにリセット
+      } else {
+         // ポジション数を更新（増加時も対応）
+         g_TSM.buy.posCount = cnt;
+      }
+   }
+
+   // --- SELL ---
+   if(g_TSM.sell.active) {
+      int cnt = position_count(OP_SELL);
+      if(cnt == 0) {
+         // 全ポジション決済完了
+         Print("[TSM] SELL 全決済完了、リセット");
+         ResetSpecificGhost(OP_SELL);
+         CleanupLinesOnClose(1);
+         TSM_Reset(false);
+      } else if(g_TSM.sell.posCount > 0 && cnt < g_TSM.sell.posCount) {
+         // ポジション減少検出 → 残りを全決済
+         Print("[TSM] SELL ポジション減少検出！(", g_TSM.sell.posCount, "→", cnt, ") 残り", cnt, "を全決済");
+         MarkClosingInProgress();  // エントリー割り込み防止
+         position_close(OP_SELL);
+         // リセットはしない。次のティックでcnt==0を確認してからリセットする
+         g_TSM.sell.posCount = 0; // 再度減少検出しないようにリセット
+      } else {
+         // ポジション数を更新（増加時も対応）
+         g_TSM.sell.posCount = cnt;
+      }
+   }
+}
+
+//+------------------------------------------------------------------+
 //| トレールストップ条件のチェック                                    |
 //+------------------------------------------------------------------+
 void CheckTrailingStopConditions(int side)
@@ -127,13 +238,14 @@ void CheckTrailingStopConditions(int side)
          if(currentPrice <= stopPrice)
          {
             Print("トレール[Buy]仮想SL発動: 成行決済実行 価格=", currentPrice, " <= ストップ=", stopPrice);
+            MarkClosingInProgress();  // エントリー割り込み防止
             position_close(OP_BUY);
             ResetSpecificGhost(OP_BUY);
             CleanupLinesOnClose(0);
             return;
          }
 
-         // 各ポジションの決済条件をチェック
+         // 各ポジションのSLを非同期で更新（AsyncTracker対応）
 #ifdef __MQL5__
          for(int i = PositionsTotal() - 1; i >= 0; i--)
          {
@@ -144,32 +256,10 @@ void CheckTrailingStopConditions(int side)
                   PositionGetString(POSITION_SYMBOL) == Symbol() &&
                   PositionGetInteger(POSITION_MAGIC) == MagicNumber)
                {
-                  // 現在のストップロスを確認
                   double currentSL = PositionGetDouble(POSITION_SL);
-
-                  // ストップロスが設定されていないか、または新しいストップが現在より高い場合
                   if(currentSL == 0 || stopPrice > currentSL)
                   {
-                     // ストップロスを修正（TRADE_ACTION_SLTPにtype_fillingは不要）
-                     MqlTradeRequest request;
-                     MqlTradeResult result;
-                     ZeroMemory(request);
-                     ZeroMemory(result);
-
-                     request.action = TRADE_ACTION_SLTP;
-                     request.position = ticket;
-                     request.symbol = Symbol();
-                     request.sl = stopPrice;
-                     request.tp = PositionGetDouble(POSITION_TP);
-
-                     if(SendOrderWithRetryAsync(request, result, 3, UseAsyncOrders))
-                     {
-                        Print("トレール[Buy]SL更新成功: チケット=", ticket, " SL=", stopPrice);
-                     }
-                     else
-                     {
-                        Print("トレール[Buy]SL更新失敗(仮想SLで監視継続): チケット=", ticket, " エラー=", result.retcode);
-                     }
+                     ModifyStopLossAsync(ticket, stopPrice, "Trailing");
                   }
                }
             }
@@ -181,27 +271,17 @@ void CheckTrailingStopConditions(int side)
             {
                if(OrderType() == operationType && OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
                {
-                  // 現在のストップロスを確認
                   double currentSL = OrderStopLoss();
-                  
-                  // ストップロスが設定されていないか、または新しいストップが現在より高い場合
                   if(currentSL == 0 || stopPrice > currentSL)
                   {
-                     // ストップロスを修正
-                     bool result = OrderModify(OrderTicket(), OrderOpenPrice(), stopPrice, OrderTakeProfit(), 0, clrGreen);
-                     if(result)
-                     {
-                        Print("トレール[Buy]SL更新成功: チケット=", OrderTicket(), " SL=", stopPrice);
-                     }
-                     else
-                     {
-                        Print("トレール[Buy]SL更新失敗: チケット=", OrderTicket(), " エラー=", GetLastError());
-                     }
+                     ModifyStopLossAsync((ulong)OrderTicket(), stopPrice, "Trailing");
                   }
                }
             }
          }
 #endif
+         // TSM: SL設定完了、一括決済監視を開始
+         TSM_Activate(true, stopPrice);
       }
    }
    else // Sell
@@ -231,13 +311,14 @@ void CheckTrailingStopConditions(int side)
          if(currentPrice >= stopPrice)
          {
             Print("トレール[Sell]仮想SL発動: 成行決済実行 価格=", currentPrice, " >= ストップ=", stopPrice);
+            MarkClosingInProgress();  // エントリー割り込み防止
             position_close(OP_SELL);
             ResetSpecificGhost(OP_SELL);
             CleanupLinesOnClose(1);
             return;
          }
 
-         // 各ポジションの決済条件をチェック
+         // 各ポジションのSLを非同期で更新（AsyncTracker対応）
 #ifdef __MQL5__
          for(int i = PositionsTotal() - 1; i >= 0; i--)
          {
@@ -248,32 +329,10 @@ void CheckTrailingStopConditions(int side)
                   PositionGetString(POSITION_SYMBOL) == Symbol() &&
                   PositionGetInteger(POSITION_MAGIC) == MagicNumber)
                {
-                  // 現在のストップロスを確認
                   double currentSL = PositionGetDouble(POSITION_SL);
-
-                  // ストップロスが設定されていないか、または新しいストップが現在より低い場合
                   if(currentSL == 0 || stopPrice < currentSL)
                   {
-                     // ストップロスを修正（TRADE_ACTION_SLTPにtype_fillingは不要）
-                     MqlTradeRequest request;
-                     MqlTradeResult result;
-                     ZeroMemory(request);
-                     ZeroMemory(result);
-
-                     request.action = TRADE_ACTION_SLTP;
-                     request.position = ticket;
-                     request.symbol = Symbol();
-                     request.sl = stopPrice;
-                     request.tp = PositionGetDouble(POSITION_TP);
-
-                     if(SendOrderWithRetryAsync(request, result, 3, UseAsyncOrders))
-                     {
-                        Print("トレール[Sell]SL更新成功: チケット=", ticket, " SL=", stopPrice);
-                     }
-                     else
-                     {
-                        Print("トレール[Sell]SL更新失敗(仮想SLで監視継続): チケット=", ticket, " エラー=", result.retcode);
-                     }
+                     ModifyStopLossAsync(ticket, stopPrice, "Trailing");
                   }
                }
             }
@@ -285,27 +344,17 @@ void CheckTrailingStopConditions(int side)
             {
                if(OrderType() == operationType && OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber)
                {
-                  // 現在のストップロスを確認
                   double currentSL = OrderStopLoss();
-                  
-                  // ストップロスが設定されていないか、または新しいストップが現在より低い場合
                   if(currentSL == 0 || stopPrice < currentSL)
                   {
-                     // ストップロスを修正
-                     bool result = OrderModify(OrderTicket(), OrderOpenPrice(), stopPrice, OrderTakeProfit(), 0, clrRed);
-                     if(result)
-                     {
-                        Print("トレール[Sell]SL更新成功: チケット=", OrderTicket(), " SL=", stopPrice);
-                     }
-                     else
-                     {
-                        Print("トレール[Sell]SL更新失敗: チケット=", OrderTicket(), " エラー=", GetLastError());
-                     }
+                     ModifyStopLossAsync((ulong)OrderTicket(), stopPrice, "Trailing");
                   }
                }
             }
          }
 #endif
+         // TSM: SL設定完了、一括決済監視を開始
+         TSM_Activate(false, stopPrice);
       }
    }
 }
@@ -557,6 +606,7 @@ void ManageTakeProfit(int side)
       // リアルポジションの決済
       bool realClosed = false;
       if(positionCount > 0) {
+         MarkClosingInProgress();  // エントリー割り込み防止（TP決済中の再エントリー阻止）
          bool closeResult = position_close(operationType);
          if(!closeResult) Print("エラー: リアル", direction, "ポジション決済に失敗");
          else realClosed = true;
@@ -723,17 +773,18 @@ void CheckBreakEvenByPositions()
          #ifdef __MQL5__
          CloseAllPositionsAsync(UseAsyncOrders, false);
          #else
+         MarkClosingInProgress();  // エントリー割り込み防止（MQL4建値決済中）
          position_close(OP_BUY);
          #endif
-         
+
          // 関連するゴーストもリセット
          ResetSpecificGhost(OP_BUY);
-         
+
          // 関連するラインを削除
          CleanupLinesOnClose(0);
       }
    }
-   
+
    // Sell側のチェック
    int sellPositions = position_count(OP_SELL);
    
@@ -800,12 +851,13 @@ void CheckBreakEvenByPositions()
          #ifdef __MQL5__
          CloseAllPositionsAsync(UseAsyncOrders, false);
          #else
+         MarkClosingInProgress();  // エントリー割り込み防止（MQL4建値決済中）
          position_close(OP_SELL);
          #endif
-         
+
          // 関連するゴーストもリセット
          ResetSpecificGhost(OP_SELL);
-         
+
          // 関連するラインを削除
          CleanupLinesOnClose(1);
       }
@@ -884,18 +936,19 @@ void CheckMaxLossClose()
       if(totalBuyProfit <= -MaxLossAmount)
       {
          Print("警告: Buy側最大損失額に到達 - 緊急決済実行");
-               
+         MarkClosingInProgress();  // エントリー割り込み防止（決済処理中の連打ブロック）
+
          // Buy側のポジションをすべて決済
          position_close(OP_BUY, 0.0, 10, MagicNumber);
-         
+
          // ゴーストポジションもリセット
          ResetSpecificGhost(OP_BUY);
-         
+
          // 関連するラインを削除
          CleanupLinesOnClose(0);
       }
    }
-   
+
    // Sell側ポジションの損失チェック
    int sellPositions = position_count(OP_SELL);
    if(sellPositions > 0)
@@ -955,16 +1008,97 @@ void CheckMaxLossClose()
       if(totalSellProfit <= -MaxLossAmount)
       {
          Print("警告: Sell側最大損失額に到達 - 緊急決済実行");
-               
+         MarkClosingInProgress();  // エントリー割り込み防止（決済処理中の連打ブロック）
+
          // Sell側のポジションをすべて決済
          position_close(OP_SELL, 0.0, 10, MagicNumber);
-         
+
          // ゴーストポジションもリセット
          ResetSpecificGhost(OP_SELL);
-         
+
          // 関連するラインを削除
          CleanupLinesOnClose(1);
       }
+   }
+}
+
+//+------------------------------------------------------------------+
+//| 残高パーセント損失限度による全決済（ELDRA2移植）                  |
+//| このEAの合計含み損益（両サイド）が 残高×限度% の損失に達したら   |
+//| 全ポジションを緊急決済する                                        |
+//+------------------------------------------------------------------+
+void CheckPercentLossClose()
+{
+   if(!EnablePercentLossClose)
+      return;
+   if(PercentLossLimit <= 0)
+      return;
+
+   int buyPositions = position_count(OP_BUY);
+   int sellPositions = position_count(OP_SELL);
+   if(buyPositions + sellPositions == 0)
+      return;
+
+   // このEAの合計含み損益（両サイド、スワップ・手数料込み）
+   double totalProfit = 0;
+   double balance = 0;
+
+#ifdef __MQL5__
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      ulong ticket = PositionGetTicket(i);
+      if(ticket <= 0) continue;
+      if(PositionGetString(POSITION_SYMBOL) != Symbol()) continue;
+      if(PositionGetInteger(POSITION_MAGIC) != MagicNumber) continue;
+
+      totalProfit += PositionGetDouble(POSITION_PROFIT) + PositionGetDouble(POSITION_SWAP);
+
+      double commission = 0;
+      if(HistorySelectByPosition(PositionGetInteger(POSITION_IDENTIFIER)))
+      {
+         int dealsTotal = HistoryDealsTotal();
+         for(int j = 0; j < dealsTotal; j++)
+         {
+            ulong dealTicket = HistoryDealGetTicket(j);
+            if(dealTicket > 0)
+               commission += HistoryDealGetDouble(dealTicket, DEAL_COMMISSION);
+         }
+      }
+      totalProfit += commission;
+   }
+   balance = AccountInfoDouble(ACCOUNT_BALANCE);
+#else // MQL4
+   for(int i = OrdersTotal() - 1; i >= 0; i--)
+   {
+      if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+      {
+         if(OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber &&
+            (OrderType() == OP_BUY || OrderType() == OP_SELL))
+            totalProfit += OrderProfit() + OrderSwap() + OrderCommission();
+      }
+   }
+   balance = AccountBalance();
+#endif
+
+   if(balance <= 0)
+      return;
+
+   double lossLimitAmount = balance * PercentLossLimit / 100.0;
+
+   // 含み損が限度額以上（totalProfit がマイナスで、その絶対値が限度以上）
+   if(totalProfit <= -lossLimitAmount)
+   {
+      Print("警告: 残高%損失限度に到達 - 緊急全決済実行 (損失=", DoubleToString(-totalProfit, 2),
+            " >= 限度=", DoubleToString(lossLimitAmount, 2),
+            " [残高", DoubleToString(balance, 2), " × ", DoubleToString(PercentLossLimit, 2), "%])");
+      MarkClosingInProgress();  // エントリー割り込み防止
+
+      if(position_count(OP_BUY) > 0)  position_close(OP_BUY, 0.0, 10, MagicNumber);
+      if(position_count(OP_SELL) > 0) position_close(OP_SELL, 0.0, 10, MagicNumber);
+      ResetSpecificGhost(OP_BUY);
+      ResetSpecificGhost(OP_SELL);
+      CleanupLinesOnClose(0);
+      CleanupLinesOnClose(1);
    }
 }
 

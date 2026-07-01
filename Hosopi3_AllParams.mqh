@@ -318,6 +318,7 @@ input ON_OFF PositionSignDisplay = ON_MODE;       // ポジションサイン表
 input ON_OFF AveragePriceLine = ON_MODE;           // 平均価格ライン表示
 input color AveragePriceLineColor = clrPaleTurquoise; // 平均価格ライン色
 input color TakeProfitLineColor = clrYellow;       // 利確ライン色
+input color TrailTriggerLineColor = clrOrange;     // トレーリング発動線色
 input bool EnablePriceLabels = true;              // 価格ラベル表示
 
 //==================================================================

@@ -218,9 +218,13 @@ bool ClosePositionAsync(ulong ticket, bool useAsync = true)
 
 //+------------------------------------------------------------------+
 //| 全ポジション非同期決済関数                                       |
+//| 決済処理中はエントリーをブロック（g_ClosingInProgressUntil）      |
 //+------------------------------------------------------------------+
 void CloseAllPositionsAsync(bool useAsync = true, bool useCloseBy = false)
 {
+   // 決済処理中フラグ設定（エントリー割り込み防止）
+   MarkClosingInProgress();
+
    #ifdef __MQL5__
 
    // 相殺決済が有効な場合
@@ -287,11 +291,60 @@ bool IsCloseBySupported()
 }
 
 //+------------------------------------------------------------------+
+//| 単一チケット同期個別決済（CloseBy失敗フォールバック用）           |
+//| ペア決済が割り込みや失敗で取りこぼした場合の安全網              |
+//| 戻り値: true=決済成功 or 既に存在しない、false=決済失敗          |
+//+------------------------------------------------------------------+
+#ifdef __MQL5__
+bool ClosePositionByTicketSync(ulong ticket)
+{
+   if(!PositionSelectByTicket(ticket)) {
+      // 既にポジションが存在しない（CloseBy片側成功・別経路で決済済み等）
+      return true;
+   }
+
+   MqlTradeRequest req;
+   MqlTradeResult res;
+   ZeroMemory(req);
+   ZeroMemory(res);
+
+   long posType = PositionGetInteger(POSITION_TYPE);
+   req.action = TRADE_ACTION_DEAL;
+   req.position = ticket;
+   req.symbol = PositionGetString(POSITION_SYMBOL);
+   req.volume = PositionGetDouble(POSITION_VOLUME);
+   req.type = (posType == POSITION_TYPE_BUY) ? ORDER_TYPE_SELL : ORDER_TYPE_BUY;
+   req.price = SymbolInfoDouble(req.symbol,
+                                (posType == POSITION_TYPE_BUY) ? SYMBOL_BID : SYMBOL_ASK);
+   req.deviation = Slippage;
+   req.magic = (long)PositionGetInteger(POSITION_MAGIC);
+   req.comment = "CloseBy Fallback";
+   req.type_filling = GetFillingMode();
+
+   bool ok = OrderSend(req, res);
+   if(ok && (res.retcode == TRADE_RETCODE_DONE || res.retcode == TRADE_RETCODE_PLACED)) {
+      return true;
+   }
+
+   Print("[CloseBy Fallback] 個別決済失敗: #", ticket,
+         " retcode=", res.retcode, " LastError=", GetLastError());
+   return false;
+}
+#endif
+
+//+------------------------------------------------------------------+
 //| 相殺決済を使った非同期全決済（MT5のみ）                         |
+//| CloseBy失敗・取りこぼし対策:                                     |
+//|   - CloseByは同期送信（retcode即時判定のため）                   |
+//|   - retcode != DONE/PLACED → 個別決済へフォールバック            |
+//|   - ペア決済後もチケット残存確認でセーフティネット               |
 //+------------------------------------------------------------------+
 #ifdef __MQL5__
 void CloseAllWithCloseByAsync(bool useAsync = true)
 {
+   // 決済処理中フラグ設定（エントリー割り込み防止）
+   MarkClosingInProgress();
+
    // 買いポジションと売りポジションを収集
    ulong buyTickets[];
    ulong sellTickets[];
@@ -322,30 +375,54 @@ void CloseAllWithCloseByAsync(bool useAsync = true)
    int sellCount = ArraySize(sellTickets);
    int pairsToClose = MathMin(buyCount, sellCount);
 
+   // CloseBy送信済みチケット記録（v3.48対策: 未コミット期間の重複close防止）
+   // CloseByは accepted 応答後 数十ms かけて約定コミットするため、直後に
+   // PositionSelectByTicket()でまだ残存して見える → 個別close重複送信で
+   // 「Order to close this position already exists」エラーが発生する
+   ulong closedByTickets[];
+   int closedByCount = 0;
+   ArrayResize(closedByTickets, 0);
+
    for(int i = 0; i < pairsToClose; i++) {
       MqlTradeRequest request;
       MqlTradeResult result;
 
       ZeroMemory(request);
+      ZeroMemory(result);
       request.action = TRADE_ACTION_CLOSE_BY;
       request.position = buyTickets[i];
       request.position_by = sellTickets[i];
       request.symbol = Symbol();
       request.magic = MagicNumber;
 
-      bool success = useAsync ? OrderSendAsync(request, result) : OrderSend(request, result);
+      // CloseByは常に同期送信：retcodeを即座に判定してフォールバック判断
+      // （非同期だとOrderSendAsyncの戻り値は「キューイング成功」のみで、
+      //  実際の拒否をOnTradeTransactionまで待つ必要があり取りこぼし遅延が発生）
+      bool success = OrderSend(request, result);
+      bool retcodeOk = (result.retcode == TRADE_RETCODE_DONE ||
+                        result.retcode == TRADE_RETCODE_PLACED);
 
-      if(!success) {
-         Print("相殺決済失敗: Buy#", buyTickets[i], " Sell#", sellTickets[i],
-               " エラー=", GetLastError());
-      } else {
+      if(success && retcodeOk) {
          Print("相殺決済成功: Buy#", buyTickets[i], " ⇔ Sell#", sellTickets[i]);
+         // 成功ペアを記録 → セーフティネットでの重複送信を回避
+         ArrayResize(closedByTickets, closedByCount + 2);
+         closedByTickets[closedByCount++] = buyTickets[i];
+         closedByTickets[closedByCount++] = sellTickets[i];
+      } else {
+         // CloseBy失敗 → 個別決済フォールバック（ペア取りこぼし防止）
+         Print("[CloseBy Fallback] 相殺決済失敗: Buy#", buyTickets[i],
+               " Sell#", sellTickets[i],
+               " retcode=", result.retcode, " LastError=", GetLastError(),
+               " → 個別決済にフォールバック");
+         ClosePositionByTicketSync(buyTickets[i]);
+         ClosePositionByTicketSync(sellTickets[i]);
       }
 
-      if(useAsync) Sleep(10);  // 非同期の場合は間隔を空ける
+      // 短い間隔で連続送信を抑制（ブローカー拒否防止）
+      Sleep(10);
    }
 
-   // 残りのポジションを通常決済
+   // 残りのポジション（ペア数の差分）を通常決済
    for(int i = pairsToClose; i < buyCount; i++) {
       ClosePositionAsync(buyTickets[i], useAsync);
       if(useAsync) Sleep(10);
@@ -354,6 +431,31 @@ void CloseAllWithCloseByAsync(bool useAsync = true)
    for(int i = pairsToClose; i < sellCount; i++) {
       ClosePositionAsync(sellTickets[i], useAsync);
       if(useAsync) Sleep(10);
+   }
+
+   // セーフティネット: PositionsTotal()を再走査して残存チケットを個別決済
+   // ただしCloseBy送信成功チケットはスキップ（未コミット期間の重複送信エラー回避）
+   for(int i = PositionsTotal() - 1; i >= 0; i--) {
+      ulong ticket = PositionGetTicket(i);
+      if(ticket == 0) continue;
+
+      // CloseBy送信済みならスキップ（コミット中のため個別closeを送ると拒否される）
+      bool alreadyClosedBy = false;
+      for(int k = 0; k < closedByCount; k++) {
+         if(closedByTickets[k] == ticket) {
+            alreadyClosedBy = true;
+            break;
+         }
+      }
+      if(alreadyClosedBy) continue;
+
+      if(!PositionSelectByTicket(ticket)) continue;
+      if(PositionGetInteger(POSITION_MAGIC) != MagicNumber) continue;
+      if(PositionGetString(POSITION_SYMBOL) != Symbol()) continue;
+
+      // 残存ポジションを個別決済
+      Print("[CloseBy Fallback] 残存ポジション検出: #", ticket, " → 個別決済");
+      ClosePositionByTicketSync(ticket);
    }
 }
 #endif
@@ -616,7 +718,7 @@ void CancelAllOrdersAsync(bool useAsync = true)
 }
 
 //+------------------------------------------------------------------+
-//| 非同期処理の状態管理構造体                                       |
+//| 非同期処理の状態管理構造体（レガシー・エントリー用）              |
 //+------------------------------------------------------------------+
 struct AsyncOrderState {
    ulong requestId;      // リクエストID
@@ -681,32 +783,482 @@ void CheckAsyncOrdersCompletion()
 }
 
 //+------------------------------------------------------------------+
+//| ========== AsyncTracker（SL/TP変更用非同期追跡）========== |
+//| eldra2から移植                                                   |
+//+------------------------------------------------------------------+
+
+#ifdef __MQL5__
+
+enum ENUM_ASYNC_REQ_TYPE {
+   ASYNC_REQ_SLTP_MODIFY = 0,   // SL/TP変更
+   ASYNC_REQ_CLOSE_POSITION      // ポジション決済
+};
+
+struct AsyncPendingRequest {
+   uint     request_id;        // OrderSendAsyncが返したID
+   ENUM_ASYNC_REQ_TYPE type;   // リクエスト種別
+   ulong    position_ticket;   // 対象ポジションチケット
+   double   target_sl;         // SL変更時の目標SL値
+   double   target_tp;         // SL変更時の目標TP値
+   datetime send_time;         // 送信時刻
+   string   source;            // "Trailing"等
+   bool     isBuy;             // BUYポジションか
+};
+
+AsyncPendingRequest g_AsyncPending[];
+int g_AsyncPendingCount = 0;
+const int ASYNC_TIMEOUT_SECONDS = 10;
+const int ASYNC_MAX_PENDING = 64;
+
+//+------------------------------------------------------------------+
+//| AsyncTracker: リクエスト登録                                      |
+//+------------------------------------------------------------------+
+bool AsyncTracker_Register(uint requestId, ENUM_ASYNC_REQ_TYPE type,
+                           ulong ticket, double sl=0, double tp=0,
+                           string source="", bool isBuy=true)
+{
+   if(requestId == 0) return false;
+
+   // 同じticket+typeの古いエントリを更新
+   for(int i = 0; i < g_AsyncPendingCount; i++) {
+      if(g_AsyncPending[i].position_ticket == ticket &&
+         g_AsyncPending[i].type == type) {
+         g_AsyncPending[i].request_id = requestId;
+         g_AsyncPending[i].target_sl = sl;
+         g_AsyncPending[i].target_tp = tp;
+         g_AsyncPending[i].send_time = TimeCurrent();
+         g_AsyncPending[i].source = source;
+         return true;
+      }
+   }
+
+   if(g_AsyncPendingCount >= ASYNC_MAX_PENDING) {
+      AsyncTracker_Cleanup();
+      if(g_AsyncPendingCount >= ASYNC_MAX_PENDING) return false;
+   }
+
+   ArrayResize(g_AsyncPending, g_AsyncPendingCount + 1);
+   g_AsyncPending[g_AsyncPendingCount].request_id = requestId;
+   g_AsyncPending[g_AsyncPendingCount].type = type;
+   g_AsyncPending[g_AsyncPendingCount].position_ticket = ticket;
+   g_AsyncPending[g_AsyncPendingCount].target_sl = sl;
+   g_AsyncPending[g_AsyncPendingCount].target_tp = tp;
+   g_AsyncPending[g_AsyncPendingCount].send_time = TimeCurrent();
+   g_AsyncPending[g_AsyncPendingCount].source = source;
+   g_AsyncPending[g_AsyncPendingCount].isBuy = isBuy;
+   g_AsyncPendingCount++;
+   return true;
+}
+
+//+------------------------------------------------------------------+
+//| AsyncTracker: ポジションが処理中かチェック                        |
+//+------------------------------------------------------------------+
+bool AsyncTracker_IsPositionBusy(ulong ticket, ENUM_ASYNC_REQ_TYPE type)
+{
+   datetime now = TimeCurrent();
+   for(int i = 0; i < g_AsyncPendingCount; i++) {
+      if(g_AsyncPending[i].position_ticket == ticket &&
+         g_AsyncPending[i].type == type &&
+         (now - g_AsyncPending[i].send_time) < ASYNC_TIMEOUT_SECONDS) {
+         return true;
+      }
+   }
+   return false;
+}
+
+//+------------------------------------------------------------------+
+//| AsyncTracker: リクエストIDで検索・削除                            |
+//+------------------------------------------------------------------+
+bool AsyncTracker_FindAndRemove(uint requestId, AsyncPendingRequest &info)
+{
+   for(int i = 0; i < g_AsyncPendingCount; i++) {
+      if(g_AsyncPending[i].request_id == requestId) {
+         info = g_AsyncPending[i];
+         for(int j = i; j < g_AsyncPendingCount - 1; j++)
+            g_AsyncPending[j] = g_AsyncPending[j + 1];
+         g_AsyncPendingCount--;
+         return true;
+      }
+   }
+   return false;
+}
+
+//+------------------------------------------------------------------+
+//| AsyncTracker: タイムアウトしたエントリをクリーンアップ            |
+//+------------------------------------------------------------------+
+void AsyncTracker_Cleanup()
+{
+   datetime now = TimeCurrent();
+   for(int i = g_AsyncPendingCount - 1; i >= 0; i--) {
+      if((now - g_AsyncPending[i].send_time) > ASYNC_TIMEOUT_SECONDS * 2) {
+         for(int j = i; j < g_AsyncPendingCount - 1; j++)
+            g_AsyncPending[j] = g_AsyncPending[j + 1];
+         g_AsyncPendingCount--;
+      }
+   }
+}
+
+#endif // __MQL5__
+
+//+------------------------------------------------------------------+
+//| ========== SLエラー分類（eldra2から移植）========== |
+//+------------------------------------------------------------------+
+bool IsSLFatalError(uint errorCode, uint retcode)
+{
+   switch(retcode) {
+      case 10016:  // TRADE_RETCODE_INVALID_STOPS
+      case 10023:  // ポジション閉鎖済み
+      case 10024:  // 無効なオーダー
+      case 10025:  // 注文数上限
+         return true;
+   }
+   switch(errorCode) {
+      case 4756:   // ERR_TRADE_INVALID_FILL
+      case 130:    // MQL4 ERR_INVALID_STOPS（ブローカーSL不可 → 仮想SLへ）
+      case 131:    // MQL4 ERR_INVALID_TRADE_VOLUME（Invalid stops系として扱う）
+         return true;
+   }
+   return false;
+}
+
+bool IsSLRetryableError(uint errorCode, uint retcode)
+{
+   switch(retcode) {
+      case 10004:  // リクォート
+      case 10006:  // リジェクト（一時的）
+      case 10012:  // タイムアウト
+      case 10020:  // 価格変更
+         return true;
+   }
+   switch(errorCode) {
+      case 4752:   // 取引リクエスト失敗
+      case 4753:   // 送信失敗
+      case 4755:   // タイムアウト
+         return true;
+   }
+   return false;
+}
+
+//+------------------------------------------------------------------+
+//| ========== SLリトライキュー（eldra2から移植）========== |
+//+------------------------------------------------------------------+
+
+#ifdef __MQL5__
+
+struct SLRetryItem {
+   ulong    ticket;           // ポジションチケット
+   double   newStopLoss;      // 目標SL値
+   double   takeProfit;       // TP値
+   int      retryCount;       // リトライ回数
+   int      maxRetries;       // 最大リトライ回数
+   datetime lastAttempt;      // 最終試行時刻
+   datetime nextAttempt;      // 次回試行時刻
+   int      retryIntervalMs;  // リトライ間隔（ミリ秒）
+   uint     lastError;        // 最後のエラーコード
+   uint     lastRetcode;      // 最後のリターンコード
+   string   source;           // リトライ元
+};
+
+SLRetryItem g_SLRetryQueue[];
+int g_SLRetryQueueSize = 0;
+
+int    g_SLRetryMaxAttempts = 5;
+int    g_SLRetryIntervalMs = 500;
+int    g_SLRetryBackoffMultiplier = 2;
+int    g_SLRetryMaxIntervalMs = 5000;
+
+//+------------------------------------------------------------------+
+//| SLリトライキューに追加                                            |
+//+------------------------------------------------------------------+
+bool AddSLRetry(ulong ticket, double newStopLoss, double takeProfit,
+                uint errorCode, uint retcode, string source = "Trailing")
+{
+   if(IsSLFatalError(errorCode, retcode)) {
+      PrintFormat("[SLRetry] 致命的エラーのためリトライ不可: #%I64u, Error=%d, Retcode=%d",
+                  ticket, errorCode, retcode);
+      return false;
+   }
+   if(!IsSLRetryableError(errorCode, retcode)) {
+      PrintFormat("[SLRetry] リトライ対象外: #%I64u, Error=%d, Retcode=%d",
+                  ticket, errorCode, retcode);
+      return false;
+   }
+
+   // 既存エントリを更新
+   for(int i = 0; i < g_SLRetryQueueSize; i++) {
+      if(g_SLRetryQueue[i].ticket == ticket) {
+         g_SLRetryQueue[i].newStopLoss = newStopLoss;
+         g_SLRetryQueue[i].takeProfit = takeProfit;
+         g_SLRetryQueue[i].lastError = errorCode;
+         g_SLRetryQueue[i].lastRetcode = retcode;
+         g_SLRetryQueue[i].source = source;
+         return true;
+      }
+   }
+
+   // 新規追加
+   ArrayResize(g_SLRetryQueue, g_SLRetryQueueSize + 1);
+
+   SLRetryItem item;
+   item.ticket = ticket;
+   item.newStopLoss = newStopLoss;
+   item.takeProfit = takeProfit;
+   item.retryCount = 0;
+   item.maxRetries = g_SLRetryMaxAttempts;
+   item.lastAttempt = TimeCurrent();
+   item.nextAttempt = TimeCurrent() + (g_SLRetryIntervalMs / 1000) + 1;
+   item.retryIntervalMs = g_SLRetryIntervalMs;
+   item.lastError = errorCode;
+   item.lastRetcode = retcode;
+   item.source = source;
+
+   g_SLRetryQueue[g_SLRetryQueueSize] = item;
+   g_SLRetryQueueSize++;
+
+   PrintFormat("[SLRetry] キューに追加: #%I64u, SL=%.5f, Error=%d, Retcode=%d",
+               ticket, newStopLoss, errorCode, retcode);
+   return true;
+}
+
+//+------------------------------------------------------------------+
+//| SLリトライキューから削除                                          |
+//+------------------------------------------------------------------+
+void RemoveSLRetry(int index)
+{
+   if(index < 0 || index >= g_SLRetryQueueSize) return;
+   for(int i = index; i < g_SLRetryQueueSize - 1; i++)
+      g_SLRetryQueue[i] = g_SLRetryQueue[i + 1];
+   g_SLRetryQueueSize--;
+   ArrayResize(g_SLRetryQueue, g_SLRetryQueueSize);
+}
+
+//+------------------------------------------------------------------+
+//| SLリトライ処理（指数バックオフ）                                  |
+//+------------------------------------------------------------------+
+void ProcessSLRetries()
+{
+   if(g_SLRetryQueueSize == 0) return;
+
+   datetime currentTime = TimeCurrent();
+
+   for(int i = g_SLRetryQueueSize - 1; i >= 0; i--) {
+      SLRetryItem item = g_SLRetryQueue[i];
+
+      // 次回試行時刻まで待機
+      if(currentTime < item.nextAttempt) continue;
+
+      // ポジション存在チェック
+      if(!PositionSelectByTicket(item.ticket)) {
+         PrintFormat("[SLRetry] ポジション消失: #%I64u", item.ticket);
+         RemoveSLRetry(i);
+         continue;
+      }
+
+      // SLが既に有利な値に設定されているか確認
+      double currentSL = PositionGetDouble(POSITION_SL);
+      bool isBuy = (PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY);
+
+      if(currentSL != 0) {
+         bool slAlreadyBetter = isBuy ?
+            (currentSL >= item.newStopLoss) :
+            (currentSL <= item.newStopLoss);
+         if(slAlreadyBetter) {
+            PrintFormat("[SLRetry] SL既に設定済み: #%I64u, Current=%.5f, Target=%.5f",
+                        item.ticket, currentSL, item.newStopLoss);
+            RemoveSLRetry(i);
+            continue;
+         }
+      }
+
+      // リトライ実行
+      item.retryCount++;
+      item.lastAttempt = currentTime;
+
+      PrintFormat("[SLRetry] リトライ: #%I64u, SL=%.5f, Attempt=%d/%d",
+                  item.ticket, item.newStopLoss, item.retryCount, item.maxRetries);
+
+      MqlTradeRequest req;
+      MqlTradeResult res;
+      ZeroMemory(req);
+      ZeroMemory(res);
+      req.action = TRADE_ACTION_SLTP;
+      req.symbol = PositionGetString(POSITION_SYMBOL);
+      req.magic = MagicNumber;
+      req.sl = item.newStopLoss;
+      req.tp = item.takeProfit;
+      req.position = item.ticket;
+
+      bool success = OrderSend(req, res);
+
+      if(success && (res.retcode == TRADE_RETCODE_DONE || res.retcode == 10009)) {
+         PrintFormat("[SLRetry] 成功: #%I64u, SL=%.5f, Attempts=%d",
+                     item.ticket, item.newStopLoss, item.retryCount);
+         RemoveSLRetry(i);
+         continue;
+      }
+
+      uint newError = GetLastError();
+      uint newRetcode = res.retcode;
+
+      // 致命的エラー → 仮想SL（成行決済フォールバック）
+      if(IsSLFatalError(newError, newRetcode)) {
+         PrintFormat("[SLRetry] 致命的エラー → 仮想SLモードへ: #%I64u, Error=%d, Retcode=%d",
+                     item.ticket, newError, newRetcode);
+         RemoveSLRetry(i);
+         continue;
+      }
+
+      // 最大リトライ超過
+      if(item.retryCount >= item.maxRetries) {
+         PrintFormat("[SLRetry] 最大リトライ超過 → 仮想SLモードへ: #%I64u, Attempts=%d",
+                     item.ticket, item.retryCount);
+         RemoveSLRetry(i);
+         continue;
+      }
+
+      // 指数バックオフで次回スケジュール
+      item.retryIntervalMs = MathMin(item.retryIntervalMs * g_SLRetryBackoffMultiplier, g_SLRetryMaxIntervalMs);
+      item.nextAttempt = currentTime + (item.retryIntervalMs / 1000) + 1;
+      item.lastError = newError;
+      item.lastRetcode = newRetcode;
+      g_SLRetryQueue[i] = item;
+
+      PrintFormat("[SLRetry] 次回リトライ: #%I64u, Interval=%dms",
+                  item.ticket, item.retryIntervalMs);
+   }
+}
+
+#endif // __MQL5__
+
+//+------------------------------------------------------------------+
+//| SL変更（非同期追跡・エラーハンドリング付き）                      |
+//| eldra2のModifyStopLossから移植                                    |
+//+------------------------------------------------------------------+
+void ModifyStopLossAsync(ulong ticket, double newStopLoss, string source = "Trailing")
+{
+#ifdef __MQL5__
+   if(!PositionSelectByTicket(ticket)) return;
+
+   // 現在のSLと同値なら重複送信しない
+   double currentSL = PositionGetDouble(POSITION_SL);
+   if(MathAbs(currentSL - newStopLoss) < _Point) return;
+
+   double takeProfit = PositionGetDouble(POSITION_TP);
+   bool isBuy = (PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY);
+
+   // 既に処理中なら二重送信しない
+   if(AsyncTracker_IsPositionBusy(ticket, ASYNC_REQ_SLTP_MODIFY)) return;
+
+   // SL変更リクエスト送信
+   MqlTradeRequest req;
+   MqlTradeResult res;
+   ZeroMemory(req);
+   ZeroMemory(res);
+   req.action = TRADE_ACTION_SLTP;
+   req.symbol = _Symbol;
+   req.magic = MagicNumber;
+   req.sl = newStopLoss;
+   req.tp = takeProfit;
+   req.position = ticket;
+
+   bool orderResult = OrderSendAsync(req, res);
+   uint errorCode = GetLastError();
+   uint retcode = res.retcode;
+   uint requestId = res.request_id;
+
+   if(orderResult) {
+      // 非同期送信成功: AsyncTrackerに登録
+      if(requestId > 0) {
+         AsyncTracker_Register(requestId, ASYNC_REQ_SLTP_MODIFY,
+                               ticket, newStopLoss, takeProfit, source, isBuy);
+      }
+   } else {
+      // 致命的エラー → 仮想SL（成行決済フォールバック）に任せる
+      if(IsSLFatalError(errorCode, retcode)) {
+         PrintFormat("[ModifySL] 致命的エラー → 仮想SLで監視継続: #%I64u, Error=%d, Retcode=%d",
+                     ticket, errorCode, retcode);
+      }
+      // リトライ可能なエラー → SLリトライキューに追加
+      else if(IsSLRetryableError(errorCode, retcode)) {
+         AddSLRetry(ticket, newStopLoss, takeProfit, errorCode, retcode, source);
+      }
+      else {
+         PrintFormat("[ModifySL] SL変更失敗（リトライ対象外）: #%I64u, Error=%d, Retcode=%d",
+                     ticket, errorCode, retcode);
+      }
+   }
+
+#else // MQL4
+   int ticket4 = (int)ticket;
+   if(OrderSelect(ticket4, SELECT_BY_TICKET)) {
+      if(!OrderModify(ticket4, OrderOpenPrice(), newStopLoss, OrderTakeProfit(), 0, clrNONE)) {
+         uint errorCode = (uint)GetLastError();
+         // 致命的エラー（130/131 Invalid stops 等）→ ブローカーSLが付かないため、
+         // 仮想トレールSL（TSMの成行決済監視）へフォールバックして保護を継続する。
+         // ※呼び出し元のトレーリングが TSM_Activate() 済みなので TSM が確実に決済する
+         if(IsSLFatalError(errorCode, 0)) {
+            PrintFormat("[ModifySL] MQL4 SL設定不可(致命) → 仮想SLで監視継続: #%d, Error=%d", ticket4, errorCode);
+         } else {
+            PrintFormat("[ModifySL] MQL4 SL変更失敗: #%d, Error=%d", ticket4, errorCode);
+         }
+      }
+   }
+#endif
+}
+
+//+------------------------------------------------------------------+
 //| OnTradeTransactionイベント処理（MT5のみ）                        |
+//| AsyncTracker対応版                                                |
 //+------------------------------------------------------------------+
 #ifdef __MQL5__
 void ProcessAsyncTradeTransaction(const MqlTradeTransaction& trans,
                                    const MqlTradeRequest& request,
                                    const MqlTradeResult& result)
 {
-   // 非同期注文の結果を処理
-   if(trans.type == TRADE_TRANSACTION_REQUEST) {
-      // リクエストIDで対応する非同期注文を検索
-      for(int i = 0; i < ArraySize(g_AsyncOrders); i++) {
-         if(g_AsyncOrders[i].requestId == result.request_id) {
-            if(result.retcode == TRADE_RETCODE_DONE) {
-               g_AsyncOrders[i].success = true;
-               g_AsyncOrders[i].completed = true;
-               Print("非同期注文成功: ", g_AsyncOrders[i].comment);
-            } else if(result.retcode == TRADE_RETCODE_ERROR ||
-                      result.retcode == TRADE_RETCODE_REJECT ||
-                      result.retcode == TRADE_RETCODE_INVALID) {
-               g_AsyncOrders[i].success = false;
-               g_AsyncOrders[i].completed = true;
-               Print("非同期注文失敗: ", g_AsyncOrders[i].comment,
-                     " retcode=", result.retcode);
-            }
-            break;
+   if(trans.type != TRADE_TRANSACTION_REQUEST) return;
+
+   // === AsyncTracker（SL/TP変更追跡）===
+   AsyncPendingRequest info;
+   if(AsyncTracker_FindAndRemove(result.request_id, info)) {
+      bool success = (result.retcode == TRADE_RETCODE_DONE ||
+                      result.retcode == TRADE_RETCODE_DONE_PARTIAL);
+
+      if(info.type == ASYNC_REQ_SLTP_MODIFY) {
+         if(!success) {
+            PrintFormat("[AsyncTracker] SL変更失敗: #%I64u, retcode=%u, source=%s",
+                        info.position_ticket, result.retcode, info.source);
+            uint errCode = (uint)GetLastError();
+            AddSLRetry(info.position_ticket, info.target_sl, info.target_tp,
+                       errCode, result.retcode, info.source);
          }
+      }
+      else if(info.type == ASYNC_REQ_CLOSE_POSITION) {
+         if(!success) {
+            PrintFormat("[AsyncTracker] 決済失敗: #%I64u, retcode=%u, source=%s",
+                        info.position_ticket, result.retcode, info.source);
+         } else {
+            PrintFormat("[AsyncTracker] 決済成功: #%I64u, source=%s",
+                        info.position_ticket, info.source);
+         }
+      }
+      return;
+   }
+
+   // === レガシー追跡（エントリー等）===
+   for(int i = 0; i < ArraySize(g_AsyncOrders); i++) {
+      if(g_AsyncOrders[i].requestId == result.request_id) {
+         if(result.retcode == TRADE_RETCODE_DONE) {
+            g_AsyncOrders[i].success = true;
+            g_AsyncOrders[i].completed = true;
+         } else if(result.retcode == TRADE_RETCODE_ERROR ||
+                   result.retcode == TRADE_RETCODE_REJECT ||
+                   result.retcode == TRADE_RETCODE_INVALID) {
+            g_AsyncOrders[i].success = false;
+            g_AsyncOrders[i].completed = true;
+            Print("非同期注文失敗: ", g_AsyncOrders[i].comment,
+                  " retcode=", result.retcode);
+         }
+         break;
       }
    }
 }

@@ -59,6 +59,8 @@ input int BreakEvenMinPositions = 3;               // 建値決済の最低ポ�
 input double BreakEvenProfit = 0.0;                // 建値決済の最低利益
 input bool EnableMaxLossClose = false;            // 最大損失決済機能
 input double MaxLossAmount = 10000.0;              // 最大損失額
+input bool EnablePercentLossClose = false;        // 残高%損失決済機能（合計含み損が残高の指定%に達したら全決済）
+input double PercentLossLimit = 5.0;              // └ 損失限度（残高に対する%）
 input int FinalStopLossPoints = 10000;             // 最終損切り幅（Point）
 
 //==================================================================
@@ -304,6 +306,7 @@ input ON_OFF PositionSignDisplay = ON_MODE;       // ポジションサイン表
 input ON_OFF AveragePriceLine = ON_MODE;           // 平均価格ライン表示
 input color AveragePriceLineColor = clrPaleTurquoise; // 平均価格ライン色
 input color TakeProfitLineColor = clrYellow;       // 利確ライン色
+input color TrailTriggerLineColor = clrOrange;     // トレーリング発動線色
 input bool EnablePriceLabels = true;              // 価格ラベル表示
 
 //==================================================================
@@ -560,12 +563,24 @@ sinput group "== 35. オブジェクト条件 =="
 input string ObjectConditionTitle = "35. オブジェクトシグナル設定"; // オブジェクト条件設定
 input bool InpEnableBuySignalObject = false;          // 買いエントリーオブジェクトシグナルを有効にする
 input bool InpEnableSellSignalObject = false;         // 売りエントリーオブジェクトシグナルを有効にする
-input string BuySignalPrefix = "BUY_";                // 買いシグナルオブジェクト名の接頭辞
-input string SellSignalPrefix = "SELL_";              // 売りシグナルオブジェクト名の接頭辞
+input string BuySignalPrefix = "BUY_";                // 買いシグナルオブジェクト名に含まれる文字列（部分一致）
+input string SellSignalPrefix = "SELL_";              // 売りシグナルオブジェクト名に含まれる文字列（部分一致）
 input bool InpEnableBuyExitObject = false;            // 買いポジション決済オブジェクトシグナルを有効にする
 input bool InpEnableSellExitObject = false;           // 売りポジション決済オブジェクトシグナルを有効にする
-input string BuyExitPrefix = "EXIT_BUY_";             // 買いポジション決済オブジェクト名の接頭辞
-input string SellExitPrefix = "EXIT_SELL_";           // 売りポジション決済オブジェクト名の接頭辞
+input string BuyExitPrefix = "EXIT_BUY_";             // 買いポジション決済オブジェクト名に含まれる文字列（部分一致）
+input string SellExitPrefix = "EXIT_SELL_";           // 売りポジション決済オブジェクト名に含まれる文字列（部分一致）
+
+//--- 矢印コード条件設定（オブジェクト名マッチングとは別系統の追加機能）
+sinput group "== 35b. 矢印コード条件（OBJPROP_ARROWCODE） =="
+input string ArrowCodeConditionTitle = "35b. 矢印コード判定（名前ではなく矢印コードで検知）"; // 矢印コード条件設定
+input bool InpEnableBuySignalArrow = false;           // 買いエントリー矢印コード判定を有効にする
+input bool InpEnableSellSignalArrow = false;          // 売りエントリー矢印コード判定を有効にする
+input int  InpBuySignalArrowCode = 233;               // 買いエントリー矢印コード（例:233=上矢印）
+input int  InpSellSignalArrowCode = 234;              // 売りエントリー矢印コード（例:234=下矢印）
+input bool InpEnableBuyExitArrow = false;             // 買いポジション決済 矢印コード判定を有効にする
+input bool InpEnableSellExitArrow = false;            // 売りポジション決済 矢印コード判定を有効にする
+input int  InpBuyExitArrowCode = 234;                 // 買いポジション決済 矢印コード
+input int  InpSellExitArrowCode = 233;                // 売りポジション決済 矢印コード
 
 //==================================================================
 //                ボラティリティフィルター設定
@@ -592,3 +607,41 @@ input int InpHighVolATRPeriod = 14;                      // ATR期間
 input double InpHighVolATRMultiplier = 2.0;              // ATR倍率（現在ATR > 平均ATR × この値でブロック）
 input ENUM_VOLATILITY_FILTER_MODE InpHighVolFilterMode = VOLATILITY_FILTER_ALL_ENTRIES; // フィルター適用モード
 input bool InpHighVolFilterApplyToGhost = false;         // ゴーストエントリーにも適用する
+
+//==================================================================
+//                資金不足ガード設定
+//==================================================================
+sinput group "== 38. 資金不足ガード設定 =="
+input string FundsGuardTitle = "38. 資金不足ガード（証拠金不足時にエントリー見送り）"; // 資金不足ガード設定
+input bool   EnableFundsGuard = true;                    // 資金不足ガードを有効化（証拠金不足時に発注を事前ブロック）
+input double FundsGuardMinEquity = 0.0;                  // └ 最低有効証拠金（口座通貨、0=自動判定のみ）
+
+//==================================================================
+//                注文レートガード設定
+//==================================================================
+sinput group "== 39. 注文レートガード設定 =="
+input string OrderRateGuardTitle = "39. 注文レートガード（連続失敗・過剰連打で停止）"; // 注文レートガード設定
+input bool EnableOrderRateGuard = true;         // 注文レートガードを有効化（連続失敗・過剰連打で停止）
+input int  OrderFailStopCount = 10;             // └ 連続注文失敗で一時停止する回数（0=無効）
+input int  OrderFailHardStopTrips = 5;          // └ 一時停止がこの回数続いたら完全停止（0=無効）
+input int  OrderFailAutoRecoverMin = 30;        // └ 完全停止からの自動復帰（分、0=EA再起動が必要）
+input int  OrderRateMaxPerMin = 300;            // └ 1分あたり最大注文操作数（0=レート監視無効）
+input int  OrderRateCooldownSec = 60;           // └ レート超過時のクールダウン（秒）
+
+//==================================================================
+//                ナンピンインターバル設定
+//==================================================================
+sinput group "== 40. ナンピンインターバル設定 =="
+input string NanpinIntervalTitle = "40. ナンピンインターバル（連続ナンピンの最小間隔）"; // ナンピンインターバル設定
+input bool EnableNanpinInterval = false;        // ナンピンインターバルを有効化（前回ナンピンから一定時間はナンピンしない）
+input int  NanpinIntervalMinutes = 60;          // └ インターバル（分）
+
+//==================================================================
+//                時間決済・週末クローズ設定
+//==================================================================
+sinput group "== 41. 時間決済・週末クローズ設定 =="
+input string TimeCloseTitle = "41. 時間決済・週末クローズ"; // 時間決済・週末クローズ設定
+input bool EnableTimeClose = false;             // 時間決済を有効化（一定時間経過でそのサイドを全決済）
+input int  TimeCloseMinutes = 120;              // └ 決済までの経過時間（分）
+input bool EnableWeekendClose = false;          // 週末クローズを有効化（JST土曜の指定時刻に全決済）
+input string WeekendCloseTime = "0545";         // └ クローズ時刻（HHMM、JST土曜）
