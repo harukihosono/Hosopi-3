@@ -1607,8 +1607,9 @@ void ProcessRealEntries(int side)
    
    if(entrySignal) {
       
-      // バックテスト時または自動売買が無効な場合はゴーストエントリーを実行
-      if(IsTesting() || !g_AutoTrading)
+      // バックテスト時・自動売買無効時、またはインジケーターシグナルのゴースト開始が
+      // 有効な場合はゴーストエントリーを実行（ナンピンスキップレベルまで仮想→超えたらリアル）
+      if(IsTesting() || !g_AutoTrading || (EnableIndicatorGhostEntry && EnableGhostEntry))
       {
          
          // ナンピンスキップレベルのチェック

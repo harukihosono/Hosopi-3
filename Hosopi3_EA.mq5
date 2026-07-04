@@ -4,7 +4,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025"
 #property link      ""
-#property version   "3.8"
+#property version   "4.0"
 #property strict
 
 // インクルードファイル

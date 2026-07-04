@@ -12,6 +12,9 @@
    #include "Hosopi3_Enums.mqh"
 #endif
 
+// セット説明メモ（パラメータ差分HTMLレポートの上部に表示される）
+input string input_set_memo = "";                  // 0. このセットの説明メモ（HTMLレポート上部に表示）
+
 //==================================================================
 //                        基本設定
 //==================================================================
@@ -88,6 +91,7 @@ input int CloseInterval = 30;                      // 決済後インターバ�
 sinput group "== 6. ゴーストエントリー設定 =="
 input string GhostSettingsTitle = "6. ゴーストエントリー機能設定"; // ゴースト設定
 input bool EnableGhostEntry = true;               // ゴーストエントリー機能有効化
+input bool EnableIndicatorGhostEntry = false;     // インジケーターシグナルをゴーストから開始（自動売買ON時）
 input color GhostBuyColor = clrDeepSkyBlue;       // ゴーストBuy色
 input color GhostSellColor = clrCrimson;          // ゴーストSell色
 input int GhostArrowSize = 1;                      // ゴースト矢印サイズ

@@ -16,6 +16,12 @@
 #     - Multiple input declarations may appear on ONE physical line
 #       (e.g. individual Lot/Spread/TP arrays). All are captured.
 #       Limitation: a ';' inside a string default is not supported (none exist).
+#
+#   ELDRA2 ParamReport v4.18 features carried over:
+#     - setVal / exportable  : machine-readable value for .set export
+#     - enumOpts             : "0=label|1=label|..." for HTML enum dropdowns
+#       (enum definitions are pre-scanned from the enum files below;
+#        member labels come from the trailing // comment)
 # =====================================================================
 $ErrorActionPreference = 'Stop'
 
@@ -26,6 +32,12 @@ $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $files = @(
     @{ rel='Hosopi3_AllParams_MQL5.mqh'; guard='__MQL5__'; mode='sinput' },
     @{ rel='Hosopi3_AllParams_MQL4.mqh'; guard='__MQL4__'; mode='titlestring' }
+)
+
+# Files scanned for enum definitions (dropdown options)
+$enumFiles = @(
+    'Hosopi3_Defines.mqh',
+    'Hosopi3_Enums.mqh'
 )
 
 $builtin = @{
@@ -67,39 +79,92 @@ function Split-CodeComment([string]$line){
     return ,@($line.Trim(), '')
 }
 
+# ---- Pre-scan enum definitions for dropdown options (value=Japanese-comment label) ----
+# enumMap[EnumName] = "0=label0|1=label1|..."  (first '=' splits value/label; '|' between options)
+$enumMap = @{}
+foreach($rel in $enumFiles){
+    $path = Join-Path $root $rel
+    $src = [System.IO.File]::ReadAllText($path, [System.Text.Encoding]::UTF8)
+    $erx = [regex]'(?s)enum\s+([A-Za-z_]\w*)\s*\{(.*?)\}'
+    foreach($em in $erx.Matches($src)){
+        $ename = $em.Groups[1].Value
+        $val = 0
+        $opts = New-Object System.Collections.Generic.List[string]
+        foreach($bl in ($em.Groups[2].Value -split "`n")){
+            $bp = Split-CodeComment $bl.Trim()
+            $bcode = $bp[0].TrimEnd(',').Trim()
+            if($bcode -eq ''){ continue }
+            $mm = [regex]::Match($bcode, '^([A-Za-z_]\w*)\s*(?:=\s*(-?\d+))?$')
+            if(-not $mm.Success){ continue }
+            if($mm.Groups[2].Success){ $val = [int]$mm.Groups[2].Value }
+            $lbl = if($bp[1] -ne ''){ $bp[1] } else { $mm.Groups[1].Value }
+            $lbl = $lbl -replace '[|=]',' '   # keep delimiters safe
+            $opts.Add(("{0}={1}" -f $val, $lbl))
+            $val++
+        }
+        if($opts.Count -gt 0){ $enumMap[$ename] = ($opts -join '|') }
+    }
+}
+
 # Build one param row line from type/name/def/label
 function Build-Row([string]$type,[string]$name,[string]$def,[string]$label){
+    # setVal = machine-readable value for .set export (bool=true/false, enum=int)
+    # defSetVal = same encoding but for the declaration default (clean default-set generation)
+    $exportable = 'true'
+    $enumOpts = ''   # enum rows only: "0=label|1=label|..." for dropdown
     if($type -eq 'bool'){
         $curExpr = '((' + $name + ') ? "ON" : "OFF")'
         $defExpr = '((' + $def  + ') ? "ON" : "OFF")'
+        $setExpr = '((' + $name + ') ? "true" : "false")'
+        $defSetExpr = '((' + $def + ') ? "true" : "false")'
     }
     elseif($type -eq 'double' -or $type -eq 'float'){
-        $curExpr = 'DoubleToString((double)(' + $name + '),4)'
-        $defExpr = 'DoubleToString((double)(' + $def  + '),4)'
+        # Hosopi3_NumStr: strip trailing zeros (0.01000000 -> 0.01)
+        $curExpr = 'Hosopi3_NumStr((double)(' + $name + '))'
+        $defExpr = 'Hosopi3_NumStr((double)(' + $def  + '))'
+        $setExpr = 'Hosopi3_NumStr((double)(' + $name + '))'
+        $defSetExpr = 'Hosopi3_NumStr((double)(' + $def + '))'
     }
     elseif($type -eq 'string'){
         $curExpr = '(' + $name + ')'
         $defExpr = '(' + $def  + ')'
+        $setExpr = '(' + $name + ')'
+        $defSetExpr = '(' + $def + ')'
     }
     elseif($type -eq 'datetime'){
         $curExpr = 'TimeToString((datetime)(' + $name + '))'
         $defExpr = 'TimeToString((datetime)(' + $def  + '))'
+        $setExpr = '""'
+        $defSetExpr = '""'
+        $exportable = 'false'
     }
     elseif($type -eq 'color'){
         $curExpr = 'ColorToString((color)(' + $name + '),true)'
         $defExpr = 'ColorToString((color)(' + $def  + '),true)'
+        $setExpr = 'IntegerToString((long)(' + $name + '))'
+        $defSetExpr = 'IntegerToString((long)(' + $def + '))'
     }
     elseif($builtin.ContainsKey($type)){
         $curExpr = 'IntegerToString((long)(' + $name + '))'
         $defExpr = 'IntegerToString((long)(' + $def  + '))'
+        $setExpr = 'IntegerToString((long)(' + $name + '))'
+        $defSetExpr = 'IntegerToString((long)(' + $def + '))'
     }
     else {
         # enum type
         $curExpr = 'EnumToString((' + $type + ')(' + $name + '))'
         $defExpr = 'EnumToString((' + $type + ')(' + $def  + '))'
+        $setExpr = 'IntegerToString((int)(' + $name + '))'
+        $defSetExpr = 'IntegerToString((int)(' + $def + '))'
+        if($enumMap.ContainsKey($type)){ $enumOpts = $enumMap[$type] }  # dropdown value=label
     }
     $cmp = '((' + $name + ') != (' + $def + '))'
-    return '   rows[k].isSection=false; rows[k].name=' + (Q $name) + '; rows[k].label=' + (Q $label) + '; rows[k].section=""; rows[k].curVal=' + $curExpr + '; rows[k].defVal=' + $defExpr + '; rows[k].changed=' + $cmp + '; k++;'
+    return '   rows[k].isSection=false; rows[k].name=' + (Q $name) + '; rows[k].label=' + (Q $label) + '; rows[k].section=""; rows[k].curVal=' + $curExpr + '; rows[k].defVal=' + $defExpr + '; rows[k].setVal=' + $setExpr + '; rows[k].defSetVal=' + $defSetExpr + '; rows[k].exportable=' + $exportable + '; rows[k].enumOpts=' + (Q $enumOpts) + '; rows[k].changed=' + $cmp + '; k++;'
+}
+
+# Build one section row line
+function Build-SectionRow([string]$label){
+    return '   rows[k].isSection=true; rows[k].name=""; rows[k].label=' + (Q $label) + '; rows[k].section=""; rows[k].curVal=""; rows[k].defVal=""; rows[k].setVal=""; rows[k].defSetVal=""; rows[k].exportable=false; rows[k].enumOpts=""; rows[k].changed=false; k++;'
 }
 
 $out = New-Object System.Collections.Generic.List[string]
@@ -146,7 +211,7 @@ foreach($f in $files){
         # ---- section header from sinput group (MQL5 style) ----
         if($mode -eq 'sinput' -and $t -match '^\s*sinput\s+group\s+"(.*)"'){
             $lbl = CleanSection $matches[1]
-            $out.Add('   rows[k].isSection=true; rows[k].name=""; rows[k].label=' + (Q $lbl) + '; rows[k].section=""; rows[k].curVal=""; rows[k].defVal=""; rows[k].changed=false; k++;')
+            $out.Add((Build-SectionRow $lbl))
             $count++; $nSections++
             continue
         }
@@ -189,7 +254,7 @@ foreach($f in $files){
                     } else {
                         $secLbl = CleanSection $comment
                     }
-                    $out.Add('   rows[k].isSection=true; rows[k].name=""; rows[k].label=' + (Q $secLbl) + '; rows[k].section=""; rows[k].curVal=""; rows[k].defVal=""; rows[k].changed=false; k++;')
+                    $out.Add((Build-SectionRow $secLbl))
                     $count++; $nSections++
                 }
                 # sinput mode: sinput group already provides the section -> skip title strings
@@ -236,9 +301,25 @@ struct Hosopi3ParamRow {
    string label;
    string curVal;
    string defVal;
+   string setVal;      // raw value for .set export (bool=true/false, enum=int)
+   string defSetVal;   // default as .set value (for clean default-set generation)
+   bool   exportable;  // can be written to .set (datetime etc. = false)
+   string enumOpts;    // enum dropdown options "0=label|1=label|..." (empty=not enum)
    bool   changed;
    bool   isSection;
 };
+
+//+------------------------------------------------------------------+
+//| Trim trailing zeros from a double (0.01000000 -> 0.01)           |
+//+------------------------------------------------------------------+
+string Hosopi3_NumStr(double v) {
+   string s = DoubleToString(v, 8);
+   int len = StringLen(s);
+   if(StringFind(s, ".") < 0) return s;
+   while(len > 0 && StringGetCharacter(s, len - 1) == '0') len--;
+   if(len > 0 && StringGetCharacter(s, len - 1) == '.') len--;  // also drop trailing dot
+   return StringSubstr(s, 0, len);
+}
 
 //+------------------------------------------------------------------+
 //| Build the full "initial vs current" input table                 |

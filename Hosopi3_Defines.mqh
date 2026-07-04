@@ -5,6 +5,9 @@
 #ifndef HOSOPI3_DEFINES_MQH
 #define HOSOPI3_DEFINES_MQH
 
+// EAバージョン（.mq5/.mq4 の #property version と同期して更新する）
+#define HOSOPI3_VERSION "4.0"
+
 // ナンピンスキップの列挙型
 enum NANPIN_SKIP {
     SKIP_NONE = 0,     // スキップなし

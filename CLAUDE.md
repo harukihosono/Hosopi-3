@@ -184,3 +184,51 @@ ELDRA2(54機能)とHosopi-3(38機能)を突き合わせ、Hosopi-3に無い汎�
 PropFirm / グリッド / ピラミッド / ヒゲとり / モンテカルロ/リトリーバル / OCO/指値追従 / ナンピン救済 / 部分決済(DDR) / 追加ストラテジー(MACD・三尊・SuperTrend等) / ストップレベル自動調整
 
 ### バージョン `3.7` → `3.8` / MT5・MT4とも 0 errors, 0 warnings 確認
+
+## 2026-07-04 パラメータHTMLレポートをELDRA2最新版(v4.18-4.23相当)へ全面更新 v3.9
+
+ELDRA2で進化したHTML生成まわり（v3.95→v4.23の全改善）をそのまま移植。
+
+### 移植した機能（ELDRA2コミット順）
+- **検索/目次/折りたたみ/バージョン表示**（d9d57cc）: 検索ボックス、セクションジャンプ目次、見出しクリックで折りたたみ、vバッジ
+- **.setファイル生成**（677675b/0cb3185）: 「💾 setで保存（全体）」ボタンでUTF-16LE+BOMの.setをダウンロード（MT5パラメータダイアログでそのままロード可）。セクション区切りは `; ==== タイトル ====` コメントで出力
+- **HTML上で値を編集して.set保存**（0cb3185）: 値列が編集可能（編集済み=黄ハイライト、↩リセットボタン）
+- **enumドロップダウン/bool select/小数整形**（44e8152）: enum型は「番号: 日本語ラベル」のセレクト（158項目）、bool型はtrue/falseセレクト、doubleは末尾ゼロ整形（`Hosopi3_NumStr`）
+- **1列表示・中央600px寄せ**（f2e770d/b73798b）: 値列のみの2カラム、`max-width:600px` 中央寄せで目線移動を軽減
+- **ホバーツールチップ＋FX初心者向け解説**（a7861e7/2a6d155）: 項目名ホバーで「解説＋変数名＋初期値＋enum選択肢」を表示
+- **セット説明メモ `input_set_memo`**（b0cb2b4）: 新input（両AllParams先頭、セクション0）。非空ならレポート上部に📝メモとして大きく表示、.setにも出力
+
+### ファイル
+- **`ParamReport/Hosopi3_ParamReport.mqh`**: ELDRA_ParamReport.mqh 最新版ベースで全面書き換え
+- **新規 `ParamReport/Hosopi3_ParamHelp.mqh`**: FX初心者向け解説。`Hosopi3_ParamHelp(input名)` ＋ セクション見出し用 `Hosopi3_SectionHelp(ラベル)`（Hosopi-3はMQL5=sinput group/MQL4=Title文字列でセクション名が無いため、ラベル先頭の「番号.」で判定する方式に適応）。ナンピンマーチン/ゴースト等Hosopi-3の機能に合わせて書き起こし。随時追記可
+- **`tools/paramgen/gen_paramtable.ps1`**: enum定義プリスキャン（`Hosopi3_Defines.mqh`/`Hosopi3_Enums.mqh`からメンバーの`//コメント`をラベル化）＋ 行に `setVal`/`exportable`/`enumOpts` を追加。**inputを増減したら再実行が必要**（従来どおり）
+- **`Hosopi3_Defines.mqh`**: `#define HOSOPI3_VERSION "3.9"` 追加（**バージョンアップ時は .mq5/.mq4 の #property version と両方更新**）
+- **`Hosopi3_AllParams_MQL5.mqh` / `_MQL4.mqh`**: 先頭に `input_set_memo` 追加
+
+### 追補: デフォルトset書き出し（ELDRA 8cf1abc 移植）
+- **`defSetVal`**（宣言デフォルトのset形式値）を生成器・構造体に追加
+- **Δボタン押下時に `<Common>\Files\Hosopi3\Hosopi3_default.set` を自動書き出し**: 全input のデフォルト値をEA自身が実行時計算（enum/colorも正確な整数）するため、外部ツールのテキストパースに起因する誤変換が原理的に起きない。配布用クリーンset生成のベースに使える
+
+### 除外
+- ELDRA2 `tools/paramgen/gen_full_default_sets.ps1`（757c67c）/ `gen_default_sets.py`（64081ae）/ `gen_from_default.py`（8cf1abc）はELDRAの戦略セット量産用ワンオフのため未移植（Hosopi-3に戦略セットカタログができたら `gen_from_default.py` 方式＝MT5保存setベースの行置換を推奨）
+
+### バージョン `3.8` → `3.9` / MT5・MT4とも 0 errors, 0 warnings 確認
+
+## 2026-07-04 インジケーターシグナルのゴーストエントリー開始オプション v4.0
+
+### 背景
+`ProcessRealEntries`（`Hosopi3_Manager.mqh`）は、バックテスト時・自動売買OFF時のみ
+NanpinSkipLevelベースのゴースト→リアル振り分けを行い、**ライブ＋自動売買ONでは
+戦略/インジケーターシグナルが1段目から即リアルエントリー**されていた（バックテストと挙動が不一致）。
+
+### 変更
+- **新input `EnableIndicatorGhostEntry`**（既定 false、セクション6 ゴースト設定、両AllParams）:
+  ONにするとライブ＋自動売買ONでも戦略/インジケーターシグナルの初回エントリーがゴーストから開始
+  （NanpinSkipLevelまで仮想→超えたらリアル。バックテストと同じ挙動）
+- **`Hosopi3_Manager.mqh::ProcessRealEntries`**: ゴースト分岐条件を
+  `IsTesting() || !g_AutoTrading || (EnableIndicatorGhostEntry && EnableGhostEntry)` に変更
+  （`EnableGhostEntry=false` 時は従来どおり即リアルにフォールバック）
+- **`ParamReport/Hosopi3_ParamHelp.mqh`**: 解説追加 / **ParamTable再生成**（gen_paramtable.ps1）
+- 注意: `NanpinSkipLevel = SKIP_NONE` の場合はONにしてもゴーストは発生しない（従来仕様どおり即リアル）
+
+### バージョン `3.9` → `4.0` / MT5・MT4とも 0 errors, 0 warnings 確認
